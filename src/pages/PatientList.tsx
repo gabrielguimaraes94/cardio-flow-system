@@ -5,7 +5,7 @@ import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, UserPlus, Edit, Trash2, FileText } from 'lucide-react';
+import { Search, UserPlus, Edit, Trash2, FileText, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export const PatientList: React.FC = () => {
