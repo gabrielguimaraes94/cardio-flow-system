@@ -81,7 +81,7 @@ export const Sidebar: React.FC = () => {
 
   return (
     <SidebarComponent>
-      <SidebarHeader className="px-6 py-5">
+      <SidebarHeader className="px-6 py-5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Heart className="h-6 w-6 text-white" />
           <h1 className={`text-xl font-bold text-white ${state === 'collapsed' ? 'hidden' : 'block'}`}>CardioFlow</h1>
