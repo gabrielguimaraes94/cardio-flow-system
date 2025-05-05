@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Users, Heart, FileText, Calendar, Settings, LogOut, Menu, UserPlus, FileUser, BarChart, Building2, FileContract } from 'lucide-react';
+import { User, Users, Heart, FileText, Calendar, Settings, LogOut, Menu, UserPlus, FileUser, BarChart, Building2 } from 'lucide-react';
 import { 
   Sidebar as SidebarComponent,
   SidebarContent, 
@@ -81,7 +81,7 @@ export const Sidebar: React.FC = () => {
       submenu: [
         { title: "Lista de Convênios", url: "/insurance", icon: Building2 },
         { title: "Novo Convênio", url: "/insurance/new", icon: Building2 },
-        { title: "Contratos", url: "/insurance", icon: FileContract, 
+        { title: "Contratos", url: "/insurance", icon: FileText, 
           disabled: true, 
           tooltip: "Selecione um convênio primeiro" 
         },

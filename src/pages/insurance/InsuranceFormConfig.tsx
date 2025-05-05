@@ -40,7 +40,7 @@ import {
   createFormConfig,
   updateFormConfig
 } from '@/services/mockInsuranceService';
-import { InsuranceCompany, InsuranceFormConfig } from '@/types/insurance';
+import { InsuranceCompany, InsuranceFormConfig as IFormConfig } from '@/types/insurance';
 
 const formConfigSchema = z.object({
   formTitle: z.string().min(5, { message: "Título do formulário deve ter pelo menos 5 caracteres" }),
@@ -60,7 +60,7 @@ export const InsuranceFormConfig: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [company, setCompany] = useState<InsuranceCompany | null>(null);
-  const [formConfig, setFormConfig] = useState<InsuranceFormConfig | null>(null);
+  const [formConfig, setFormConfig] = useState<IFormConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newField, setNewField] = useState("");
@@ -159,7 +159,7 @@ export const InsuranceFormConfig: React.FC = () => {
     try {
       setIsSubmitting(true);
       
-      const formConfigData: Partial<InsuranceFormConfig> = {
+      const formConfigData: Partial<IFormConfig> = {
         insuranceCompanyId: id,
         formTitle: values.formTitle,
         requiredFields: values.requiredFields,
@@ -175,7 +175,7 @@ export const InsuranceFormConfig: React.FC = () => {
           description: "Configurações do formulário atualizadas com sucesso",
         });
       } else {
-        await createFormConfig(formConfigData as Omit<InsuranceFormConfig, 'id' | 'createdAt' | 'updatedAt'>);
+        await createFormConfig(formConfigData as Omit<IFormConfig, 'id' | 'createdAt' | 'updatedAt'>);
         toast({
           title: "Sucesso",
           description: "Configurações do formulário criadas com sucesso",

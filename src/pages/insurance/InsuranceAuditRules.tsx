@@ -179,9 +179,16 @@ export const InsuranceAuditRules: React.FC = () => {
     try {
       setIsSubmitting(true);
       
+      // Ensure proper typing of the audit rule data
       const auditRuleData: Partial<InsuranceAuditRule> = {
         insuranceCompanyId: id,
-        ...values
+        procedureCode: values.procedureCode,
+        procedureName: values.procedureName,
+        materialLimits: values.materialLimits,
+        preApprovedJustifications: values.preApprovedJustifications,
+        requiresSecondOpinion: values.requiresSecondOpinion,
+        requiresPriorAuthorization: values.requiresPriorAuthorization,
+        authorizationDocuments: values.authorizationDocuments
       };
       
       if (selectedRule) {

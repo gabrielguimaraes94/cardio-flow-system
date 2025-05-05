@@ -100,10 +100,10 @@ export const InsuranceContractList: React.FC = () => {
     threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
     
     if (isBefore(endDate, threeMonthsFromNow)) {
-      return { label: "Vencendo em breve", variant: "warning" as const };
+      return { label: "Vencendo em breve", variant: "outline" as const };
     }
     
-    return { label: "Vigente", variant: "success" as const };
+    return { label: "Vigente", variant: "default" as const };
   };
 
   const getFeeTableLabel = (type: string) => {
