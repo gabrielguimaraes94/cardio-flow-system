@@ -34,7 +34,7 @@ export const Sidebar: React.FC = () => {
           <Heart className="h-6 w-6 text-white" />
           <h1 className="text-xl font-bold text-white">CardioFlow</h1>
         </div>
-        <SidebarTrigger asChild>
+        <SidebarTrigger>
           <button className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-sidebar-accent text-sidebar-foreground">
             <Menu className="h-5 w-5" />
           </button>
