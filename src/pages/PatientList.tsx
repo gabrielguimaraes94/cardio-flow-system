@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
@@ -34,13 +33,19 @@ export const PatientList: React.FC = () => {
   }, []);
 
   const handleSelectPatient = (patientId: string, patientName: string) => {
+    // Clear previous selection
+    localStorage.removeItem('selectedPatientId');
+    localStorage.removeItem('selectedPatientName');
+    
+    // Set new selection
     localStorage.setItem('selectedPatientId', patientId);
     localStorage.setItem('selectedPatientName', patientName);
     
-    // Dispatch a custom event to notify the sidebar of the selection
-    window.dispatchEvent(new CustomEvent('patientSelected', {
+    // Create and dispatch event
+    const event = new CustomEvent('patientSelected', {
       detail: { patientId, patientName }
-    }));
+    });
+    window.dispatchEvent(event);
     
     toast({
       title: "Paciente selecionado",

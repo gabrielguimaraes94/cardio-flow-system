@@ -24,27 +24,30 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // Check localStorage for selected patient when component mounts or route changes
-    const patientId = localStorage.getItem('selectedPatientId');
-    const patientName = localStorage.getItem('selectedPatientName');
-    
-    setSelectedPatientId(patientId);
-    setSelectedPatientName(patientName);
-    
-    // Add event listener for patient selection
     const handlePatientSelected = (event: CustomEvent) => {
       const { patientId, patientName } = event.detail;
       setSelectedPatientId(patientId);
       setSelectedPatientName(patientName);
     };
-    
+
+    const updatePatientFromStorage = () => {
+      const patientId = localStorage.getItem('selectedPatientId');
+      const patientName = localStorage.getItem('selectedPatientName');
+      setSelectedPatientId(patientId);
+      setSelectedPatientName(patientName);
+    };
+
+    // Update state when component mounts or route changes
+    updatePatientFromStorage();
+
+    // Add event listener for patient selection
     window.addEventListener('patientSelected', handlePatientSelected as EventListener);
-    
-    // Clean up event listener
+
+    // Clean up
     return () => {
       window.removeEventListener('patientSelected', handlePatientSelected as EventListener);
     };
-  }, [location]); // Re-check when the route changes
+  }, [location.pathname]); // Re-run when route changes
 
   const menuItems = [
     { title: "Dashboard", url: "/dashboard", icon: Heart },
