@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { User, Users, Heart, FileText, Calendar, Settings, LogOut, Menu, UserPlus, FileUser } from 'lucide-react';
 import { 
   Sidebar as SidebarComponent,
@@ -20,6 +20,19 @@ import {
 } from '@/components/ui/sidebar';
 
 export const Sidebar: React.FC = () => {
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const [selectedPatientName, setSelectedPatientName] = useState<string | null>(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    // Verificar se existe paciente selecionado no localStorage
+    const patientId = localStorage.getItem('selectedPatientId');
+    const patientName = localStorage.getItem('selectedPatientName');
+    
+    setSelectedPatientId(patientId);
+    setSelectedPatientName(patientName);
+  }, [location]); // Re-verificar quando a rota mudar
+
   const menuItems = [
     { title: "Dashboard", url: "/dashboard", icon: Heart },
     { 
@@ -29,7 +42,15 @@ export const Sidebar: React.FC = () => {
       submenu: [
         { title: "Lista de Pacientes", url: "/patients", icon: Users },
         { title: "Novo Paciente", url: "/patients/new", icon: UserPlus },
-        { title: "Anamnese", url: "/patients/:id/anamnesis", icon: FileUser, disabled: true, tooltip: "Selecione um paciente primeiro" }
+        { 
+          title: "Anamnese", 
+          url: selectedPatientId ? `/patients/${selectedPatientId}/anamnesis` : "/patients/:id/anamnesis", 
+          icon: FileUser, 
+          disabled: !selectedPatientId, 
+          tooltip: selectedPatientId 
+            ? `Anamnese de ${selectedPatientName}` 
+            : "Selecione um paciente primeiro" 
+        }
       ]
     },
     { title: "Cateterismo", url: "/catheterization", icon: FileText },
