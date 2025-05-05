@@ -14,6 +14,12 @@ import { CatheterizationTemplateEditor } from "./pages/CatheterizationTemplateEd
 import { CatheterizationReport } from "./pages/CatheterizationReport";
 import { Angioplasty } from "./pages/Angioplasty";
 import { Reports } from "./pages/Reports";
+import { InsuranceList } from "./pages/insurance/InsuranceList";
+import { InsuranceForm } from "./pages/insurance/InsuranceForm";
+import { InsuranceContractList } from "./pages/insurance/InsuranceContractList";
+import { InsuranceContractForm } from "./pages/insurance/InsuranceContractForm";
+import { InsuranceFormConfig } from "./pages/insurance/InsuranceFormConfig";
+import { InsuranceAuditRules } from "./pages/insurance/InsuranceAuditRules";
 import NotFound from "./pages/NotFound";
 import Schedule from "./pages/Schedule";
 import Settings from "./pages/Settings";
@@ -37,6 +43,14 @@ const App = () => (
           <Route path="/catheterization/report/:id?" element={<CatheterizationReport />} />
           <Route path="/angioplasty" element={<Angioplasty />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/insurance" element={<InsuranceList />} />
+          <Route path="/insurance/new" element={<InsuranceForm />} />
+          <Route path="/insurance/:id" element={<InsuranceForm />} />
+          <Route path="/insurance/:id/contracts" element={<InsuranceContractList />} />
+          <Route path="/insurance/:id/contracts/new" element={<InsuranceContractForm />} />
+          <Route path="/insurance/:id/contracts/:contractId" element={<InsuranceContractForm />} />
+          <Route path="/insurance/:id/forms" element={<InsuranceFormConfig />} />
+          <Route path="/insurance/:id/audit-rules" element={<InsuranceAuditRules />} />
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />

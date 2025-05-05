@@ -1,0 +1,559 @@
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Layout } from '@/components/Layout';
+import { 
+  Form, 
+  FormControl, 
+  FormDescription, 
+  FormField, 
+  FormItem, 
+  FormLabel, 
+  FormMessage 
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { 
+  ArrowLeft, 
+  Save, 
+  Upload, 
+  Building2, 
+  Trash2 
+} from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/hooks/use-toast';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { 
+  getInsuranceCompanyById, 
+  createInsuranceCompany, 
+  updateInsuranceCompany 
+} from '@/services/mockInsuranceService';
+import { InsuranceCompany } from '@/types/insurance';
+
+const insuranceFormSchema = z.object({
+  companyName: z.string().min(5, { message: "Razão social deve ter pelo menos 5 caracteres" }),
+  tradingName: z.string().min(2, { message: "Nome fantasia deve ter pelo menos 2 caracteres" }),
+  cnpj: z.string().regex(/^\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2}$/, { 
+    message: "CNPJ deve estar no formato 00.000.000/0000-00" 
+  }),
+  ansRegistry: z.string().min(5, { message: "Registro ANS deve ter pelo menos 5 caracteres" }),
+  street: z.string().min(3, { message: "Rua deve ter pelo menos 3 caracteres" }),
+  number: z.string().min(1, { message: "Número é obrigatório" }),
+  complement: z.string().optional(),
+  neighborhood: z.string().min(2, { message: "Bairro deve ter pelo menos 2 caracteres" }),
+  city: z.string().min(2, { message: "Cidade deve ter pelo menos 2 caracteres" }),
+  state: z.string().min(2, { message: "Estado deve ter pelo menos 2 caracteres" }),
+  zipCode: z.string().regex(/^\d{5}\-\d{3}$/, { 
+    message: "CEP deve estar no formato 00000-000" 
+  }),
+  email: z.string().email({ message: "Email inválido" }),
+  phone: z.string().min(10, { message: "Telefone deve ter pelo menos 10 caracteres" }),
+  contactPerson: z.string().optional(),
+  active: z.boolean().default(true),
+});
+
+type InsuranceFormValues = z.infer<typeof insuranceFormSchema>;
+
+export const InsuranceForm: React.FC = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+
+  const form = useForm<InsuranceFormValues>({
+    resolver: zodResolver(insuranceFormSchema),
+    defaultValues: {
+      companyName: "",
+      tradingName: "",
+      cnpj: "",
+      ansRegistry: "",
+      street: "",
+      number: "",
+      complement: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      email: "",
+      phone: "",
+      contactPerson: "",
+      active: true,
+    },
+  });
+
+  useEffect(() => {
+    const loadInsuranceCompany = async () => {
+      if (id) {
+        try {
+          setIsLoading(true);
+          const company = await getInsuranceCompanyById(id);
+          
+          if (company) {
+            form.reset({
+              companyName: company.companyName,
+              tradingName: company.tradingName,
+              cnpj: company.cnpj,
+              ansRegistry: company.ansRegistry,
+              street: company.address.street,
+              number: company.address.number,
+              complement: company.address.complement || "",
+              neighborhood: company.address.neighborhood,
+              city: company.address.city,
+              state: company.address.state,
+              zipCode: company.address.zipCode,
+              email: company.contactInfo.email,
+              phone: company.contactInfo.phone,
+              contactPerson: company.contactInfo.contactPerson || "",
+              active: company.active,
+            });
+            
+            if (company.logoUrl) {
+              setLogoPreview(company.logoUrl);
+            }
+          } else {
+            toast({
+              title: "Erro",
+              description: "Convênio não encontrado",
+              variant: "destructive",
+            });
+            navigate('/insurance');
+          }
+        } catch (error) {
+          console.error("Error loading insurance company:", error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os dados do convênio",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadInsuranceCompany();
+  }, [id, form, navigate]);
+
+  const onSubmit = async (values: InsuranceFormValues) => {
+    try {
+      setIsSubmitting(true);
+      
+      const insuranceData: Partial<InsuranceCompany> = {
+        companyName: values.companyName,
+        tradingName: values.tradingName,
+        cnpj: values.cnpj,
+        ansRegistry: values.ansRegistry,
+        address: {
+          street: values.street,
+          number: values.number,
+          complement: values.complement,
+          neighborhood: values.neighborhood,
+          city: values.city,
+          state: values.state,
+          zipCode: values.zipCode,
+        },
+        contactInfo: {
+          email: values.email,
+          phone: values.phone,
+          contactPerson: values.contactPerson,
+        },
+        active: values.active,
+      };
+      
+      // In a real implementation, you would upload the logo file to a server
+      // and set the logoUrl to the returned URL
+      if (logoFile) {
+        // Mock logo URL for demonstration
+        insuranceData.logoUrl = URL.createObjectURL(logoFile);
+      }
+      
+      if (id) {
+        await updateInsuranceCompany(id, insuranceData);
+        toast({
+          title: "Sucesso",
+          description: "Convênio atualizado com sucesso",
+        });
+      } else {
+        const newCompany = await createInsuranceCompany(insuranceData as Omit<InsuranceCompany, 'id' | 'createdAt' | 'updatedAt'>);
+        toast({
+          title: "Sucesso",
+          description: "Convênio criado com sucesso",
+        });
+        navigate(`/insurance/${newCompany.id}`);
+      }
+    } catch (error) {
+      console.error("Error saving insurance company:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar o convênio",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleCancel = () => {
+    navigate('/insurance');
+  };
+
+  return (
+    <Layout>
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" onClick={() => navigate('/insurance')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">{id ? 'Editar' : 'Novo'} Convênio</h2>
+            <p className="text-muted-foreground">
+              {id ? 'Atualize os dados do convênio' : 'Preencha os dados para cadastrar um novo convênio'}
+            </p>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center items-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cardio-500"></div>
+          </div>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <Tabs defaultValue="general">
+                <TabsList>
+                  <TabsTrigger value="general">Dados Gerais</TabsTrigger>
+                  <TabsTrigger value="address">Endereço</TabsTrigger>
+                  <TabsTrigger value="contact">Contato</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="general" className="space-y-4 pt-4">
+                  <Card>
+                    <CardContent className="p-6 space-y-6">
+                      <div className="flex flex-col md:flex-row gap-8">
+                        <div className="flex-1 space-y-6">
+                          <FormField
+                            control={form.control}
+                            name="companyName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Razão Social</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="tradingName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Nome Fantasia</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                              control={form.control}
+                              name="cnpj"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>CNPJ</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} placeholder="00.000.000/0000-00" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={form.control}
+                              name="ansRegistry"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Registro ANS</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          
+                          <FormField
+                            control={form.control}
+                            name="active"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">Status do Convênio</FormLabel>
+                                  <FormDescription>
+                                    {field.value ? 'Ativo' : 'Inativo'}
+                                  </FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        
+                        <div className="md:w-1/3 flex flex-col items-center space-y-4">
+                          <div className="text-center">
+                            <FormLabel className="block mb-2">Logo da Operadora</FormLabel>
+                            <div className="w-40 h-40 mb-4 border rounded-lg flex items-center justify-center overflow-hidden bg-gray-50">
+                              {logoPreview ? (
+                                <img 
+                                  src={logoPreview} 
+                                  alt="Logo Preview" 
+                                  className="max-w-full max-h-full object-contain" 
+                                />
+                              ) : (
+                                <Building2 className="h-16 w-16 text-gray-300" />
+                              )}
+                            </div>
+                            <div className="flex justify-center">
+                              <Button type="button" variant="outline" className="relative">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                  onChange={handleLogoChange}
+                                />
+                                <Upload className="h-4 w-4 mr-2" />
+                                Selecionar Logo
+                              </Button>
+                            </div>
+                            <FormDescription className="mt-2 text-xs text-center">
+                              Recomendado: 200x200px, PNG ou JPG
+                            </FormDescription>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                
+                <TabsContent value="address" className="space-y-4 pt-4">
+                  <Card>
+                    <CardContent className="p-6 space-y-6">
+                      <FormField
+                        control={form.control}
+                        name="zipCode"
+                        render={({ field }) => (
+                          <FormItem className="max-w-xs">
+                            <FormLabel>CEP</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="00000-000" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div className="md:col-span-3">
+                          <FormField
+                            control={form.control}
+                            name="street"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Logradouro</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        
+                        <div>
+                          <FormField
+                            control={form.control}
+                            name="number"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Número</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={form.control}
+                          name="complement"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Complemento</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="neighborhood"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Bairro</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div className="md:col-span-3">
+                          <FormField
+                            control={form.control}
+                            name="city"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Cidade</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        
+                        <div>
+                          <FormField
+                            control={form.control}
+                            name="state"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Estado</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                
+                <TabsContent value="contact" className="space-y-4 pt-4">
+                  <Card>
+                    <CardContent className="p-6 space-y-6">
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="email" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Telefone</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="(00) 0000-0000" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="contactPerson"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Pessoa de Contato</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormDescription>
+                              Nome da pessoa responsável pelo contato com a operadora
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+
+              <div className="flex justify-end gap-2 mt-6">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleCancel}
+                  disabled={isSubmitting}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Cancelar
+                </Button>
+                <Button 
+                  type="submit" 
+                  className="bg-cardio-500 hover:bg-cardio-600"
+                  disabled={isSubmitting}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {isSubmitting ? 'Salvando...' : 'Salvar Convênio'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        )}
+      </div>
+    </Layout>
+  );
+};
