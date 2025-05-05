@@ -25,13 +25,27 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // Verificar se existe paciente selecionado no localStorage
+    // Check localStorage for selected patient when component mounts or route changes
     const patientId = localStorage.getItem('selectedPatientId');
     const patientName = localStorage.getItem('selectedPatientName');
     
     setSelectedPatientId(patientId);
     setSelectedPatientName(patientName);
-  }, [location]); // Re-verificar quando a rota mudar
+    
+    // Add event listener for patient selection
+    const handlePatientSelected = (event: CustomEvent) => {
+      const { patientId, patientName } = event.detail;
+      setSelectedPatientId(patientId);
+      setSelectedPatientName(patientName);
+    };
+    
+    window.addEventListener('patientSelected', handlePatientSelected as EventListener);
+    
+    // Clean up event listener
+    return () => {
+      window.removeEventListener('patientSelected', handlePatientSelected as EventListener);
+    };
+  }, [location]); // Re-check when the route changes
 
   const menuItems = [
     { title: "Dashboard", url: "/dashboard", icon: Heart },

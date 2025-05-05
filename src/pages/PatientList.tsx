@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -20,9 +20,27 @@ export const PatientList: React.FC = () => {
     { id: '5', name: 'Carlos Santos', age: 55, cpf: '567.890.123-45', phone: '(11) 95678-1234', insurance: 'Unimed' },
   ];
 
+  // Add useEffect to check if there's already a selected patient when the component mounts
+  useEffect(() => {
+    const patientId = localStorage.getItem('selectedPatientId');
+    const patientName = localStorage.getItem('selectedPatientName');
+    
+    if (patientId && patientName) {
+      // Dispatch a custom event to notify the sidebar of the selection
+      window.dispatchEvent(new CustomEvent('patientSelected', {
+        detail: { patientId, patientName }
+      }));
+    }
+  }, []);
+
   const handleSelectPatient = (patientId: string, patientName: string) => {
     localStorage.setItem('selectedPatientId', patientId);
     localStorage.setItem('selectedPatientName', patientName);
+    
+    // Dispatch a custom event to notify the sidebar of the selection
+    window.dispatchEvent(new CustomEvent('patientSelected', {
+      detail: { patientId, patientName }
+    }));
     
     toast({
       title: "Paciente selecionado",
