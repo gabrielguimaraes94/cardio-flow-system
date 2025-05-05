@@ -11,7 +11,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 interface ArterialTreeProps {
@@ -19,32 +18,38 @@ interface ArterialTreeProps {
   onChange: (structure: TemplateNode[]) => void;
 }
 
-const SortableNodeItem = ({ node, onUpdate, onDelete, onAddChild, onMoveUp, onMoveDown }: { 
+// Simple utility function to move an item in an array
+const moveItem = (array: any[], from: number, to: number) => {
+  const newArray = [...array];
+  const [movedItem] = newArray.splice(from, 1);
+  newArray.splice(to, 0, movedItem);
+  return newArray;
+};
+
+const NodeItem = ({ 
+  node, 
+  onUpdate, 
+  onDelete, 
+  onAddChild, 
+  onMoveUp, 
+  onMoveDown,
+  isDragging = false
+}: { 
   node: TemplateNode, 
   onUpdate: (updated: TemplateNode) => void,
   onDelete: () => void,
   onAddChild: () => void,
   onMoveUp: () => void,
   onMoveDown: () => void,
+  isDragging?: boolean
 }) => {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
-    id: node.id,
-  });
-  
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-  
   return (
     <div 
-      ref={setNodeRef}
-      style={style}
-      className="border rounded-md p-3 mb-3 bg-white"
+      className={`border rounded-md p-3 mb-3 bg-white ${isDragging ? 'opacity-50' : ''}`}
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center">
-          <div className="cursor-move mr-2" {...attributes} {...listeners}>
+          <div className="cursor-move mr-2">
             <Grip className="h-4 w-4 text-gray-400" />
           </div>
           <Input 
@@ -159,19 +164,26 @@ const SortableNodeItem = ({ node, onUpdate, onDelete, onAddChild, onMoveUp, onMo
 const NestedArterialTree = ({ structure, onChange }: ArterialTreeProps) => {
   const sensors = useSensors(
     useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(KeyboardSensor)
   );
+  
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const handleDragStart = (event: any) => {
+    const { active } = event;
+    setActiveId(active.id);
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveId(null);
+    
     if (!over || active.id === over.id) return;
     
     const oldIndex = structure.findIndex(item => item.id === active.id);
     const newIndex = structure.findIndex(item => item.id === over.id);
     
-    onChange(arrayMove(structure, oldIndex, newIndex));
+    onChange(moveItem(structure, oldIndex, newIndex));
   };
 
   const handleUpdate = (index: number, updatedNode: TemplateNode) => {
@@ -217,21 +229,21 @@ const NestedArterialTree = ({ structure, onChange }: ArterialTreeProps) => {
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <SortableContext items={structure.map(item => item.id)} strategy={verticalListSortingStrategy}>
-        {structure.map((node, index) => (
-          <SortableNodeItem 
-            key={node.id}
-            node={node}
-            onUpdate={(updated) => handleUpdate(index, updated)}
-            onDelete={() => handleDelete(index)}
-            onAddChild={() => handleAddChild(index)}
-            onMoveUp={() => handleMoveUp(index)}
-            onMoveDown={() => handleMoveDown(index)}
-          />
-        ))}
-      </SortableContext>
+      {structure.map((node, index) => (
+        <NodeItem 
+          key={node.id}
+          node={node}
+          onUpdate={(updated) => handleUpdate(index, updated)}
+          onDelete={() => handleDelete(index)}
+          onAddChild={() => handleAddChild(index)}
+          onMoveUp={() => handleMoveUp(index)}
+          onMoveDown={() => handleMoveDown(index)}
+          isDragging={activeId === node.id}
+        />
+      ))}
     </DndContext>
   );
 };
