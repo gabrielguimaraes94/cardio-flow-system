@@ -1,31 +1,20 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ClinicCard } from './ClinicCard';
-
-interface Clinic {
-  id: string;
-  name: string;
-  city: string;
-  logo?: string;
-}
+import { useClinic } from '@/contexts/ClinicContext';
 
 export const ClinicSelector: React.FC = () => {
-  const [selectedClinic, setSelectedClinic] = useState<Clinic>({
-    id: '1',
-    name: 'Cardio Center',
-    city: 'São Paulo',
-  });
+  const { selectedClinic, setSelectedClinic, clinics } = useClinic();
 
-  const clinics: Clinic[] = [
-    { id: '1', name: 'Cardio Center', city: 'São Paulo' },
-    { id: '2', name: 'Instituto Cardiovascular', city: 'Rio de Janeiro' },
-    { id: '3', name: 'Clínica do Coração', city: 'Belo Horizonte' },
-  ];
-
-  const handleSelectClinic = (clinic: Clinic) => {
+  const handleSelectClinic = (clinic: {
+    id: string;
+    name: string;
+    city: string;
+    logo?: string;
+  }) => {
     setSelectedClinic(clinic);
   };
 

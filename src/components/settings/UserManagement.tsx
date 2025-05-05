@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { UserDialog } from './UserDialog';
+import { useClinic } from '@/contexts/ClinicContext';
+import { useToast } from '@/hooks/use-toast';
 
 // User type with roles
 type UserRole = 'admin' | 'clinic_admin' | 'doctor' | 'nurse' | 'receptionist';
@@ -21,7 +22,10 @@ interface User {
 }
 
 export const UserManagement = () => {
-  const [users, setUsers] = useState<User[]>([
+  const { selectedClinic } = useClinic();
+  const { toast } = useToast();
+  
+  const [allUsers, setAllUsers] = useState<User[]>([
     { id: '1', name: 'Dr. Carlos Silva', email: 'carlos.silva@cardio.com', role: 'doctor', clinics: ['Cardio Center', 'Instituto Cardiovascular'], active: true },
     { id: '2', name: 'Amanda Lopes', email: 'amanda@cardio.com', role: 'nurse', clinics: ['Cardio Center'], active: true },
     { id: '3', name: 'Patricia Santos', email: 'patricia@cardio.com', role: 'receptionist', clinics: ['Cardio Center'], active: true },
@@ -29,9 +33,42 @@ export const UserManagement = () => {
     { id: '5', name: 'Ana Costa', email: 'ana@admin.com', role: 'admin', clinics: ['Cardio Center', 'Instituto Cardiovascular', 'Clínica do Coração'], active: true },
   ]);
   
+  const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // Filter users based on selected clinic
+  useEffect(() => {
+    if (selectedClinic) {
+      const filteredUsers = allUsers.filter(user => 
+        // Admins see all users across all clinics
+        user.role === 'admin' || 
+        // Other users are filtered by their clinic association
+        user.clinics.includes(selectedClinic.name)
+      );
+      setUsers(filteredUsers);
+
+      // Show toast notification when clinic is changed
+      toast({
+        title: "Clínica alterada",
+        description: `Mostrando usuários da clínica: ${selectedClinic.name}`,
+      });
+    }
+  }, [selectedClinic, allUsers]);
+
+  // Listen for clinic change events
+  useEffect(() => {
+    const handleClinicChange = () => {
+      // This will trigger the useEffect above
+      setSearchTerm('');
+    };
+
+    window.addEventListener('clinicChanged', handleClinicChange);
+    return () => {
+      window.removeEventListener('clinicChanged', handleClinicChange);
+    };
+  }, []);
 
   const filteredUsers = users.filter(user => 
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -73,16 +110,16 @@ export const UserManagement = () => {
   const handleSaveUser = (user: User) => {
     if (currentUser) {
       // Edit existing user
-      setUsers(users.map(u => u.id === user.id ? user : u));
+      setAllUsers(allUsers.map(u => u.id === user.id ? user : u));
     } else {
       // Add new user
-      setUsers([...users, { ...user, id: Date.now().toString() }]);
+      setAllUsers([...allUsers, { ...user, id: Date.now().toString() }]);
     }
     setIsDialogOpen(false);
   };
 
   const handleDeleteUser = (userId: string) => {
-    setUsers(users.filter(user => user.id !== userId));
+    setAllUsers(allUsers.filter(user => user.id !== userId));
   };
 
   return (
@@ -91,7 +128,11 @@ export const UserManagement = () => {
         <div className="flex justify-between items-center">
           <div>
             <CardTitle>Gestão de Usuários</CardTitle>
-            <CardDescription>Gerencie os usuários do sistema e suas permissões.</CardDescription>
+            <CardDescription>
+              {selectedClinic 
+                ? `Gerenciando usuários da clínica: ${selectedClinic.name}` 
+                : 'Gerencie os usuários do sistema e suas permissões.'}
+            </CardDescription>
           </div>
           <Button onClick={handleAddUser}>
             <Plus className="mr-2 h-4 w-4" />

@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash, MapPin, Phone, Mail, Building } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClinicDialog } from './ClinicDialog';
 import { Badge } from '@/components/ui/badge';
+import { useClinic } from '@/contexts/ClinicContext';
 
 interface Clinic {
   id: string;
@@ -18,17 +19,38 @@ interface Clinic {
 }
 
 export const ClinicManagement = () => {
+  const { selectedClinic } = useClinic();
+  
   const [clinics, setClinics] = useState<Clinic[]>([
     { id: '1', name: 'Cardio Center', address: 'Av. Paulista, 1000', city: 'São Paulo', phone: '(11) 3456-7890', email: 'contato@cardiocenter.com', active: true },
     { id: '2', name: 'Instituto Cardiovascular', address: 'Rua Barata Ribeiro, 500', city: 'Rio de Janeiro', phone: '(21) 3456-7890', email: 'contato@instituto.com', active: true },
     { id: '3', name: 'Clínica do Coração', address: 'Av. Afonso Pena, 1500', city: 'Belo Horizonte', phone: '(31) 3456-7890', email: 'contato@clinica.com', active: true },
   ]);
   
+  const [displayedClinics, setDisplayedClinics] = useState<Clinic[]>(clinics);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentClinic, setCurrentClinic] = useState<Clinic | null>(null);
 
-  const filteredClinics = clinics.filter(clinic => 
+  // Filter clinics based on user role
+  // For now, we're just showing the selected clinic if one is selected
+  useEffect(() => {
+    if (selectedClinic) {
+      // In a real application, this might filter based on user roles
+      // For admin users, show all clinics
+      // For clinic admins, show only their clinic
+      
+      // For demonstration, we're just filtering to show the selected clinic
+      const filtered = clinics.filter(clinic => 
+        clinic.name === selectedClinic.name
+      );
+      setDisplayedClinics(filtered);
+    } else {
+      setDisplayedClinics(clinics);
+    }
+  }, [selectedClinic, clinics]);
+
+  const filteredClinics = displayedClinics.filter(clinic => 
     clinic.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     clinic.city.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -64,7 +86,11 @@ export const ClinicManagement = () => {
         <div className="flex justify-between items-center">
           <div>
             <CardTitle>Gestão de Clínicas</CardTitle>
-            <CardDescription>Gerencie as clínicas e consultórios cadastrados no sistema.</CardDescription>
+            <CardDescription>
+              {selectedClinic 
+                ? `Gerenciando a clínica: ${selectedClinic.name}` 
+                : 'Gerencie as clínicas e consultórios cadastrados no sistema.'}
+            </CardDescription>
           </div>
           <Button onClick={handleAddClinic}>
             <Plus className="mr-2 h-4 w-4" />
