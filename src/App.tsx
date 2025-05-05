@@ -12,6 +12,7 @@ import { AnamnesisForm } from "./pages/AnamnesisForm";
 import { CatheterizationReportList } from "./pages/CatheterizationReportList";
 import { CatheterizationTemplateEditor } from "./pages/CatheterizationTemplateEditor";
 import { CatheterizationReport } from "./pages/CatheterizationReport";
+import { Angioplasty } from "./pages/Angioplasty";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/catheterization" element={<CatheterizationReportList />} />
           <Route path="/catheterization/templates" element={<CatheterizationTemplateEditor />} />
           <Route path="/catheterization/report/:id?" element={<CatheterizationReport />} />
+          <Route path="/angioplasty" element={<Angioplasty />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
