@@ -2,107 +2,241 @@
 import React from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, FileText, FilePlus, Eye, Printer } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, FileText, Settings, Eye } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-export const CatheterizationReportList: React.FC = () => {
+export const CatheterizationReportList = () => {
+  // Sample data
   const reports = [
-    { 
-      id: '1', 
-      patient: 'João Silva', 
-      date: '02/05/2025', 
+    {
+      id: '1',
+      patientName: 'Ana Clara Oliveira',
+      patientId: '123456',
+      date: '2025-05-05',
       doctor: 'Dr. Carlos Silva',
-      diagnosis: 'Lesão grave em ADA proximal'
+      status: 'Finalizado'
     },
-    { 
-      id: '2', 
-      patient: 'Maria Oliveira', 
-      date: '28/04/2025', 
-      doctor: 'Dr. Roberto Almeida',
-      diagnosis: 'Coronárias sem lesões obstrutivas'
-    },
-    { 
-      id: '3', 
-      patient: 'José Pereira', 
-      date: '25/04/2025', 
-      doctor: 'Dra. Ana Santos',
-      diagnosis: 'Lesão moderada em CD média'
-    },
-    { 
-      id: '4', 
-      patient: 'Antônia Souza', 
-      date: '20/04/2025', 
+    {
+      id: '2',
+      patientName: 'João Pedro Santos',
+      patientId: '789012',
+      date: '2025-05-04',
       doctor: 'Dr. Carlos Silva',
-      diagnosis: 'Lesão em bifurcação ACX/OM1'
+      status: 'Finalizado'
     },
-    { 
-      id: '5', 
-      patient: 'Fernando Gomes', 
-      date: '15/04/2025', 
-      doctor: 'Dr. Roberto Almeida',
-      diagnosis: 'Doença arterial coronariana grave'
-    },
+    {
+      id: '3',
+      patientName: 'Maria Eduarda Lima',
+      patientId: '345678',
+      date: '2025-05-03',
+      doctor: 'Dra. Fernanda Costa',
+      status: 'Rascunho'
+    }
   ];
 
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-          <div>
-            <h2 className="text-3xl font-bold mb-1">Relatórios de Cateterismo</h2>
-            <p className="text-gray-500">Visualize e crie relatórios de cateterismo</p>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Cateterismo</h1>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/catheterization/templates">
+                <Settings className="mr-2 h-4 w-4" />
+                Templates
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link to="/catheterization/report">
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Relatório
+              </Link>
+            </Button>
           </div>
-          <Button className="bg-cardio-500 hover:bg-cardio-600">
-            <FilePlus className="h-4 w-4 mr-2" />
-            Novo Relatório
-          </Button>
         </div>
-
-        <div className="flex flex-col sm:flex-row gap-2 items-center">
-          <div className="relative w-full sm:w-96">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-            <Input type="search" placeholder="Buscar relatórios..." className="pl-9" />
-          </div>
-          <Button variant="outline" size="sm" className="w-full sm:w-auto">
-            Filtrar
-          </Button>
-        </div>
-
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Paciente</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Médico</TableHead>
-                <TableHead>Diagnóstico</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {reports.map((report) => (
-                <TableRow key={report.id}>
-                  <TableCell className="font-medium">{report.patient}</TableCell>
-                  <TableCell>{report.date}</TableCell>
-                  <TableCell>{report.doctor}</TableCell>
-                  <TableCell className="max-w-xs truncate">{report.diagnosis}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button variant="ghost" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      <FileText className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      <Printer className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        
+        <Tabs defaultValue="all">
+          <TabsList>
+            <TabsTrigger value="all">Todos</TabsTrigger>
+            <TabsTrigger value="finished">Finalizados</TabsTrigger>
+            <TabsTrigger value="draft">Rascunhos</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="all" className="pt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Relatórios de Cateterismo</CardTitle>
+                <CardDescription>
+                  Lista de todos os relatórios de cateterismo criados
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Paciente</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Médico</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-24">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reports.map((report) => (
+                      <TableRow key={report.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{report.patientName}</p>
+                            <p className="text-sm text-muted-foreground">ID: {report.patientId}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{new Date(report.date).toLocaleDateString('pt-BR')}</TableCell>
+                        <TableCell>{report.doctor}</TableCell>
+                        <TableCell>
+                          <Badge variant={report.status === 'Finalizado' ? 'default' : 'secondary'}>
+                            {report.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button variant="ghost" size="icon" asChild>
+                              <Link to={`/catheterization/report/${report.id}`}>
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <Button variant="ghost" size="icon">
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="finished" className="pt-4">
+            {/* Similar card with filtered data for finished reports */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Relatórios Finalizados</CardTitle>
+                <CardDescription>
+                  Lista dos relatórios de cateterismo finalizados
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Paciente</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Médico</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-24">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reports
+                      .filter((report) => report.status === 'Finalizado')
+                      .map((report) => (
+                        <TableRow key={report.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{report.patientName}</p>
+                              <p className="text-sm text-muted-foreground">ID: {report.patientId}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>{new Date(report.date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{report.doctor}</TableCell>
+                          <TableCell>
+                            <Badge>
+                              {report.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Button variant="ghost" size="icon" asChild>
+                                <Link to={`/catheterization/report/${report.id}`}>
+                                  <Eye className="h-4 w-4" />
+                                </Link>
+                              </Button>
+                              <Button variant="ghost" size="icon">
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="draft" className="pt-4">
+            {/* Similar card with filtered data for draft reports */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Rascunhos</CardTitle>
+                <CardDescription>
+                  Lista dos relatórios de cateterismo em rascunho
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Paciente</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Médico</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-24">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reports
+                      .filter((report) => report.status === 'Rascunho')
+                      .map((report) => (
+                        <TableRow key={report.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{report.patientName}</p>
+                              <p className="text-sm text-muted-foreground">ID: {report.patientId}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>{new Date(report.date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{report.doctor}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {report.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Button variant="ghost" size="icon" asChild>
+                                <Link to={`/catheterization/report/${report.id}`}>
+                                  <Eye className="h-4 w-4" />
+                                </Link>
+                              </Button>
+                              <Button variant="ghost" size="icon">
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
