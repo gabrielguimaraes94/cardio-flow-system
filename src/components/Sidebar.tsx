@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User, Users, Heart, FileText, Calendar, Settings, LogOut, Menu, UserPlus, FileUser, BarChart } from 'lucide-react';
@@ -15,13 +16,15 @@ import {
   SidebarFooter,
   SidebarMenuSub,
   SidebarMenuSubItem,
-  SidebarMenuSubButton
+  SidebarMenuSubButton,
+  useSidebar
 } from '@/components/ui/sidebar';
 
 export const Sidebar: React.FC = () => {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [selectedPatientName, setSelectedPatientName] = useState<string | null>(null);
   const location = useLocation();
+  const { state } = useSidebar();
 
   useEffect(() => {
     const handlePatientSelected = (event: CustomEvent) => {
@@ -81,7 +84,7 @@ export const Sidebar: React.FC = () => {
       <SidebarHeader className="px-6 py-5">
         <div className="flex items-center gap-2">
           <Heart className="h-6 w-6 text-white" />
-          <h1 className="text-xl font-bold text-white">CardioFlow</h1>
+          <h1 className={`text-xl font-bold text-white ${state === 'collapsed' ? 'hidden' : 'block'}`}>CardioFlow</h1>
         </div>
         <SidebarTrigger>
           <button className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-sidebar-accent text-sidebar-foreground">
@@ -144,9 +147,9 @@ export const Sidebar: React.FC = () => {
 
       <SidebarFooter className="px-6 py-4">
         <div className="flex items-center gap-3">
-          <button className="w-full flex items-center gap-3 text-sidebar-foreground rounded-md hover:bg-sidebar-accent px-3 py-2">
+          <button className={`w-full flex items-center gap-3 text-sidebar-foreground rounded-md hover:bg-sidebar-accent px-3 py-2 ${state === 'collapsed' ? 'justify-center' : ''}`}>
             <LogOut className="h-5 w-5" />
-            <span>Sair</span>
+            <span className={state === 'collapsed' ? 'hidden' : 'block'}>Sair</span>
           </button>
         </div>
       </SidebarFooter>
