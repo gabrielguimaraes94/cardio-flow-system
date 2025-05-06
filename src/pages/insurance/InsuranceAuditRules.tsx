@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
@@ -179,12 +178,17 @@ export const InsuranceAuditRules: React.FC = () => {
     try {
       setIsSubmitting(true);
       
-      // Ensure proper typing of the audit rule data
+      // Ensure all required properties are explicitly assigned and have non-optional values
       const auditRuleData: Partial<InsuranceAuditRule> = {
         insuranceCompanyId: id,
         procedureCode: values.procedureCode,
         procedureName: values.procedureName,
-        materialLimits: values.materialLimits,
+        // Ensure materialLimits items have all required properties
+        materialLimits: values.materialLimits.map(material => ({
+          materialCode: material.materialCode,
+          materialName: material.materialName,
+          maxQuantity: material.maxQuantity
+        })),
         preApprovedJustifications: values.preApprovedJustifications,
         requiresSecondOpinion: values.requiresSecondOpinion,
         requiresPriorAuthorization: values.requiresPriorAuthorization,

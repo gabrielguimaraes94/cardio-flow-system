@@ -159,11 +159,17 @@ export const InsuranceFormConfig: React.FC = () => {
     try {
       setIsSubmitting(true);
       
+      // Ensure all required properties are explicitly assigned with non-optional values
       const formConfigData: Partial<IFormConfig> = {
         insuranceCompanyId: id,
         formTitle: values.formTitle,
         requiredFields: values.requiredFields,
-        validationRules: values.validationRules,
+        // Ensure validationRules items have all required properties
+        validationRules: values.validationRules.map(rule => ({
+          fieldName: rule.fieldName,
+          rule: rule.rule,
+          errorMessage: rule.errorMessage
+        })),
         allowedFileTypes: values.allowedFileTypes,
         maxFileSize: values.maxFileSize * 1048576, // Convert MB to bytes
       };

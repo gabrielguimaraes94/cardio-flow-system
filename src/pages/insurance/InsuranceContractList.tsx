@@ -241,8 +241,8 @@ export const InsuranceContractList: React.FC = () => {
                         <TableCell>{contract.paymentDeadlineDays} dias</TableCell>
                         <TableCell>
                           <Badge 
-                            variant={status.variant === 'warning' ? 'outline' : status.variant}
-                            className={status.variant === 'warning' ? 'text-orange-500 border-orange-200 bg-orange-50' : ''}
+                            variant={status.variant}
+                            className={status.variant === "outline" && status.label === "Vencendo em breve" ? 'text-orange-500 border-orange-200 bg-orange-50' : ''}
                           >
                             {status.label}
                           </Badge>
