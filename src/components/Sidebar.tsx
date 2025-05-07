@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User, Users, Heart, FileText, Calendar, Settings, LogOut, Menu, UserPlus, FileUser, BarChart, Building2 } from 'lucide-react';
@@ -26,6 +25,7 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
   const { state } = useSidebar();
 
+  // Event handling for patient selection
   useEffect(() => {
     const handlePatientSelected = (event: CustomEvent) => {
       const { patientId, patientName } = event.detail;
@@ -93,13 +93,24 @@ export const Sidebar: React.FC = () => {
   ];
 
   return (
-    <SidebarComponent variant="floating" collapsible="icon">
+    <SidebarComponent 
+      variant="floating" 
+      collapsible="icon"
+      className="z-50 shadow-lg"
+    >
+      {/* Header com logo */}
       <SidebarHeader className="px-6 py-5 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className={`flex items-center gap-2 ${state === 'collapsed' ? 'justify-center w-full' : ''}`}>
+          {/* Logo sempre visível */}
           <Heart className="h-6 w-6 text-white" />
-          <h1 className={`text-xl font-bold text-white ${state === 'collapsed' ? 'hidden' : 'block'}`}>CardioFlow</h1>
+          {/* Nome da aplicação que desaparece quando colapsado */}
+          <h1 className={`text-xl font-bold text-white transition-opacity duration-300 ${state === 'collapsed' ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
+            CardioFlow
+          </h1>
         </div>
-        <SidebarTrigger>
+        
+        {/* Botão apenas visível quando expandido */}
+        <SidebarTrigger className={state === 'collapsed' ? 'hidden' : 'block'}>
           <button className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-sidebar-accent text-sidebar-foreground">
             <Menu className="h-5 w-5" />
           </button>
@@ -115,9 +126,13 @@ export const Sidebar: React.FC = () => {
                   {item.submenu ? (
                     <>
                       <SidebarMenuButton tooltip={state === 'collapsed' ? item.title : undefined}>
-                        <div className="flex items-center gap-3">
-                          <item.icon className="h-5 w-5" />
-                          <span>{item.title}</span>
+                        <div className={`flex items-center gap-3 ${state === 'collapsed' ? 'justify-center' : ''}`}>
+                          {/* Centraliza o ícone quando colapsado */}
+                          <item.icon className={`h-5 w-5 ${state === 'collapsed' ? 'mx-auto' : ''}`} />
+                          {/* Texto escondido quando colapsado */}
+                          <span className={`transition-all duration-300 ${state === 'collapsed' ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
+                            {item.title}
+                          </span>
                         </div>
                       </SidebarMenuButton>
                       <SidebarMenuSub>
@@ -145,9 +160,13 @@ export const Sidebar: React.FC = () => {
                     </>
                   ) : (
                     <SidebarMenuButton asChild tooltip={state === 'collapsed' ? item.title : undefined}>
-                      <Link to={item.url} className="flex items-center gap-3">
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.title}</span>
+                      <Link to={item.url} className={`flex items-center gap-3 ${state === 'collapsed' ? 'justify-center' : ''}`}>
+                        {/* Centraliza o ícone quando colapsado */}
+                        <item.icon className={`h-5 w-5 ${state === 'collapsed' ? 'mx-auto' : ''}`} />
+                        {/* Texto escondido quando colapsado */}
+                        <span className={`transition-all duration-300 ${state === 'collapsed' ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
+                          {item.title}
+                        </span>
                       </Link>
                     </SidebarMenuButton>
                   )}
@@ -161,8 +180,12 @@ export const Sidebar: React.FC = () => {
       <SidebarFooter className="px-6 py-4">
         <div className="flex items-center gap-3">
           <button className={`w-full flex items-center gap-3 text-sidebar-foreground rounded-md hover:bg-sidebar-accent px-3 py-2 ${state === 'collapsed' ? 'justify-center' : ''}`} title={state === 'collapsed' ? "Sair" : undefined}>
-            <LogOut className="h-5 w-5" />
-            <span className={state === 'collapsed' ? 'hidden' : 'block'}>Sair</span>
+            {/* Centraliza o ícone quando colapsado */}
+            <LogOut className={`h-5 w-5 ${state === 'collapsed' ? 'mx-auto' : ''}`} />
+            {/* Texto escondido quando colapsado */}
+            <span className={`transition-all duration-300 ${state === 'collapsed' ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
+              Sair
+            </span>
           </button>
         </div>
       </SidebarFooter>
