@@ -114,7 +114,7 @@ export const Sidebar: React.FC = () => {
                 <SidebarMenuItem key={item.title}>
                   {item.submenu ? (
                     <>
-                      <SidebarMenuButton>
+                      <SidebarMenuButton tooltip={state === 'collapsed' ? item.title : undefined}>
                         <div className="flex items-center gap-3">
                           <item.icon className="h-5 w-5" />
                           <span>{item.title}</span>
@@ -144,7 +144,7 @@ export const Sidebar: React.FC = () => {
                       </SidebarMenuSub>
                     </>
                   ) : (
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton asChild tooltip={state === 'collapsed' ? item.title : undefined}>
                       <Link to={item.url} className="flex items-center gap-3">
                         <item.icon className="h-5 w-5" />
                         <span>{item.title}</span>
@@ -160,7 +160,7 @@ export const Sidebar: React.FC = () => {
 
       <SidebarFooter className="px-6 py-4">
         <div className="flex items-center gap-3">
-          <button className={`w-full flex items-center gap-3 text-sidebar-foreground rounded-md hover:bg-sidebar-accent px-3 py-2 ${state === 'collapsed' ? 'justify-center' : ''}`}>
+          <button className={`w-full flex items-center gap-3 text-sidebar-foreground rounded-md hover:bg-sidebar-accent px-3 py-2 ${state === 'collapsed' ? 'justify-center' : ''}`} title={state === 'collapsed' ? "Sair" : undefined}>
             <LogOut className="h-5 w-5" />
             <span className={state === 'collapsed' ? 'hidden' : 'block'}>Sair</span>
           </button>
