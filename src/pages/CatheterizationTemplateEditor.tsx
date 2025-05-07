@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Copy, Save, Trash2, Share2 } from 'lucide-react';
 import { ArterialTree } from '@/components/catheterization/ArterialTree';
+import { SimplifiedArterialTree } from '@/components/catheterization/SimplifiedArterialTree';
 import { TemplateSelector } from '@/components/catheterization/TemplateSelector';
 import { toast } from 'sonner';
 
@@ -171,6 +171,7 @@ export const CatheterizationTemplateEditor: React.FC = () => {
   const [currentTemplate, setCurrentTemplate] = useState<Template>(templates[0]);
   const [templateName, setTemplateName] = useState(currentTemplate.name);
   const [generatedText, setGeneratedText] = useState<string>('');
+  const [editorMode, setEditorMode] = useState<'advanced' | 'simplified'>('simplified');
 
   const handleSaveTemplate = () => {
     const updatedTemplate = {
@@ -351,16 +352,42 @@ com lesões significativas que necessitam de intervenção.
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="editor">
-                  <TabsList className="mb-4">
-                    <TabsTrigger value="editor">Editor de Estrutura</TabsTrigger>
-                    <TabsTrigger value="preview">Visualização de Texto</TabsTrigger>
-                  </TabsList>
+                  <div className="flex justify-between items-center mb-4">
+                    <TabsList>
+                      <TabsTrigger value="editor">Editor de Estrutura</TabsTrigger>
+                      <TabsTrigger value="preview">Visualização de Texto</TabsTrigger>
+                    </TabsList>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Button 
+                        variant={editorMode === 'simplified' ? 'secondary' : 'outline'} 
+                        size="sm"
+                        onClick={() => setEditorMode('simplified')}
+                      >
+                        Modo Simplificado
+                      </Button>
+                      <Button 
+                        variant={editorMode === 'advanced' ? 'secondary' : 'outline'} 
+                        size="sm"
+                        onClick={() => setEditorMode('advanced')}
+                      >
+                        Modo Avançado
+                      </Button>
+                    </div>
+                  </div>
                   
                   <TabsContent value="editor" className="space-y-4">
-                    <ArterialTree 
-                      structure={currentTemplate.structure}
-                      onChange={handleStructureChange}
-                    />
+                    {editorMode === 'advanced' ? (
+                      <ArterialTree 
+                        structure={currentTemplate.structure}
+                        onChange={handleStructureChange}
+                      />
+                    ) : (
+                      <SimplifiedArterialTree
+                        structure={currentTemplate.structure}
+                        onChange={handleStructureChange}
+                      />
+                    )}
                   </TabsContent>
                   
                   <TabsContent value="preview">
