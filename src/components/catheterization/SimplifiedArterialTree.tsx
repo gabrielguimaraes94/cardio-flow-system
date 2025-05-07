@@ -37,12 +37,12 @@ const ArterySection: React.FC<{
     const lesionsNode = artery.children?.find(child => child.name === 'Lesões') || {
       id: generateId(),
       name: 'Lesões',
-      type: 'radio',
+      type: 'radio' as const,
       options: ['Com lesões', 'Sem lesões'],
       children: []
     };
     
-    const newLesion = {
+    const newLesion: TemplateNode = {
       id: generateId(),
       name: `Lesão ${(lesionsNode.children?.length || 0) + 1}`,
       type: 'select',
@@ -83,7 +83,7 @@ const ArterySection: React.FC<{
       }
       
       lesionsNode.children = [newLesion];
-      artery.children.push(lesionsNode);
+      artery.children.push(lesionsNode as TemplateNode);
       updatedArtery = {...artery};
     } else {
       // If there's already a Lesões node, add a new lesion to it
