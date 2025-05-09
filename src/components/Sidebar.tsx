@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Users, Heart, FileText, Calendar, Settings, LogOut, Menu, UserPlus, FileUser, BarChart, Building2 } from 'lucide-react';
+import { User, Users, Heart, FileText, Calendar, Settings, LogOut, Menu, FileUser, BarChart } from 'lucide-react';
 import { 
   Sidebar as SidebarComponent,
   SidebarContent, 
@@ -60,7 +60,6 @@ export const Sidebar: React.FC = () => {
       icon: Users,
       submenu: [
         { title: "Lista de Pacientes", url: "/patients", icon: Users },
-        { title: "Novo Paciente", url: "/patients/new", icon: UserPlus },
         { 
           title: "Anamnese", 
           url: selectedPatientId ? `/patients/${selectedPatientId}/anamnesis` : "/patients/:id/anamnesis", 
@@ -74,19 +73,6 @@ export const Sidebar: React.FC = () => {
     },
     { title: "Cateterismo", url: "/catheterization", icon: FileText },
     { title: "Angioplastia", url: "/angioplasty", icon: FileText },
-    { 
-      title: "Convênios", 
-      url: "/insurance", 
-      icon: Building2,
-      submenu: [
-        { title: "Lista de Convênios", url: "/insurance", icon: Building2 },
-        { title: "Novo Convênio", url: "/insurance/new", icon: Building2 },
-        { title: "Contratos", url: "/insurance", icon: FileText, 
-          disabled: true, 
-          tooltip: "Selecione um convênio primeiro" 
-        },
-      ]
-    },
     { title: "Relatórios", url: "/reports", icon: BarChart },
     { title: "Agenda", url: "/schedule", icon: Calendar },
     { title: "Configurações", url: "/settings", icon: Settings },

@@ -43,7 +43,20 @@ const App = () => (
           <Route path="/catheterization/report/:id?" element={<CatheterizationReport />} />
           <Route path="/angioplasty" element={<Angioplasty />} />
           <Route path="/reports" element={<Reports />} />
-          <Route path="/insurance" element={<InsuranceList />} />
+          <Route path="/schedule" element={<Schedule />} />
+          
+          {/* Settings Routes */}
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings/clinics" element={<Settings />} />
+          <Route path="/settings/profile" element={<Settings />} />
+          <Route path="/settings/insurance" element={<Settings />} />
+          <Route path="/settings/insurance/new" element={<InsuranceForm />} />
+          <Route path="/settings/insurance/:id" element={<InsuranceForm />} />
+          <Route path="/settings/insurance/:id/forms" element={<InsuranceFormConfig />} />
+          <Route path="/settings/insurance/:id/audit-rules" element={<InsuranceAuditRules />} />
+          
+          {/* Mantendo as rotas antigas para compatibilidade, mas redirecionando */}
+          <Route path="/insurance" element={<Settings />} />
           <Route path="/insurance/new" element={<InsuranceForm />} />
           <Route path="/insurance/:id" element={<InsuranceForm />} />
           <Route path="/insurance/:id/contracts" element={<InsuranceContractList />} />
@@ -51,8 +64,7 @@ const App = () => (
           <Route path="/insurance/:id/contracts/:contractId" element={<InsuranceContractForm />} />
           <Route path="/insurance/:id/forms" element={<InsuranceFormConfig />} />
           <Route path="/insurance/:id/audit-rules" element={<InsuranceAuditRules />} />
-          <Route path="/schedule" element={<Schedule />} />
-          <Route path="/settings" element={<Settings />} />
+          
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
