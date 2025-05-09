@@ -16,9 +16,10 @@ const Settings = () => {
   const path = location.pathname;
   
   // Define which tab to show based on URL path
-  const getActiveTab = () => {
+  const getActiveTab = (): 'users' | 'clinics' | 'insurance' | 'profile' => {
     if (path.includes('/insurance')) return 'insurance';
-    if (path === '/settings') return 'users';
+    if (path.includes('/clinics')) return 'clinics';
+    if (path.includes('/profile')) return 'profile';
     return 'users';
   };
 
