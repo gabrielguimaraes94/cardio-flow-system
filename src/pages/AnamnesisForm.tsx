@@ -1,5 +1,5 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,17 +10,63 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Search } from 'lucide-react';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '@/components/ui/form';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useToast } from '@/hooks/use-toast';
+import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
+import { useForm } from 'react-hook-form';
 
 export const AnamnesisForm: React.FC = () => {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const { toast } = useToast();
+  
+  // Estado para verificar se a anamnese já está salva (somente leitura)
+  const [isSaved, setIsSaved] = useState(false);
+  
+  // Estado para pesquisa e seleção de pacientes
+  const [isPatientDialogOpen, setIsPatientDialogOpen] = useState(!id);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedPatient, setSelectedPatient] = useState<{id: string; name: string; age: number} | null>(null);
+  
   // Estado para medicações
   const [medications, setMedications] = useState<{ name: string; dose: string; posology: string }[]>([]);
   const [newMedication, setNewMedication] = useState({ name: '', dose: '', posology: '' });
 
+  // Mock de pacientes (substituir por dados reais)
+  const patients = [
+    { id: '1', name: 'João Silva', age: 65, cpf: '123.456.789-10', phone: '(11) 98765-4321', insurance: 'Unimed' },
+    { id: '2', name: 'Maria Oliveira', age: 72, cpf: '234.567.890-12', phone: '(11) 91234-5678', insurance: 'Bradesco Saúde' },
+    { id: '3', name: 'José Pereira', age: 58, cpf: '345.678.901-23', phone: '(11) 99876-5432', insurance: 'SulAmérica' },
+    { id: '4', name: 'Antônia Souza', age: 69, cpf: '456.789.012-34', phone: '(11) 94321-8765', insurance: 'Amil' },
+    { id: '5', name: 'Carlos Santos', age: 55, cpf: '567.890.123-45', phone: '(11) 95678-1234', insurance: 'Unimed' },
+  ];
+
+  // Simula carregar dados de uma anamnese existente quando temos um ID
+  useEffect(() => {
+    if (id) {
+      // Aqui seria feita uma chamada à API para buscar os dados da anamnese
+      // Para este exemplo, vamos simular uma anamnese salva
+      
+      // Buscar o paciente correspondente
+      const patient = patients.find(p => p.id === id);
+      if (patient) {
+        setSelectedPatient(patient);
+      }
+      
+      // Simulando que a anamnese já foi salva se temos um ID
+      setIsSaved(true);
+      
+      // Aqui preencheríamos o formulário com os dados carregados da anamnese
+    }
+  }, [id]);
+
   // Função para adicionar nova medicação
   const addMedication = () => {
-    if (newMedication.name.trim() !== '') {
+    if (newMedication.name.trim() !== '' && !isSaved) {
       setMedications([...medications, { ...newMedication }]);
       setNewMedication({ name: '', dose: '', posology: '' });
     }
@@ -28,21 +74,90 @@ export const AnamnesisForm: React.FC = () => {
 
   // Função para remover medicação
   const removeMedication = (index: number) => {
-    setMedications(medications.filter((_, i) => i !== index));
+    if (!isSaved) {
+      setMedications(medications.filter((_, i) => i !== index));
+    }
   };
+  
+  // Função para selecionar um paciente
+  const handleSelectPatient = (patient: {id: string; name: string; age: number}) => {
+    setSelectedPatient(patient);
+    setIsPatientDialogOpen(false);
+    toast({
+      title: "Paciente selecionado",
+      description: `${patient.name} foi selecionado para anamnese.`,
+    });
+  };
+  
+  // Função para voltar à página anterior
+  const handleGoBack = () => {
+    navigate(-1); // Navega para a página anterior no histórico
+  };
+  
+  // Função para salvar anamnese
+  const handleSaveAnamnesis = () => {
+    if (!selectedPatient) {
+      toast({
+        title: "Erro",
+        description: "Selecione um paciente antes de salvar a anamnese.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Aqui seria feita a chamada à API para salvar a anamnese
+    
+    toast({
+      title: "Anamnese salva",
+      description: "A anamnese foi salva com sucesso e não poderá mais ser alterada.",
+    });
+    
+    setIsSaved(true);
+  };
+
+  // Filtrar pacientes com base no termo de pesquisa
+  const filteredPatients = patients.filter(patient => 
+    patient.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    patient.cpf.includes(searchTerm)
+  );
 
   return (
     <Layout>
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" onClick={handleGoBack}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <h2 className="text-3xl font-bold mb-1">Anamnese</h2>
-            <p className="text-gray-500">João Silva, 65 anos</p>
+            {selectedPatient ? (
+              <p className="text-gray-500">{selectedPatient.name}, {selectedPatient.age} anos</p>
+            ) : (
+              <p className="text-gray-500">Selecione um paciente</p>
+            )}
           </div>
+          {!selectedPatient && (
+            <Button 
+              onClick={() => setIsPatientDialogOpen(true)}
+              className="ml-auto"
+            >
+              Selecionar Paciente
+            </Button>
+          )}
         </div>
+
+        {/* Aviso de modo somente leitura */}
+        {isSaved && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+            <div className="flex">
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700">
+                  Esta anamnese já foi salva e está em modo somente leitura. Não é possível fazer alterações.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* FATORES DE RISCO CARDIOVASCULAR */}
         <Card>
@@ -819,15 +934,87 @@ export const AnamnesisForm: React.FC = () => {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-2">
-          <Button variant="outline">
-            Cancelar
-          </Button>
-          <Button className="bg-primary hover:bg-secondary">
-            <Save className="h-4 w-4 mr-2" />
-            Salvar Anamnese
-          </Button>
-        </div>
+        {!isSaved && (
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={handleGoBack}>
+              Cancelar
+            </Button>
+            <Button 
+              className="bg-primary hover:bg-secondary"
+              onClick={handleSaveAnamnesis}
+              disabled={!selectedPatient}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Salvar Anamnese
+            </Button>
+          </div>
+        )}
+        
+        {/* Dialog para selecionar paciente */}
+        <Dialog open={isPatientDialogOpen} onOpenChange={setIsPatientDialogOpen}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Selecionar Paciente</DialogTitle>
+              <DialogDescription>
+                Pesquise e selecione o paciente para criar uma nova anamnese.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="relative mb-4 w-full">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+              <Input 
+                type="search" 
+                placeholder="Buscar por nome ou CPF..." 
+                className="pl-9" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            <div className="rounded-md border h-[400px] overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Idade</TableHead>
+                    <TableHead>CPF</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead>Convênio</TableHead>
+                    <TableHead className="text-right">Ação</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredPatients.length > 0 ? (
+                    filteredPatients.map((patient) => (
+                      <TableRow key={patient.id}>
+                        <TableCell className="font-medium">{patient.name}</TableCell>
+                        <TableCell>{patient.age}</TableCell>
+                        <TableCell>{patient.cpf}</TableCell>
+                        <TableCell>{patient.phone}</TableCell>
+                        <TableCell>{patient.insurance}</TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleSelectPatient(patient)}
+                          >
+                            Selecionar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-4">
+                        Nenhum paciente encontrado.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

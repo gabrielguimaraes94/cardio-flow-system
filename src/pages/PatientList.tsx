@@ -1,15 +1,14 @@
-import React, { useEffect } from 'react';
+
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, UserPlus, Edit, Trash2, FileText, User } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Search, UserPlus, Edit, Trash2, FileText } from 'lucide-react';
 
 export const PatientList: React.FC = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   
   const patients = [
     { id: '1', name: 'João Silva', age: 65, cpf: '123.456.789-10', phone: '(11) 98765-4321', insurance: 'Unimed' },
@@ -18,40 +17,6 @@ export const PatientList: React.FC = () => {
     { id: '4', name: 'Antônia Souza', age: 69, cpf: '456.789.012-34', phone: '(11) 94321-8765', insurance: 'Amil' },
     { id: '5', name: 'Carlos Santos', age: 55, cpf: '567.890.123-45', phone: '(11) 95678-1234', insurance: 'Unimed' },
   ];
-
-  // Add useEffect to check if there's already a selected patient when the component mounts
-  useEffect(() => {
-    const patientId = localStorage.getItem('selectedPatientId');
-    const patientName = localStorage.getItem('selectedPatientName');
-    
-    if (patientId && patientName) {
-      // Dispatch a custom event to notify the sidebar of the selection
-      window.dispatchEvent(new CustomEvent('patientSelected', {
-        detail: { patientId, patientName }
-      }));
-    }
-  }, []);
-
-  const handleSelectPatient = (patientId: string, patientName: string) => {
-    // Clear previous selection
-    localStorage.removeItem('selectedPatientId');
-    localStorage.removeItem('selectedPatientName');
-    
-    // Set new selection
-    localStorage.setItem('selectedPatientId', patientId);
-    localStorage.setItem('selectedPatientName', patientName);
-    
-    // Create and dispatch event
-    const event = new CustomEvent('patientSelected', {
-      detail: { patientId, patientName }
-    });
-    window.dispatchEvent(event);
-    
-    toast({
-      title: "Paciente selecionado",
-      description: `${patientName} foi selecionado. Agora você pode acessar a anamnese.`,
-    });
-  };
 
   const handleAnamnesisClick = (patientId: string) => {
     navigate(`/patients/${patientId}/anamnesis`);
@@ -106,14 +71,6 @@ export const PatientList: React.FC = () => {
                   <TableCell>{patient.phone}</TableCell>
                   <TableCell>{patient.insurance}</TableCell>
                   <TableCell className="text-right space-x-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleSelectPatient(patient.id, patient.name)}
-                      title="Selecionar paciente"
-                    >
-                      <User className="h-4 w-4" />
-                    </Button>
                     <Button 
                       variant="ghost" 
                       size="sm"
