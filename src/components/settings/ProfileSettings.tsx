@@ -5,12 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Save, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { UserProfile, NotificationSettings } from '@/types/profile';
+import { UserProfile } from '@/types/profile';
 import { 
   Form,
   FormControl,
@@ -23,7 +22,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import * as yup from 'yup';
 
 // Schema for form validation
 const profileFormSchema = z.object({
@@ -42,12 +41,6 @@ const profileFormSchema = z.object({
   }),
   title: z.string().optional(),
   bio: z.string().optional(),
-  notificationPreferences: z.object({
-    emailNotifications: z.boolean().default(true),
-    smsNotifications: z.boolean().default(true),
-    appointmentReminders: z.boolean().default(true),
-    systemUpdates: z.boolean().default(false),
-  }),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -68,12 +61,6 @@ export const ProfileSettings: React.FC = () => {
       crm: "",
       title: "",
       bio: "",
-      notificationPreferences: {
-        emailNotifications: true,
-        smsNotifications: true,
-        appointmentReminders: true,
-        systemUpdates: false,
-      },
     },
   });
 
@@ -103,12 +90,6 @@ export const ProfileSettings: React.FC = () => {
               crm: data.crm || "",
               title: data.title || "",
               bio: data.bio || "",
-              notificationPreferences: {
-                emailNotifications: data.notification_preferences?.emailNotifications !== false,
-                smsNotifications: data.notification_preferences?.smsNotifications !== false,
-                appointmentReminders: data.notification_preferences?.appointmentReminders !== false,
-                systemUpdates: data.notification_preferences?.systemUpdates !== false,
-              },
               role: data.role as 'admin' | 'doctor' | 'staff',
             };
 
@@ -122,7 +103,6 @@ export const ProfileSettings: React.FC = () => {
               crm: userProfile.crm,
               title: userProfile.title || "",
               bio: userProfile.bio || "",
-              notificationPreferences: userProfile.notificationPreferences,
             });
           }
         } catch (error: any) {
@@ -164,12 +144,6 @@ export const ProfileSettings: React.FC = () => {
           crm: values.crm,
           title: values.title,
           bio: values.bio,
-          notification_preferences: {
-            emailNotifications: values.notificationPreferences.emailNotifications,
-            smsNotifications: values.notificationPreferences.smsNotifications,
-            appointmentReminders: values.notificationPreferences.appointmentReminders,
-            systemUpdates: values.notificationPreferences.systemUpdates,
-          }
         })
         .eq('id', user.id);
 
@@ -207,7 +181,7 @@ export const ProfileSettings: React.FC = () => {
             <div>
               <h2 className="text-lg font-medium">Meu Perfil</h2>
               <p className="text-sm text-muted-foreground">
-                Atualize suas informações de perfil e configurações de notificação.
+                Atualize suas informações de perfil.
               </p>
             </div>
           </div>
@@ -324,99 +298,6 @@ export const ProfileSettings: React.FC = () => {
                     </FormItem>
                   )}
                 />
-
-                <div>
-                  <h3 className="text-lg font-medium">Notificações</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Gerencie suas preferências de notificação.
-                  </p>
-
-                  <div className="mt-4 space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="notificationPreferences.emailNotifications"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Notificações por Email</FormLabel>
-                            <FormDescription>
-                              Receba notificações importantes por email.
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="notificationPreferences.smsNotifications"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Notificações por SMS</FormLabel>
-                            <FormDescription>
-                              Receba notificações urgentes por SMS.
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="notificationPreferences.appointmentReminders"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Lembretes de Consulta</FormLabel>
-                            <FormDescription>
-                              Receba lembretes de suas consultas agendadas.
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="notificationPreferences.systemUpdates"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Atualizações do Sistema</FormLabel>
-                            <FormDescription>
-                              Seja notificado sobre novas funcionalidades e atualizações do sistema.
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
 
                 <Button type="submit" className="bg-cardio-500 hover:bg-cardio-600">
                   <Save className="h-4 w-4 mr-2" />

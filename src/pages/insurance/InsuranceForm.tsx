@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
@@ -31,7 +30,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
 import { InsuranceCompany } from '@/types/insurance';
+import * as yup from 'yup';
 
+// Schema for form validation
 const insuranceFormSchema = z.object({
   companyName: z.string().min(5, { message: "Razão social deve ter pelo menos 5 caracteres" }),
   tradingName: z.string().min(2, { message: "Nome fantasia deve ter pelo menos 2 caracteres" }),
@@ -66,6 +67,12 @@ export const InsuranceForm: React.FC = () => {
   const { user } = useAuth();
   const { selectedClinic } = useClinic();
   const { toast } = useToast();
+
+  // Debug logs to check user and clinic selection
+  useEffect(() => {
+    console.log("Current user:", user);
+    console.log("Selected clinic:", selectedClinic);
+  }, [user, selectedClinic]);
 
   const form = useForm<InsuranceFormValues>({
     resolver: zodResolver(insuranceFormSchema),
@@ -150,10 +157,25 @@ export const InsuranceForm: React.FC = () => {
   }, [id, form, navigate, user?.id, toast]);
 
   const onSubmit = async (values: InsuranceFormValues) => {
-    if (!user || !selectedClinic) {
+    // Double check user and selectedClinic
+    console.log("Submitting form with user:", user);
+    console.log("Submitting form with clinic:", selectedClinic);
+    
+    if (!user) {
+      console.error("No user found when submitting form");
       toast({
         title: "Erro",
-        description: "Você precisa estar logado e ter uma clínica selecionada para salvar um convênio",
+        description: "Você precisa estar logado para salvar um convênio",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!selectedClinic) {
+      console.error("No clinic selected when submitting form");
+      toast({
+        title: "Erro",
+        description: "Você precisa selecionar uma clínica para salvar um convênio",
         variant: "destructive",
       });
       return;
@@ -190,33 +212,41 @@ export const InsuranceForm: React.FC = () => {
         const fileExt = logoFile.name.split('.').pop();
         const filePath = `insurance_logos/${user.id}/${Date.now()}.${fileExt}`;
         
-        // Check if storage bucket exists, create if not
-        const { data: buckets } = await supabase.storage.listBuckets();
-        if (!buckets?.find(bucket => bucket.name === 'insurance_logos')) {
-          await supabase.storage.createBucket('insurance_logos', {
-            public: true,
-          });
+        try {
+          // Check if storage bucket exists, create if not
+          const { data: buckets } = await supabase.storage.listBuckets();
+          if (!buckets?.find(bucket => bucket.name === 'insurance_logos')) {
+            await supabase.storage.createBucket('insurance_logos', {
+              public: true,
+            });
+          }
+          
+          const { error: uploadError, data: uploadData } = await supabase.storage
+            .from('insurance_logos')
+            .upload(filePath, logoFile, {
+              upsert: true,
+              cacheControl: '3600',
+            });
+            
+          if (uploadError) throw uploadError;
+          
+          const { data: { publicUrl } } = supabase.storage
+            .from('insurance_logos')
+            .getPublicUrl(filePath);
+            
+          logoUrl = publicUrl;
+          
+          // Add logo URL to insurance data
+          if (logoUrl) {
+            insuranceData.logo_url = logoUrl;
+          }
+        } catch (error) {
+          console.error("Error uploading logo:", error);
+          // Continue without logo if there's an error
         }
-        
-        const { error: uploadError, data: uploadData } = await supabase.storage
-          .from('insurance_logos')
-          .upload(filePath, logoFile, {
-            upsert: true,
-            cacheControl: '3600',
-          });
-          
-        if (uploadError) throw uploadError;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('insurance_logos')
-          .getPublicUrl(filePath);
-          
-        logoUrl = publicUrl;
       }
       
-      if (logoUrl) {
-        insuranceData.logo_url = logoUrl; 
-      }
+      console.log("Saving insurance data:", insuranceData);
       
       if (id && id !== 'new') {
         // Update existing insurance
@@ -270,6 +300,9 @@ export const InsuranceForm: React.FC = () => {
   const handleCancel = () => {
     navigate('/insurance');
   };
+
+  // Adicione logs para entender o state
+  console.log("Form values:", form.getValues());
 
   return (
     <Layout>

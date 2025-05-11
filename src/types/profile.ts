@@ -1,11 +1,4 @@
 
-export interface NotificationSettings {
-  emailNotifications: boolean;
-  smsNotifications: boolean;
-  appointmentReminders: boolean;
-  systemUpdates: boolean;
-}
-
 export interface UserProfile {
   id: string;
   firstName: string;
@@ -15,6 +8,5 @@ export interface UserProfile {
   crm: string;
   title?: string;
   bio?: string;
-  notificationPreferences: NotificationSettings;
   role: 'admin' | 'doctor' | 'staff';
 }
