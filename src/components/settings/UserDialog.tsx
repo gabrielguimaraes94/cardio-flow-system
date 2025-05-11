@@ -7,8 +7,16 @@ import { Input } from '@/components/ui/input';
 import { useForm, Controller } from 'react-hook-form';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserProfile } from '@/types/profile';
-import * as yup from 'yup';
-import { yupResolver } from '@hookform/resolvers/yup';
+import * as z from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 interface UserDialogProps {
   isOpen: boolean;
@@ -17,33 +25,46 @@ interface UserDialogProps {
   user: UserProfile | null;
 }
 
-// Create validation schema with the exact same structure as UserProfile
-const userSchema = yup.object({
-  id: yup.string(),
-  firstName: yup.string().required('Nome é obrigatório'),
-  lastName: yup.string().required('Sobrenome é obrigatório'),
-  email: yup.string().email('Email inválido').required('Email é obrigatório'),
-  crm: yup.string().required('CRM é obrigatório'),
-  role: yup.string().oneOf(['admin', 'doctor', 'nurse', 'receptionist', 'staff'], 'Perfil inválido').required('Perfil é obrigatório'),
-  title: yup.string().optional(),
-  bio: yup.string().optional(),
-  phone: yup.string().nullable().optional()
-}).required();
+// Create validation schema with Zod
+const userSchema = z.object({
+  id: z.string(),
+  firstName: z.string().min(1, { message: "Nome é obrigatório" }),
+  lastName: z.string().min(1, { message: "Sobrenome é obrigatório" }),
+  email: z.string().email({ message: "Email inválido" }),
+  crm: z.string().min(1, { message: "CRM é obrigatório" }),
+  role: z.enum(["admin", "doctor", "nurse", "receptionist", "staff"], { 
+    required_error: "Perfil é obrigatório" 
+  }),
+  title: z.string().optional(),
+  bio: z.string().optional(),
+  phone: z.string().nullable().optional()
+});
 
-type UserFormData = yup.InferType<typeof userSchema>;
+type UserFormData = z.infer<typeof userSchema>;
 
 export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave, user }) => {
-  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<UserProfile>({
-    resolver: yupResolver<UserProfile>(userSchema)
+  const form = useForm<UserFormData>({
+    resolver: zodResolver(userSchema),
+    defaultValues: {
+      id: '',
+      firstName: '',
+      lastName: '',
+      email: '',
+      crm: '',
+      role: 'doctor' as UserProfile['role'],
+      title: '',
+      bio: '',
+      phone: null
+    }
   });
 
   // Reset form when user changes
   useEffect(() => {
     if (isOpen) {
       if (user) {
-        reset(user);
+        form.reset(user);
       } else {
-        reset({
+        form.reset({
           id: '',
           firstName: '',
           lastName: '',
@@ -56,9 +77,9 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
         });
       }
     }
-  }, [isOpen, user, reset]);
+  }, [isOpen, user, form.reset]);
 
-  const onSubmit = (data: UserProfile) => {
+  const onSubmit = (data: UserFormData) => {
     onSave({
       ...data,
       id: user?.id || Date.now().toString(),
@@ -71,72 +92,99 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
         <DialogHeader>
           <DialogTitle>{user ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="firstName">Nome</Label>
-              <Input 
-                id="firstName" 
-                {...register("firstName")} 
-                placeholder="Nome"
-              />
-              {errors.firstName && <p className="text-sm text-red-500">{errors.firstName.message}</p>}
-            </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="firstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nome" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
-            <div className="grid gap-2">
-              <Label htmlFor="lastName">Sobrenome</Label>
-              <Input 
-                id="lastName" 
-                {...register("lastName")} 
-                placeholder="Sobrenome"
-              />
-              {errors.lastName && <p className="text-sm text-red-500">{errors.lastName.message}</p>}
-            </div>
+            <FormField
+              control={form.control}
+              name="lastName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sobrenome</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Sobrenome" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                {...register("email")} 
-                placeholder="usuario@exemplo.com"
-              />
-              {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
-            </div>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="usuario@exemplo.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
-            <div className="grid gap-2">
-              <Label htmlFor="crm">CRM</Label>
-              <Input 
-                id="crm" 
-                {...register("crm")} 
-                placeholder="CRM"
-              />
-              {errors.crm && <p className="text-sm text-red-500">{errors.crm.message}</p>}
-            </div>
+            <FormField
+              control={form.control}
+              name="crm"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>CRM</FormLabel>
+                  <FormControl>
+                    <Input placeholder="CRM" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
-            <div className="grid gap-2">
-              <Label htmlFor="phone">Telefone</Label>
-              <Input 
-                id="phone" 
-                {...register("phone")} 
-                placeholder="Telefone"
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefone</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Telefone" 
+                      {...field} 
+                      value={field.value || ''}
+                      onChange={(e) => field.onChange(e.target.value || null)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
-            <div className="grid gap-2">
-              <Label htmlFor="role">Perfil</Label>
-              <Controller
-                name="role"
-                control={control}
-                render={({ field }) => (
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Perfil</FormLabel>
                   <Select 
                     onValueChange={field.onChange} 
                     defaultValue={field.value}
                     value={field.value}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um perfil" />
-                    </SelectTrigger>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um perfil" />
+                      </SelectTrigger>
+                    </FormControl>
                     <SelectContent>
                       <SelectGroup>
                         <SelectItem value="admin">Administrador</SelectItem>
@@ -147,34 +195,45 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
                       </SelectGroup>
                     </SelectContent>
                   </Select>
-                )}
-              />
-              {errors.role && <p className="text-sm text-red-500">{errors.role.message}</p>}
-            </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
-            <div className="grid gap-2">
-              <Label htmlFor="title">Título</Label>
-              <Input 
-                id="title" 
-                {...register("title")} 
-                placeholder="Ex: Cardiologista"
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Título</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: Cardiologista" {...field} value={field.value || ''} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
-            <div className="grid gap-2">
-              <Label htmlFor="bio">Bio</Label>
-              <Input 
-                id="bio" 
-                {...register("bio")} 
-                placeholder="Breve descrição profissional"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-            <Button type="submit">Salvar</Button>
-          </DialogFooter>
-        </form>
+            <FormField
+              control={form.control}
+              name="bio"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Bio</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Breve descrição profissional" {...field} value={field.value || ''} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <DialogFooter className="mt-6">
+              <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+              <Button type="submit">Salvar</Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
