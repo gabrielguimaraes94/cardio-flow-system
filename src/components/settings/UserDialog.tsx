@@ -24,15 +24,17 @@ const userSchema = yup.object({
   lastName: yup.string().required('Sobrenome é obrigatório'),
   email: yup.string().email('Email inválido').required('Email é obrigatório'),
   crm: yup.string().required('CRM é obrigatório'),
-  role: yup.string().required('Perfil é obrigatório') as yup.StringSchema<UserProfile['role']>,
-  title: yup.string(),
-  bio: yup.string(),
-  phone: yup.string().nullable()
+  role: yup.string().oneOf(['admin', 'doctor', 'nurse', 'receptionist', 'staff'], 'Perfil inválido').required('Perfil é obrigatório'),
+  title: yup.string().optional(),
+  bio: yup.string().optional(),
+  phone: yup.string().nullable().optional()
 }).required();
+
+type UserFormData = yup.InferType<typeof userSchema>;
 
 export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave, user }) => {
   const { register, handleSubmit, control, reset, formState: { errors } } = useForm<UserProfile>({
-    resolver: yupResolver(userSchema)
+    resolver: yupResolver<UserProfile>(userSchema)
   });
 
   // Reset form when user changes
