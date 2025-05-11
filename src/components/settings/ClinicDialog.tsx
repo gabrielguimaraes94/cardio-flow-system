@@ -43,7 +43,7 @@ type ClinicFormData = {
   active: boolean;
 };
 
-// Schema de validação com yup
+// Schema de validação com yup - ensuring all fields required in ClinicFormData match
 const clinicSchema = yup.object({
   name: yup.string().required('Nome é obrigatório'),
   address: yup.string().required('Endereço é obrigatório'),
