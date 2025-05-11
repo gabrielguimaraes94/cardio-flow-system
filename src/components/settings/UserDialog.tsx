@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useForm, Controller } from 'react-hook-form';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserProfile } from '@/types/profile';
@@ -18,13 +17,17 @@ interface UserDialogProps {
   user: UserProfile | null;
 }
 
-// Create validation schema
+// Create validation schema with the exact same structure as UserProfile
 const userSchema = yup.object({
+  id: yup.string(),
   firstName: yup.string().required('Nome é obrigatório'),
   lastName: yup.string().required('Sobrenome é obrigatório'),
   email: yup.string().email('Email inválido').required('Email é obrigatório'),
   crm: yup.string().required('CRM é obrigatório'),
-  role: yup.string().required('Perfil é obrigatório')
+  role: yup.string().required('Perfil é obrigatório') as yup.StringSchema<UserProfile['role']>,
+  title: yup.string(),
+  bio: yup.string(),
+  phone: yup.string().nullable()
 }).required();
 
 export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave, user }) => {
@@ -123,7 +126,6 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
               <Controller
                 name="role"
                 control={control}
-                rules={{ required: "Perfil é obrigatório" }}
                 render={({ field }) => (
                   <Select 
                     onValueChange={field.onChange} 

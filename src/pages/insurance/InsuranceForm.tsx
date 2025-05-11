@@ -128,15 +128,17 @@ export const InsuranceForm: React.FC = () => {
             setLogoPreview(data.logo_url);
           }
         })
-        .catch(error => {
+        .then(() => {
+          setIsLoading(false);
+        }, error => {
           console.error("Error loading insurance company:", error);
           toast({
             title: "Erro",
             description: "Não foi possível carregar os dados do convênio",
             variant: "destructive",
           });
-        })
-        .finally(() => setIsLoading(false));
+          setIsLoading(false);
+        });
     }
   }, [id, user]);
 

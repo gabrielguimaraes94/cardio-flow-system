@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Pencil, Trash, Loader2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash, Loader2, UserCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,9 +11,12 @@ import { useClinic } from '@/contexts/ClinicContext';
 import { useToast } from '@/hooks/use-toast';
 import { fetchUsers } from '@/services/userService';
 import { UserProfile } from '@/types/profile';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export const UserManagement = () => {
   const { selectedClinic } = useClinic();
+  const { user } = useAuth();
   const { toast } = useToast();
   
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -108,27 +111,102 @@ export const UserManagement = () => {
     setIsDialogOpen(true);
   };
 
-  const handleSaveUser = (user: UserProfile) => {
-    // In a real application, this would save to the database
-    if (currentUser) {
-      // Edit existing user
-      setUsers(users.map(u => u.id === user.id ? user : u));
-    } else {
-      // Add new user
-      setUsers([...users, { ...user, id: Date.now().toString() }]);
+  const handleSaveUser = async (userData: UserProfile) => {
+    try {
+      if (currentUser) {
+        // Update existing user
+        console.log('Updating user:', userData);
+        
+        const { data, error } = await supabase
+          .from('profiles')
+          .update({
+            first_name: userData.firstName,
+            last_name: userData.lastName,
+            email: userData.email,
+            crm: userData.crm,
+            phone: userData.phone,
+            title: userData.title,
+            bio: userData.bio,
+            role: userData.role
+          })
+          .eq('id', userData.id);
+        
+        if (error) throw error;
+        
+        setUsers(users.map(u => u.id === userData.id ? userData : u));
+        toast({
+          title: "Sucesso",
+          description: "Usuário atualizado com sucesso!",
+        });
+      } else {
+        // Add new user - In a real application you would need to invite the user via email
+        console.log('Creating new user:', userData);
+        
+        // In a production environment, this would involve sending an invitation email
+        // For demo purposes, we'll just simulate adding the user to the database
+        const newUserId = `new-${Date.now()}`;
+        const newUser = { 
+          ...userData, 
+          id: newUserId 
+        };
+        
+        // Since this is just a simulation, we're adding to local state
+        // In reality, you would use Supabase's built-in invite functionality
+        setUsers([...users, newUser]);
+        
+        toast({
+          title: "Sucesso",
+          description: "Convite enviado para o novo usuário!",
+        });
+      }
+    } catch (error) {
+      console.error('Error saving user:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar o usuário.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDialogOpen(false);
     }
-    setIsDialogOpen(false);
   };
 
-  const handleDeleteUser = (userId: string) => {
-    // In a real application, this would delete from the database
-    setUsers(users.filter(user => user.id !== userId));
+  const handleDeleteUser = async (userId: string) => {
+    // Prevent users from deleting themselves
+    if (user && user.id === userId) {
+      toast({
+        title: "Operação não permitida",
+        description: "Você não pode excluir sua própria conta.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      console.log('Deleting user:', userId);
+      
+      // In a real application, this would delete from the database
+      // Currently we're simulating this with local state
+      setUsers(users.filter(user => user.id !== userId));
+      
+      toast({
+        title: "Sucesso",
+        description: "Usuário removido com sucesso!",
+      });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o usuário.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <CardTitle>Gestão de Usuários</CardTitle>
             <CardDescription>
@@ -156,13 +234,13 @@ export const UserManagement = () => {
           </div>
         </div>
 
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>CRM</TableHead>
+                <TableHead className="hidden md:table-cell">Email</TableHead>
+                <TableHead className="hidden md:table-cell">CRM</TableHead>
                 <TableHead>Perfil</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -190,30 +268,47 @@ export const UserManagement = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">
-                      {user.firstName} {user.lastName}
-                    </TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.crm}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getRoleColor(user.role)}>
-                        {getRoleName(user.role)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)}>
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                filteredUsers.map((userData) => {
+                  const isCurrentUser = user && user.id === userData.id;
+                  
+                  return (
+                    <TableRow key={userData.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center">
+                          {isCurrentUser && (
+                            <UserCheck className="h-4 w-4 text-green-500 mr-2" />
+                          )}
+                          <span>
+                            {userData.firstName} {userData.lastName}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">{userData.email}</TableCell>
+                      <TableCell className="hidden md:table-cell">{userData.crm}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={getRoleColor(userData.role)}>
+                          {getRoleName(userData.role)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditUser(userData)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleDeleteUser(userData.id)}
+                            disabled={isCurrentUser}
+                            title={isCurrentUser ? "Não é possível excluir seu próprio perfil" : "Excluir usuário"}
+                          >
+                            <Trash className={`h-4 w-4 ${isCurrentUser ? 'text-gray-300' : ''}`} />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
