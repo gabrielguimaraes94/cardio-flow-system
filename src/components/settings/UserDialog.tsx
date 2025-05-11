@@ -32,7 +32,7 @@ const userSchema = z.object({
   lastName: z.string().min(1, { message: "Sobrenome é obrigatório" }),
   email: z.string().email({ message: "Email inválido" }),
   crm: z.string().min(1, { message: "CRM é obrigatório" }),
-  role: z.enum(["admin", "doctor", "nurse", "receptionist", "staff"], { 
+  role: z.enum(["admin", "doctor", "nurse", "receptionist"], { 
     required_error: "Perfil é obrigatório" 
   }),
   title: z.string().optional(),
@@ -81,8 +81,15 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
 
   const onSubmit = (data: UserFormData) => {
     onSave({
-      ...data,
       id: user?.id || Date.now().toString(),
+      firstName: data.firstName || '',
+      lastName: data.lastName || '',
+      email: data.email || '',
+      crm: data.crm || '',
+      role: data.role,
+      title: data.title || '',
+      bio: data.bio || '',
+      phone: data.phone || null,
     });
   };
 

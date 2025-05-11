@@ -89,7 +89,7 @@ export const ProfileSettings: React.FC = () => {
               crm: data.crm || "",
               title: data.title || "",
               bio: data.bio || "",
-              role: data.role as 'admin' | 'doctor' | 'staff' | 'nurse' | 'receptionist',
+              role: data.role as 'admin' | 'doctor' | 'nurse' | 'receptionist',
             };
 
             setProfile(userProfile);
