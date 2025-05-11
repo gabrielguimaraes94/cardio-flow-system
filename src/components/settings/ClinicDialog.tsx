@@ -33,10 +33,17 @@ interface ClinicDialogProps {
   clinic: Clinic | null;
 }
 
-type ClinicFormData = Omit<Clinic, 'id'>;
+type ClinicFormData = {
+  name: string;
+  address: string;
+  city: string;
+  phone: string;
+  email: string;
+  active: boolean;
+};
 
 // Schema de validação com yup
-const clinicSchema = yup.object().shape({
+const clinicSchema = yup.object({
   name: yup.string().required('Nome é obrigatório'),
   address: yup.string().required('Endereço é obrigatório'),
   city: yup.string().required('Cidade é obrigatória'),
