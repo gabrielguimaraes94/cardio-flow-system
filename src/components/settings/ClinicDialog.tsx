@@ -33,7 +33,7 @@ interface ClinicDialogProps {
   clinic: Clinic | null;
 }
 
-// Define ClinicFormData with all fields required to match Yup schema
+// Define ClinicFormData with all fields marked as required to match Yup schema
 type ClinicFormData = {
   name: string;
   address: string;
