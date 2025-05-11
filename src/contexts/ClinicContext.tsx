@@ -74,7 +74,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .select('*')
         .eq('created_by', user.id)
         .eq('active', true);
-
+      console.log("Fetch clinics response:", { data, error });
       if (error) {
         throw error;
       }

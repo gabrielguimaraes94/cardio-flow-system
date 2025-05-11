@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,10 +23,11 @@ import NotFound from "./pages/NotFound";
 import Schedule from "./pages/Schedule";
 import Settings from "./pages/Settings";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { ClinicProvider } from "./contexts/ClinicContext";
 
 const queryClient = new QueryClient();
 
-// Componente de proteção de rotas
+{/* Componente de proteção de rotas */}
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   
@@ -86,11 +86,13 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <ClinicProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </ClinicProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
