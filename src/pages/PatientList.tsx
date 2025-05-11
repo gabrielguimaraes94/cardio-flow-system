@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -12,66 +12,115 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { supabase } from '@/integrations/supabase/client';
+import { useClinic } from '@/contexts/ClinicContext';
+import { useToast } from '@/hooks/use-toast';
+import { format, parseISO } from 'date-fns';
+
+interface Patient {
+  id: string;
+  name: string;
+  birthdate: string;
+  cpf: string;
+  phone: string | null;
+  email: string | null;
+  age?: number; // Calculado
+  anamneses?: Array<{ id: string; date: string; doctor: string }>;
+}
 
 export const PatientList: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Mock patient data with their anamnesis history
-  const patients = [
-    { 
-      id: '1', 
-      name: 'João Silva', 
-      age: 65, 
-      cpf: '123.456.789-10', 
-      phone: '(11) 98765-4321', 
-      insurance: 'Unimed',
-      anamneses: [
-        { id: 'a1', date: '2023-10-15', doctor: 'Dr. Cardoso' },
-        { id: 'a2', date: '2024-02-20', doctor: 'Dra. Santos' }
-      ]
-    },
-    { 
-      id: '2', 
-      name: 'Maria Oliveira', 
-      age: 72, 
-      cpf: '234.567.890-12', 
-      phone: '(11) 91234-5678', 
-      insurance: 'Bradesco Saúde',
-      anamneses: [
-        { id: 'a3', date: '2023-11-05', doctor: 'Dr. Ferreira' }
-      ] 
-    },
-    { 
-      id: '3', 
-      name: 'José Pereira', 
-      age: 58, 
-      cpf: '345.678.901-23', 
-      phone: '(11) 99876-5432', 
-      insurance: 'SulAmérica',
-      anamneses: [] 
-    },
-    { 
-      id: '4', 
-      name: 'Antônia Souza', 
-      age: 69, 
-      cpf: '456.789.012-34', 
-      phone: '(11) 94321-8765', 
-      insurance: 'Amil',
-      anamneses: [
-        { id: 'a4', date: '2024-01-10', doctor: 'Dr. Oliveira' }
-      ] 
-    },
-    { 
-      id: '5', 
-      name: 'Carlos Santos', 
-      age: 55, 
-      cpf: '567.890.123-45', 
-      phone: '(11) 95678-1234', 
-      insurance: 'Unimed',
-      anamneses: [] 
-    },
-  ];
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { selectedClinic } = useClinic();
+  const { toast } = useToast();
+
+  const calculateAge = (birthdate: string) => {
+    const today = new Date();
+    const birthDate = parseISO(birthdate);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // Buscar pacientes quando a clínica selecionada mudar
+  useEffect(() => {
+    const fetchPatients = async () => {
+      if (!selectedClinic) {
+        setPatients([]);
+        setFilteredPatients([]);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('patients')
+          .select('*')
+          .eq('clinic_id', selectedClinic.id);
+
+        if (error) throw error;
+
+        if (data) {
+          // Adicionar cálculo de idade para cada paciente
+          const patientsWithAge = data.map(patient => ({
+            ...patient,
+            age: calculateAge(patient.birthdate),
+            anamneses: [] // Placeholder para futuras anameses
+          }));
+
+          setPatients(patientsWithAge);
+          setFilteredPatients(patientsWithAge);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar pacientes:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os pacientes.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPatients();
+  }, [selectedClinic]);
+
+  // Filtrar pacientes com base no termo de pesquisa
+  useEffect(() => {
+    if (!searchTerm) {
+      setFilteredPatients(patients);
+      return;
+    }
+
+    const filtered = patients.filter(patient => 
+      patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.cpf.includes(searchTerm) ||
+      (patient.phone && patient.phone.includes(searchTerm)) ||
+      (patient.email && patient.email.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    setFilteredPatients(filtered);
+  }, [searchTerm, patients]);
+
+  const handleNewPatient = () => {
+    if (!selectedClinic) {
+      toast({
+        title: "Selecione uma clínica",
+        description: "É necessário selecionar uma clínica antes de criar um novo paciente.",
+        variant: "destructive"
+      });
+      return;
+    }
+    navigate('/patients/new');
+  };
 
   const handleAnamnesisClick = (patientId: string, anamneses: any[]) => {
     if (anamneses.length > 0) {
@@ -87,18 +136,39 @@ export const PatientList: React.FC = () => {
     }
   };
 
-  const handleNewPatient = () => {
-    navigate('/patients/new');
+  const handleEditPatient = (patientId: string) => {
+    // Por enquanto, redireciona para a página de novo paciente
+    // Em uma implementação completa, passaríamos o ID para editar o paciente existente
+    navigate(`/patients/${patientId}/edit`);
   };
 
-  const filteredPatients = searchTerm
-    ? patients.filter(patient => 
-        patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        patient.cpf.includes(searchTerm) ||
-        patient.phone.includes(searchTerm) ||
-        patient.insurance.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : patients;
+  const handleDeletePatient = async (patientId: string) => {
+    if (confirm("Tem certeza que deseja excluir este paciente? Esta ação não pode ser desfeita.")) {
+      try {
+        const { error } = await supabase
+          .from('patients')
+          .delete()
+          .eq('id', patientId);
+
+        if (error) throw error;
+
+        setPatients(patients.filter(patient => patient.id !== patientId));
+        setFilteredPatients(filteredPatients.filter(patient => patient.id !== patientId));
+        
+        toast({
+          title: "Paciente excluído",
+          description: "Paciente excluído com sucesso."
+        });
+      } catch (error) {
+        console.error('Erro ao excluir paciente:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível excluir o paciente.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
 
   return (
     <Layout>
@@ -125,64 +195,86 @@ export const PatientList: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" size="sm" className="w-full sm:w-auto">
-            Filtrar
-          </Button>
         </div>
 
-        <div className="rounded-md border overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Idade</TableHead>
-                <TableHead>CPF</TableHead>
-                <TableHead>Telefone</TableHead>
-                <TableHead>Convênio</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPatients.map((patient) => (
-                <TableRow key={patient.id}>
-                  <TableCell className="font-medium">{patient.name}</TableCell>
-                  <TableCell>{patient.age}</TableCell>
-                  <TableCell>{patient.cpf}</TableCell>
-                  <TableCell>{patient.phone}</TableCell>
-                  <TableCell>{patient.insurance}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleAnamnesisClick(patient.id, patient.anamneses)}
-                            aria-label="Anamnese"
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {patient.anamneses.length > 0 
-                            ? `Ver anamnese (${patient.anamneses.length} registros)`
-                            : "Criar anamnese"}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-
-                    <Button variant="ghost" size="sm">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+        {isLoading ? (
+          <div className="flex items-center justify-center p-8">
+            <p>Carregando pacientes...</p>
+          </div>
+        ) : (
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Idade</TableHead>
+                  <TableHead>CPF</TableHead>
+                  <TableHead>Telefone</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {filteredPatients.length > 0 ? (
+                  filteredPatients.map((patient) => (
+                    <TableRow key={patient.id}>
+                      <TableCell className="font-medium">{patient.name}</TableCell>
+                      <TableCell>{patient.age}</TableCell>
+                      <TableCell>{patient.cpf}</TableCell>
+                      <TableCell>{patient.phone || "-"}</TableCell>
+                      <TableCell>{patient.email || "-"}</TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleAnamnesisClick(patient.id, patient.anamneses || [])}
+                                aria-label="Anamnese"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {patient.anamneses && patient.anamneses.length > 0 
+                                ? `Ver anamnese (${patient.anamneses.length} registros)`
+                                : "Criar anamnese"}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleEditPatient(patient.id)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDeletePatient(patient.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8">
+                      <p className="text-muted-foreground">Nenhum paciente encontrado</p>
+                      {!selectedClinic && (
+                        <p className="text-sm mt-2">Selecione uma clínica para visualizar seus pacientes</p>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
     </Layout>
   );

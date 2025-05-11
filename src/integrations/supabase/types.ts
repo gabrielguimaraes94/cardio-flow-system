@@ -9,6 +9,148 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      clinics: {
+        Row: {
+          active: boolean
+          address: string
+          city: string
+          created_at: string
+          created_by: string
+          email: string
+          id: string
+          name: string
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          address: string
+          city: string
+          created_at?: string
+          created_by: string
+          email: string
+          id?: string
+          name: string
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          address?: string
+          city?: string
+          created_at?: string
+          created_by?: string
+          email?: string
+          id?: string
+          name?: string
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      patient_addresses: {
+        Row: {
+          cep: string
+          city: string
+          complement: string | null
+          created_at: string
+          id: string
+          neighborhood: string
+          number: string
+          patient_id: string
+          state: string
+          street: string
+          updated_at: string
+        }
+        Insert: {
+          cep: string
+          city: string
+          complement?: string | null
+          created_at?: string
+          id?: string
+          neighborhood: string
+          number: string
+          patient_id: string
+          state: string
+          street: string
+          updated_at?: string
+        }
+        Update: {
+          cep?: string
+          city?: string
+          complement?: string | null
+          created_at?: string
+          id?: string
+          neighborhood?: string
+          number?: string
+          patient_id?: string
+          state?: string
+          street?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_addresses_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          birthdate: string
+          clinic_id: string
+          cpf: string
+          created_at: string
+          created_by: string
+          email: string | null
+          gender: string
+          id: string
+          name: string
+          phone: string | null
+          rg: string | null
+          updated_at: string
+        }
+        Insert: {
+          birthdate: string
+          clinic_id: string
+          cpf: string
+          created_at?: string
+          created_by: string
+          email?: string | null
+          gender: string
+          id?: string
+          name: string
+          phone?: string | null
+          rg?: string | null
+          updated_at?: string
+        }
+        Update: {
+          birthdate?: string
+          clinic_id?: string
+          cpf?: string
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          gender?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          rg?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patients_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

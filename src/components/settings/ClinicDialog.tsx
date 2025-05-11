@@ -2,10 +2,19 @@
 import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useForm, Controller } from 'react-hook-form';
+import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from '@/components/ui/form';
 
 interface Clinic {
   id: string;
@@ -24,14 +33,35 @@ interface ClinicDialogProps {
   clinic: Clinic | null;
 }
 
+// Schema de validação com yup
+const clinicSchema = yup.object({
+  name: yup.string().required('Nome é obrigatório'),
+  address: yup.string().required('Endereço é obrigatório'),
+  city: yup.string().required('Cidade é obrigatória'),
+  phone: yup.string().required('Telefone é obrigatório'),
+  email: yup.string().email('Email inválido').required('Email é obrigatório'),
+  active: yup.boolean().default(true)
+});
+
 export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onSave, clinic }) => {
-  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<Clinic>();
+  const form = useForm<Clinic>({
+    resolver: yupResolver(clinicSchema),
+    defaultValues: {
+      id: '',
+      name: '',
+      address: '',
+      city: '',
+      phone: '',
+      email: '',
+      active: true
+    }
+  });
 
   // Reset form when clinic changes
   useEffect(() => {
     if (isOpen) {
       if (clinic) {
-        reset({
+        form.reset({
           id: clinic.id,
           name: clinic.name,
           address: clinic.address,
@@ -41,7 +71,7 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
           active: clinic.active
         });
       } else {
-        reset({
+        form.reset({
           id: '',
           name: '',
           address: '',
@@ -52,12 +82,12 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
         });
       }
     }
-  }, [isOpen, clinic, reset]);
+  }, [isOpen, clinic, form]);
 
   const onSubmit = (data: Clinic) => {
     onSave({
       ...data,
-      id: clinic?.id || Date.now().toString(),
+      id: clinic?.id || '', // O ID será gerado pelo Supabase para novas clínicas
     });
   };
 
@@ -67,85 +97,102 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
         <DialogHeader>
           <DialogTitle>{clinic ? 'Editar Clínica' : 'Nova Clínica'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Nome da Clínica</Label>
-              <Input 
-                id="name" 
-                {...register("name", { required: "Nome é obrigatório" })} 
-                placeholder="Nome da clínica"
-              />
-              {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
-            </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome da Clínica</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nome da clínica" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
-            <div className="grid gap-2">
-              <Label htmlFor="address">Endereço</Label>
-              <Input 
-                id="address" 
-                {...register("address", { required: "Endereço é obrigatório" })} 
-                placeholder="Endereço completo"
-              />
-              {errors.address && <p className="text-sm text-red-500">{errors.address.message}</p>}
-            </div>
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Endereço</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Endereço completo" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
-            <div className="grid gap-2">
-              <Label htmlFor="city">Cidade</Label>
-              <Input 
-                id="city" 
-                {...register("city", { required: "Cidade é obrigatória" })} 
-                placeholder="Cidade"
-              />
-              {errors.city && <p className="text-sm text-red-500">{errors.city.message}</p>}
-            </div>
+            <FormField
+              control={form.control}
+              name="city"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cidade</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Cidade" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
-            <div className="grid gap-2">
-              <Label htmlFor="phone">Telefone</Label>
-              <Input 
-                id="phone" 
-                {...register("phone", { required: "Telefone é obrigatório" })} 
-                placeholder="(00) 0000-0000"
-              />
-              {errors.phone && <p className="text-sm text-red-500">{errors.phone.message}</p>}
-            </div>
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefone</FormLabel>
+                  <FormControl>
+                    <Input placeholder="(00) 0000-0000" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                {...register("email", { 
-                  required: "Email é obrigatório",
-                  pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: "Email inválido"
-                  }
-                })} 
-                placeholder="contato@clinica.com"
-              />
-              {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
-            </div>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="contato@clinica.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
-            <div className="flex items-center space-x-2">
-              <Controller
-                name="active"
-                control={control}
-                render={({ field }) => (
-                  <Checkbox
-                    id="active"
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                )}
-              />
-              <Label htmlFor="active" className="font-normal">Clínica ativa</Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-            <Button type="submit">Salvar</Button>
-          </DialogFooter>
-        </form>
+            <FormField
+              control={form.control}
+              name="active"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Clínica ativa</FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+            
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+              <Button type="submit">Salvar</Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
