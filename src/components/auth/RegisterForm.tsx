@@ -66,6 +66,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleForm }) => {
             last_name: data.lastName,
             crm: data.crm,
             phone: data.phone || null,
+            role: 'admin',
           })
           .eq('id', authData.user.id);
 
