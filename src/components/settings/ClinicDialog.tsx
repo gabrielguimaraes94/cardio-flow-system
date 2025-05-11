@@ -33,8 +33,10 @@ interface ClinicDialogProps {
   clinic: Clinic | null;
 }
 
+type ClinicFormData = Omit<Clinic, 'id'>;
+
 // Schema de validação com yup
-const clinicSchema = yup.object({
+const clinicSchema = yup.object().shape({
   name: yup.string().required('Nome é obrigatório'),
   address: yup.string().required('Endereço é obrigatório'),
   city: yup.string().required('Cidade é obrigatória'),
@@ -44,10 +46,9 @@ const clinicSchema = yup.object({
 });
 
 export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onSave, clinic }) => {
-  const form = useForm<Clinic>({
+  const form = useForm<ClinicFormData>({
     resolver: yupResolver(clinicSchema),
     defaultValues: {
-      id: '',
       name: '',
       address: '',
       city: '',
@@ -62,7 +63,6 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
     if (isOpen) {
       if (clinic) {
         form.reset({
-          id: clinic.id,
           name: clinic.name,
           address: clinic.address,
           city: clinic.city,
@@ -72,7 +72,6 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
         });
       } else {
         form.reset({
-          id: '',
           name: '',
           address: '',
           city: '',
@@ -84,7 +83,7 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
     }
   }, [isOpen, clinic, form]);
 
-  const onSubmit = (data: Clinic) => {
+  const onSubmit = (data: ClinicFormData) => {
     onSave({
       ...data,
       id: clinic?.id || '', // O ID será gerado pelo Supabase para novas clínicas
