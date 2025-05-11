@@ -26,12 +26,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { 
-  getInsuranceCompanyById, 
-  createInsuranceCompany, 
-  updateInsuranceCompany 
-} from '@/services/mockInsuranceService';
+import * as z from 'zod';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useClinic } from '@/contexts/ClinicContext';
 import { InsuranceCompany } from '@/types/insurance';
 
 const insuranceFormSchema = z.object({
@@ -65,6 +63,8 @@ export const InsuranceForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const { user } = useAuth();
+  const { currentClinic } = useClinic();
 
   const form = useForm<InsuranceFormValues>({
     resolver: zodResolver(insuranceFormSchema),
@@ -89,32 +89,40 @@ export const InsuranceForm: React.FC = () => {
 
   useEffect(() => {
     const loadInsuranceCompany = async () => {
-      if (id) {
+      if (id && id !== 'new') {
         try {
           setIsLoading(true);
-          const company = await getInsuranceCompanyById(id);
           
-          if (company) {
+          const { data, error } = await supabase
+            .from('insurance_companies')
+            .select('*')
+            .eq('id', id)
+            .eq('created_by', user?.id)
+            .single();
+          
+          if (error) throw error;
+          
+          if (data) {
             form.reset({
-              companyName: company.companyName,
-              tradingName: company.tradingName,
-              cnpj: company.cnpj,
-              ansRegistry: company.ansRegistry,
-              street: company.address.street,
-              number: company.address.number,
-              complement: company.address.complement || "",
-              neighborhood: company.address.neighborhood,
-              city: company.address.city,
-              state: company.address.state,
-              zipCode: company.address.zipCode,
-              email: company.contactInfo.email,
-              phone: company.contactInfo.phone,
-              contactPerson: company.contactInfo.contactPerson || "",
-              active: company.active,
+              companyName: data.company_name,
+              tradingName: data.trading_name,
+              cnpj: data.cnpj,
+              ansRegistry: data.ans_registry,
+              street: data.street,
+              number: data.number,
+              complement: data.complement || "",
+              neighborhood: data.neighborhood,
+              city: data.city,
+              state: data.state,
+              zipCode: data.zip_code,
+              email: data.email,
+              phone: data.phone,
+              contactPerson: data.contact_person || "",
+              active: data.active,
             });
             
-            if (company.logoUrl) {
-              setLogoPreview(company.logoUrl);
+            if (data.logo_url) {
+              setLogoPreview(data.logo_url);
             }
           } else {
             toast({
@@ -138,60 +146,110 @@ export const InsuranceForm: React.FC = () => {
     };
 
     loadInsuranceCompany();
-  }, [id, form, navigate]);
+  }, [id, form, navigate, user?.id]);
 
   const onSubmit = async (values: InsuranceFormValues) => {
+    if (!user || !currentClinic) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar logado e ter uma clínica selecionada para salvar um convênio",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       setIsSubmitting(true);
       
-      const insuranceData: Partial<InsuranceCompany> = {
-        companyName: values.companyName,
-        tradingName: values.tradingName,
+      const insuranceData = {
+        company_name: values.companyName,
+        trading_name: values.tradingName,
         cnpj: values.cnpj,
-        ansRegistry: values.ansRegistry,
-        address: {
-          street: values.street,
-          number: values.number,
-          complement: values.complement,
-          neighborhood: values.neighborhood,
-          city: values.city,
-          state: values.state,
-          zipCode: values.zipCode,
-        },
-        contactInfo: {
-          email: values.email,
-          phone: values.phone,
-          contactPerson: values.contactPerson,
-        },
+        ans_registry: values.ansRegistry,
+        street: values.street,
+        number: values.number,
+        complement: values.complement,
+        neighborhood: values.neighborhood,
+        city: values.city,
+        state: values.state,
+        zip_code: values.zipCode,
+        email: values.email,
+        phone: values.phone,
+        contact_person: values.contactPerson,
         active: values.active,
+        created_by: user.id,
+        clinic_id: currentClinic.id,
       };
       
-      // In a real implementation, you would upload the logo file to a server
-      // and set the logoUrl to the returned URL
+      let logoUrl = null;
+      
+      // Upload logo if available
       if (logoFile) {
-        // Mock logo URL for demonstration
-        insuranceData.logoUrl = URL.createObjectURL(logoFile);
+        const fileExt = logoFile.name.split('.').pop();
+        const filePath = `insurance_logos/${user.id}/${Date.now()}.${fileExt}`;
+        
+        // Check if storage bucket exists, create if not
+        const { data: buckets } = await supabase.storage.listBuckets();
+        if (!buckets?.find(bucket => bucket.name === 'insurance_logos')) {
+          await supabase.storage.createBucket('insurance_logos', {
+            public: true,
+          });
+        }
+        
+        const { error: uploadError, data: uploadData } = await supabase.storage
+          .from('insurance_logos')
+          .upload(filePath, logoFile, {
+            upsert: true,
+            cacheControl: '3600',
+          });
+          
+        if (uploadError) throw uploadError;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('insurance_logos')
+          .getPublicUrl(filePath);
+          
+        logoUrl = publicUrl;
       }
       
-      if (id) {
-        await updateInsuranceCompany(id, insuranceData);
+      if (logoUrl) {
+        insuranceData.logo_url = logoUrl;
+      }
+      
+      if (id && id !== 'new') {
+        // Update existing insurance
+        const { error } = await supabase
+          .from('insurance_companies')
+          .update(insuranceData)
+          .eq('id', id);
+        
+        if (error) throw error;
+        
         toast({
           title: "Sucesso",
           description: "Convênio atualizado com sucesso",
         });
       } else {
-        const newCompany = await createInsuranceCompany(insuranceData as Omit<InsuranceCompany, 'id' | 'createdAt' | 'updatedAt'>);
+        // Create new insurance
+        const { error, data } = await supabase
+          .from('insurance_companies')
+          .insert(insuranceData)
+          .select('id')
+          .single();
+        
+        if (error) throw error;
+        
         toast({
           title: "Sucesso",
           description: "Convênio criado com sucesso",
         });
-        navigate(`/insurance/${newCompany.id}`);
+        navigate(`/insurance/${data.id}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving insurance company:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível salvar o convênio",
+        description: error.message || "Não foi possível salvar o convênio",
         variant: "destructive",
       });
     } finally {
@@ -219,9 +277,9 @@ export const InsuranceForm: React.FC = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">{id ? 'Editar' : 'Novo'} Convênio</h2>
+            <h2 className="text-3xl font-bold tracking-tight">{id && id !== 'new' ? 'Editar' : 'Novo'} Convênio</h2>
             <p className="text-muted-foreground">
-              {id ? 'Atualize os dados do convênio' : 'Preencha os dados para cadastrar um novo convênio'}
+              {id && id !== 'new' ? 'Atualize os dados do convênio' : 'Preencha os dados para cadastrar um novo convênio'}
             </p>
           </div>
         </div>
