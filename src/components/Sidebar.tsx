@@ -19,10 +19,16 @@ import {
   SidebarMenuSubButton,
   useSidebar
 } from '@/components/ui/sidebar';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
   const { state } = useSidebar();
+  const { signOut } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   const menuItems = [
     { title: "Dashboard", url: "/dashboard", icon: Heart },
@@ -34,6 +40,24 @@ export const Sidebar: React.FC = () => {
     { title: "Agenda", url: "/schedule", icon: Calendar },
     { title: "Configurações", url: "/settings", icon: Settings },
   ];
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/');
+      toast({
+        title: "Logout realizado com sucesso",
+        description: "Você foi desconectado com segurança.",
+      });
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao sair",
+        description: "Não foi possível desconectar. Tente novamente.",
+      });
+    }
+  };
 
   return (
     <SidebarComponent variant="floating" collapsible="icon">
@@ -70,11 +94,14 @@ export const Sidebar: React.FC = () => {
 
       <SidebarFooter className="px-6 py-4">
         <div className="flex items-center gap-3">
-          <button className={`w-full flex items-center text-sidebar-foreground rounded-md hover:bg-sidebar-accent ${
-            state === 'collapsed' 
-              ? 'justify-center p-2' 
-              : 'gap-3 px-3 py-2'
-          }`}>
+          <button 
+            onClick={handleLogout}
+            className={`w-full flex items-center text-sidebar-foreground rounded-md hover:bg-sidebar-accent ${
+              state === 'collapsed' 
+                ? 'justify-center p-2' 
+                : 'gap-3 px-3 py-2'
+            }`}
+          >
             <LogOut className="h-5 w-5" />
             <span className={state === 'collapsed' ? 'hidden' : 'block'}>Sair</span>
           </button>

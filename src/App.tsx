@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LoginForm } from "./components/auth/LoginForm";
 import { Dashboard } from "./pages/Dashboard";
 import { PatientList } from "./pages/PatientList";
@@ -23,51 +23,75 @@ import { InsuranceAuditRules } from "./pages/insurance/InsuranceAuditRules";
 import NotFound from "./pages/NotFound";
 import Schedule from "./pages/Schedule";
 import Settings from "./pages/Settings";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
+
+// Componente de proteção de rotas
+const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+  }
+  
+  return user ? <>{children}</> : <Navigate to="/" />;
+};
+
+const AppRoutes = () => {
+  const { user } = useAuth();
+  
+  return (
+    <Routes>
+      <Route path="/" element={user ? <Navigate to="/dashboard" /> : <LoginForm />} />
+      
+      {/* Rotas protegidas */}
+      <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+      <Route path="/patients" element={<PrivateRoute><PatientList /></PrivateRoute>} />
+      <Route path="/patients/new" element={<PrivateRoute><PatientForm /></PrivateRoute>} />
+      <Route path="/patients/:id/anamnesis" element={<PrivateRoute><AnamnesisForm /></PrivateRoute>} />
+      <Route path="/catheterization" element={<PrivateRoute><CatheterizationReportList /></PrivateRoute>} />
+      <Route path="/catheterization/templates" element={<PrivateRoute><CatheterizationTemplateEditor /></PrivateRoute>} />
+      <Route path="/catheterization/report/:id?" element={<PrivateRoute><CatheterizationReport /></PrivateRoute>} />
+      <Route path="/angioplasty" element={<PrivateRoute><Angioplasty /></PrivateRoute>} />
+      <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
+      <Route path="/schedule" element={<PrivateRoute><Schedule /></PrivateRoute>} />
+      
+      {/* Settings Routes */}
+      <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+      <Route path="/settings/clinics" element={<PrivateRoute><Settings /></PrivateRoute>} />
+      <Route path="/settings/profile" element={<PrivateRoute><Settings /></PrivateRoute>} />
+      <Route path="/settings/insurance" element={<PrivateRoute><Settings /></PrivateRoute>} />
+      <Route path="/settings/insurance/new" element={<PrivateRoute><InsuranceForm /></PrivateRoute>} />
+      <Route path="/settings/insurance/:id" element={<PrivateRoute><InsuranceForm /></PrivateRoute>} />
+      <Route path="/settings/insurance/:id/forms" element={<PrivateRoute><InsuranceFormConfig /></PrivateRoute>} />
+      <Route path="/settings/insurance/:id/audit-rules" element={<PrivateRoute><InsuranceAuditRules /></PrivateRoute>} />
+      
+      {/* Mantendo as rotas antigas para compatibilidade, mas redirecionando */}
+      <Route path="/insurance" element={<PrivateRoute><Settings /></PrivateRoute>} />
+      <Route path="/insurance/new" element={<PrivateRoute><InsuranceForm /></PrivateRoute>} />
+      <Route path="/insurance/:id" element={<PrivateRoute><InsuranceForm /></PrivateRoute>} />
+      <Route path="/insurance/:id/contracts" element={<PrivateRoute><InsuranceContractList /></PrivateRoute>} />
+      <Route path="/insurance/:id/contracts/new" element={<PrivateRoute><InsuranceContractForm /></PrivateRoute>} />
+      <Route path="/insurance/:id/contracts/:contractId" element={<PrivateRoute><InsuranceContractForm /></PrivateRoute>} />
+      <Route path="/insurance/:id/forms" element={<PrivateRoute><InsuranceFormConfig /></PrivateRoute>} />
+      <Route path="/insurance/:id/audit-rules" element={<PrivateRoute><InsuranceAuditRules /></PrivateRoute>} />
+      
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LoginForm />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/patients" element={<PatientList />} />
-          <Route path="/patients/new" element={<PatientForm />} />
-          <Route path="/patients/:id/anamnesis" element={<AnamnesisForm />} />
-          <Route path="/catheterization" element={<CatheterizationReportList />} />
-          <Route path="/catheterization/templates" element={<CatheterizationTemplateEditor />} />
-          <Route path="/catheterization/report/:id?" element={<CatheterizationReport />} />
-          <Route path="/angioplasty" element={<Angioplasty />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/schedule" element={<Schedule />} />
-          
-          {/* Settings Routes */}
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/settings/clinics" element={<Settings />} />
-          <Route path="/settings/profile" element={<Settings />} />
-          <Route path="/settings/insurance" element={<Settings />} />
-          <Route path="/settings/insurance/new" element={<InsuranceForm />} />
-          <Route path="/settings/insurance/:id" element={<InsuranceForm />} />
-          <Route path="/settings/insurance/:id/forms" element={<InsuranceFormConfig />} />
-          <Route path="/settings/insurance/:id/audit-rules" element={<InsuranceAuditRules />} />
-          
-          {/* Mantendo as rotas antigas para compatibilidade, mas redirecionando */}
-          <Route path="/insurance" element={<Settings />} />
-          <Route path="/insurance/new" element={<InsuranceForm />} />
-          <Route path="/insurance/:id" element={<InsuranceForm />} />
-          <Route path="/insurance/:id/contracts" element={<InsuranceContractList />} />
-          <Route path="/insurance/:id/contracts/new" element={<InsuranceContractForm />} />
-          <Route path="/insurance/:id/contracts/:contractId" element={<InsuranceContractForm />} />
-          <Route path="/insurance/:id/forms" element={<InsuranceFormConfig />} />
-          <Route path="/insurance/:id/audit-rules" element={<InsuranceAuditRules />} />
-          
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

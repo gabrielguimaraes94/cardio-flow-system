@@ -6,23 +6,69 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { RegisterForm } from './RegisterForm';
+
+// Esquema de validação com yup
+const schema = yup.object({
+  email: yup.string().email('Email inválido').required('Email é obrigatório'),
+  password: yup.string().required('Senha é obrigatória'),
+});
+
+type LoginFormData = yup.InferType<typeof schema>;
 
 export const LoginForm: React.FC = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [showRegisterForm, setShowRegisterForm] = useState(false);
+  
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
+    resolver: yupResolver(schema),
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (data: LoginFormData) => {
     setIsLoading(true);
     
-    // Simulate login
-    setTimeout(() => {
+    try {
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password
+      });
+      
+      if (error) throw error;
+      
+      if (authData.session) {
+        toast({
+          title: "Login realizado com sucesso!",
+          description: "Redirecionando para o dashboard.",
+        });
+        
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      console.error('Erro de login:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao fazer login",
+        description: error instanceof Error ? error.message : "Verifique suas credenciais e tente novamente.",
+      });
+    } finally {
       setIsLoading(false);
-      navigate('/dashboard');
-    }, 1000);
+    }
   };
+
+  const toggleForm = () => {
+    setShowRegisterForm(!showRegisterForm);
+  };
+
+  if (showRegisterForm) {
+    return <RegisterForm onToggleForm={toggleForm} />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 heartbeat-bg">
@@ -38,7 +84,7 @@ export const LoginForm: React.FC = () => {
             Sistema de Gestão para Clínicas de Cardiologia
           </p>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(handleLogin)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -46,10 +92,11 @@ export const LoginForm: React.FC = () => {
                 id="email"
                 type="email" 
                 placeholder="seu-email@exemplo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                {...register('email')}
               />
+              {errors.email && (
+                <p className="text-xs text-red-500">{errors.email.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -61,19 +108,28 @@ export const LoginForm: React.FC = () => {
               <Input
                 id="password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+                {...register('password')}
               />
+              {errors.password && (
+                <p className="text-xs text-red-500">{errors.password.message}</p>
+              )}
             </div>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex flex-col space-y-2">
             <Button 
               type="submit" 
               className="w-full bg-cardio-500 hover:bg-cardio-600" 
               disabled={isLoading}
             >
               {isLoading ? 'Entrando...' : 'Entrar'}
+            </Button>
+            <Button 
+              type="button" 
+              variant="ghost" 
+              className="w-full" 
+              onClick={toggleForm}
+            >
+              Não tem uma conta? Cadastre-se
             </Button>
           </CardFooter>
         </form>
