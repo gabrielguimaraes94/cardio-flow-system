@@ -1,12 +1,12 @@
+
 import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
-import type { Resolver } from 'react-hook-form';
 import {
   Form,
   FormControl,
@@ -33,17 +33,7 @@ interface ClinicDialogProps {
   clinic: Clinic | null;
 }
 
-{/* Define ClinicFormData with all fields marked as required to match Yup schema */}
-type ClinicFormData = {
-  name: string;
-  address: string;
-  city: string;
-  phone: string;
-  email: string;
-  active: boolean;
-};
-
-{/* Schema validation with yup - using InferType for proper type inference */}
+// Define o schema de validação com yup
 const clinicSchema = yup.object({
   name: yup.string().required('Nome é obrigatório'),
   address: yup.string().required('Endereço é obrigatório'),
@@ -53,15 +43,12 @@ const clinicSchema = yup.object({
   active: yup.boolean().required().default(true)
 });
 
-{/* Infer the type from the schema to ensure compatibility */}
-type InferredFormData = yup.InferType<typeof clinicSchema>;
-
-{/* Explicitly type the resolver to ensure compatibility */}
-const resolver: Resolver<ClinicFormData> = yupResolver(clinicSchema) as Resolver<ClinicFormData>;
+// Define o tipo de dados para o formulário usando InferType
+type ClinicFormData = yup.InferType<typeof clinicSchema>;
 
 export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onSave, clinic }) => {
   const form = useForm<ClinicFormData>({
-    resolver,
+    resolver: yupResolver(clinicSchema),
     defaultValues: {
       name: '',
       address: '',
@@ -72,7 +59,7 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
     }
   });
 
-  {/* Reset form when clinic changes */}
+  // Reset form when clinic changes
   useEffect(() => {
     if (isOpen) {
       if (clinic) {
