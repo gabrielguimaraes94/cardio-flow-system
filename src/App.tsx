@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,9 +26,16 @@ import Settings from "./pages/Settings";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ClinicProvider } from "./contexts/ClinicContext";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
-{/* Componente de proteção de rotas */}
+// Componente de proteção de rotas
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   
@@ -68,7 +76,7 @@ const AppRoutes = () => {
       <Route path="/settings/insurance/:id/audit-rules" element={<PrivateRoute><InsuranceAuditRules /></PrivateRoute>} />
       
       {/* Mantendo as rotas antigas para compatibilidade, mas redirecionando */}
-      <Route path="/insurance" element={<PrivateRoute><Settings /></PrivateRoute>} />
+      <Route path="/insurance" element={<PrivateRoute><InsuranceList /></PrivateRoute>} />
       <Route path="/insurance/new" element={<PrivateRoute><InsuranceForm /></PrivateRoute>} />
       <Route path="/insurance/:id" element={<PrivateRoute><InsuranceForm /></PrivateRoute>} />
       <Route path="/insurance/:id/contracts" element={<PrivateRoute><InsuranceContractList /></PrivateRoute>} />

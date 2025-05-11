@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Pencil, Trash } from 'lucide-react';
+import { Plus, Search, Pencil, Trash, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,54 +9,52 @@ import { Badge } from '@/components/ui/badge';
 import { UserDialog } from './UserDialog';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useToast } from '@/hooks/use-toast';
-
-// User type with roles
-type UserRole = 'admin' | 'clinic_admin' | 'doctor' | 'nurse' | 'receptionist';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  clinics: string[];
-  active: boolean;
-}
+import { fetchUsers } from '@/services/userService';
+import { UserProfile } from '@/types/profile';
 
 export const UserManagement = () => {
   const { selectedClinic } = useClinic();
   const { toast } = useToast();
   
-  const [allUsers, setAllUsers] = useState<User[]>([
-    { id: '1', name: 'Dr. Carlos Silva', email: 'carlos.silva@cardio.com', role: 'doctor', clinics: ['Cardio Center', 'Instituto Cardiovascular'], active: true },
-    { id: '2', name: 'Amanda Lopes', email: 'amanda@cardio.com', role: 'nurse', clinics: ['Cardio Center'], active: true },
-    { id: '3', name: 'Patricia Santos', email: 'patricia@cardio.com', role: 'receptionist', clinics: ['Cardio Center'], active: true },
-    { id: '4', name: 'Marcos Oliveira', email: 'marcos@cardio.com', role: 'clinic_admin', clinics: ['Instituto Cardiovascular'], active: true },
-    { id: '5', name: 'Ana Costa', email: 'ana@admin.com', role: 'admin', clinics: ['Cardio Center', 'Instituto Cardiovascular', 'Clínica do Coração'], active: true },
-  ]);
-  
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Filter users based on selected clinic
+  // Fetch users based on selected clinic
   useEffect(() => {
-    if (selectedClinic) {
-      const filteredUsers = allUsers.filter(user => 
-        // Admins see all users across all clinics
-        user.role === 'admin' || 
-        // Other users are filtered by their clinic association
-        user.clinics.includes(selectedClinic.name)
-      );
-      setUsers(filteredUsers);
+    const loadUsers = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        console.log('Loading users for clinic:', selectedClinic?.id);
+        
+        const userData = await fetchUsers(selectedClinic?.id);
+        setUsers(userData);
+        
+        if (selectedClinic) {
+          toast({
+            title: "Clínica alterada",
+            description: `Mostrando usuários da clínica: ${selectedClinic.name}`,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load users:', error);
+        setError('Falha ao carregar usuários');
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os usuários.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-      // Show toast notification when clinic is changed
-      toast({
-        title: "Clínica alterada",
-        description: `Mostrando usuários da clínica: ${selectedClinic.name}`,
-      });
-    }
-  }, [selectedClinic, allUsers]);
+    loadUsers();
+  }, [selectedClinic, toast]);
 
   // Listen for clinic change events
   useEffect(() => {
@@ -71,28 +70,30 @@ export const UserManagement = () => {
   }, []);
 
   const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getRoleName = (role: UserRole): string => {
-    const roleNames = {
+  const getRoleName = (role: string): string => {
+    const roleNames: Record<string, string> = {
       admin: 'Administrador',
       clinic_admin: 'Admin. Clínica',
       doctor: 'Médico',
       nurse: 'Enfermeiro',
-      receptionist: 'Recepção'
+      receptionist: 'Recepção',
+      staff: 'Equipe',
     };
     return roleNames[role] || role;
   };
 
-  const getRoleColor = (role: UserRole): string => {
-    const roleColors = {
+  const getRoleColor = (role: string): string => {
+    const roleColors: Record<string, string> = {
       admin: 'bg-red-100 text-red-800',
       clinic_admin: 'bg-purple-100 text-purple-800',
       doctor: 'bg-blue-100 text-blue-800',
       nurse: 'bg-green-100 text-green-800',
-      receptionist: 'bg-yellow-100 text-yellow-800'
+      receptionist: 'bg-yellow-100 text-yellow-800',
+      staff: 'bg-gray-100 text-gray-800'
     };
     return roleColors[role] || '';
   };
@@ -102,24 +103,26 @@ export const UserManagement = () => {
     setIsDialogOpen(true);
   };
 
-  const handleEditUser = (user: User) => {
+  const handleEditUser = (user: UserProfile) => {
     setCurrentUser(user);
     setIsDialogOpen(true);
   };
 
-  const handleSaveUser = (user: User) => {
+  const handleSaveUser = (user: UserProfile) => {
+    // In a real application, this would save to the database
     if (currentUser) {
       // Edit existing user
-      setAllUsers(allUsers.map(u => u.id === user.id ? user : u));
+      setUsers(users.map(u => u.id === user.id ? user : u));
     } else {
       // Add new user
-      setAllUsers([...allUsers, { ...user, id: Date.now().toString() }]);
+      setUsers([...users, { ...user, id: Date.now().toString() }]);
     }
     setIsDialogOpen(false);
   };
 
   const handleDeleteUser = (userId: string) => {
-    setAllUsers(allUsers.filter(user => user.id !== userId));
+    // In a real application, this would delete from the database
+    setUsers(users.filter(user => user.id !== userId));
   };
 
   return (
@@ -159,40 +162,58 @@ export const UserManagement = () => {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>CRM</TableHead>
                 <TableHead>Perfil</TableHead>
-                <TableHead>Clínicas</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={getRoleColor(user.role)}>
-                      {getRoleName(user.role)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{user.clinics.join(', ')}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)}>
-                        <Trash className="h-4 w-4" />
-                      </Button>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-10">
+                    <div className="flex justify-center items-center">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      <span>Carregando usuários...</span>
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
-              {filteredUsers.length === 0 && (
+              ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-10 text-red-500">
+                    {error}
+                  </TableCell>
+                </TableRow>
+              ) : filteredUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
                     Nenhum usuário encontrado
                   </TableCell>
                 </TableRow>
+              ) : (
+                filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">
+                      {user.firstName} {user.lastName}
+                    </TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>{user.crm}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getRoleColor(user.role)}>
+                        {getRoleName(user.role)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)}>
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>

@@ -7,61 +7,53 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useForm, Controller } from 'react-hook-form';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-type UserRole = 'admin' | 'clinic_admin' | 'doctor' | 'nurse' | 'receptionist';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  clinics: string[];
-  active: boolean;
-}
+import { UserProfile } from '@/types/profile';
+import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
 
 interface UserDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (user: User) => void;
-  user: User | null;
+  onSave: (user: UserProfile) => void;
+  user: UserProfile | null;
 }
 
-export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave, user }) => {
-  const { register, handleSubmit, control, reset, setValue, formState: { errors } } = useForm<User>();
+// Create validation schema
+const userSchema = yup.object({
+  firstName: yup.string().required('Nome é obrigatório'),
+  lastName: yup.string().required('Sobrenome é obrigatório'),
+  email: yup.string().email('Email inválido').required('Email é obrigatório'),
+  crm: yup.string().required('CRM é obrigatório'),
+  role: yup.string().required('Perfil é obrigatório')
+}).required();
 
-  // Available clinics
-  const availableClinics = [
-    { id: '1', name: 'Cardio Center' },
-    { id: '2', name: 'Instituto Cardiovascular' },
-    { id: '3', name: 'Clínica do Coração' },
-  ];
+export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave, user }) => {
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<UserProfile>({
+    resolver: yupResolver(userSchema)
+  });
 
   // Reset form when user changes
   useEffect(() => {
     if (isOpen) {
       if (user) {
-        reset({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          clinics: user.clinics,
-          active: user.active
-        });
+        reset(user);
       } else {
         reset({
           id: '',
-          name: '',
+          firstName: '',
+          lastName: '',
           email: '',
+          crm: '',
           role: 'doctor',
-          clinics: [],
-          active: true
+          title: '',
+          bio: '',
+          phone: null
         });
       }
     }
   }, [isOpen, user, reset]);
 
-  const onSubmit = (data: User) => {
+  const onSubmit = (data: UserProfile) => {
     onSave({
       ...data,
       id: user?.id || Date.now().toString(),
@@ -77,13 +69,23 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Nome</Label>
+              <Label htmlFor="firstName">Nome</Label>
               <Input 
-                id="name" 
-                {...register("name", { required: "Nome é obrigatório" })} 
-                placeholder="Nome completo"
+                id="firstName" 
+                {...register("firstName")} 
+                placeholder="Nome"
               />
-              {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+              {errors.firstName && <p className="text-sm text-red-500">{errors.firstName.message}</p>}
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="lastName">Sobrenome</Label>
+              <Input 
+                id="lastName" 
+                {...register("lastName")} 
+                placeholder="Sobrenome"
+              />
+              {errors.lastName && <p className="text-sm text-red-500">{errors.lastName.message}</p>}
             </div>
             
             <div className="grid gap-2">
@@ -91,16 +93,29 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
               <Input 
                 id="email" 
                 type="email" 
-                {...register("email", { 
-                  required: "Email é obrigatório",
-                  pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: "Email inválido"
-                  }
-                })} 
+                {...register("email")} 
                 placeholder="usuario@exemplo.com"
               />
               {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="crm">CRM</Label>
+              <Input 
+                id="crm" 
+                {...register("crm")} 
+                placeholder="CRM"
+              />
+              {errors.crm && <p className="text-sm text-red-500">{errors.crm.message}</p>}
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="phone">Telefone</Label>
+              <Input 
+                id="phone" 
+                {...register("phone")} 
+                placeholder="Telefone"
+              />
             </div>
             
             <div className="grid gap-2">
@@ -121,10 +136,10 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
                     <SelectContent>
                       <SelectGroup>
                         <SelectItem value="admin">Administrador</SelectItem>
-                        <SelectItem value="clinic_admin">Administrador de Clínica</SelectItem>
                         <SelectItem value="doctor">Médico</SelectItem>
                         <SelectItem value="nurse">Enfermeiro</SelectItem>
                         <SelectItem value="receptionist">Recepção</SelectItem>
+                        <SelectItem value="staff">Equipe</SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>
@@ -134,48 +149,21 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
             </div>
             
             <div className="grid gap-2">
-              <Label>Clínicas</Label>
-              <div className="grid gap-2 border p-4 rounded-md max-h-40 overflow-y-auto">
-                {availableClinics.map((clinic) => (
-                  <div key={clinic.id} className="flex items-center space-x-2">
-                    <Controller
-                      name="clinics"
-                      control={control}
-                      defaultValue={[]}
-                      render={({ field }) => (
-                        <Checkbox
-                          id={`clinic-${clinic.id}`}
-                          checked={field.value?.includes(clinic.name)}
-                          onCheckedChange={(checked) => {
-                            const updatedClinics = checked
-                              ? [...(field.value || []), clinic.name]
-                              : (field.value || []).filter(c => c !== clinic.name);
-                            setValue('clinics', updatedClinics);
-                          }}
-                        />
-                      )}
-                    />
-                    <Label htmlFor={`clinic-${clinic.id}`} className="font-normal">
-                      {clinic.name}
-                    </Label>
-                  </div>
-                ))}
-              </div>
+              <Label htmlFor="title">Título</Label>
+              <Input 
+                id="title" 
+                {...register("title")} 
+                placeholder="Ex: Cardiologista"
+              />
             </div>
             
-            <div className="flex items-center space-x-2">
-              <Controller
-                name="active"
-                control={control}
-                render={({ field }) => (
-                  <Checkbox
-                    id="active"
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                )}
+            <div className="grid gap-2">
+              <Label htmlFor="bio">Bio</Label>
+              <Input 
+                id="bio" 
+                {...register("bio")} 
+                placeholder="Breve descrição profissional"
               />
-              <Label htmlFor="active" className="font-normal">Usuário ativo</Label>
             </div>
           </div>
           <DialogFooter>
