@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -35,15 +34,15 @@
  
     --radius: 0.5rem;
     
+    /* Sidebar variables */
     --sidebar-background: 210 90% 32%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-muted: 210 40% 93%;
     --sidebar-muted-foreground: 215 25% 27%;
     --sidebar-accent: 217 33% 17%;
     --sidebar-accent-foreground: 210 40% 98%;
-    
-    --cardio-primary: 354 70% 54%;
-    --cardio-primary-hover: 354 70% 47%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-ring: 222.2 84% 4.9%;
   }
  
   .dark {
@@ -117,37 +116,4 @@
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
   }
-}
-
-.bg-cardio-500 {
-  background-color: hsl(var(--cardio-primary));
-}
-
-.bg-cardio-600 {
-  background-color: hsl(var(--cardio-primary-hover));
-}
-
-.hover\:bg-cardio-600:hover {
-  background-color: hsl(var(--cardio-primary-hover));
-}
-
-.text-cardio-500 {
-  color: hsl(var(--cardio-primary));
-}
-
-.border-cardio-500 {
-  border-color: hsl(var(--cardio-primary));
-}
-
-/* Sidebar Styles */
-.bg-sidebar-background {
-  background-color: hsl(var(--sidebar-background));
-}
-
-.text-sidebar-foreground {
-  color: hsl(var(--sidebar-foreground));
-}
-
-.bg-sidebar-accent {
-  background-color: hsl(var(--sidebar-accent));
 }
