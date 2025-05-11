@@ -5,11 +5,10 @@ import { Layout } from '@/components/Layout';
 import { UserManagement } from '@/components/settings/UserManagement';
 import { ClinicManagement } from '@/components/settings/ClinicManagement';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { InsuranceList } from './insurance/InsuranceList';
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from '@/components/ui/navigation-menu';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { InsuranceSettings } from '@/components/settings/InsuranceSettings';
 
 const Settings = () => {
   const location = useLocation();
@@ -77,7 +76,7 @@ const Settings = () => {
         <div className="mt-6">
           {path === '/settings' && <UserManagement />}
           {path === '/settings/clinics' && <ClinicManagement />}
-          {path === '/settings/insurance' && <InsuranceList />}
+          {path === '/settings/insurance' && <InsuranceSettings />}
           {path === '/settings/profile' && <ProfileSettings />}
           <Outlet />
         </div>

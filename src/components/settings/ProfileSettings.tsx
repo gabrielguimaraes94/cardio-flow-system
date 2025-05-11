@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -22,6 +21,7 @@ import {
   FormMessage
 } from '@/components/ui/form';
 import { Loader2 } from 'lucide-react';
+import { NotificationSettings } from '@/types/profile';
 
 // Schema para validação do formulário de perfil
 const profileSchema = yup.object({
@@ -120,7 +120,13 @@ export const ProfileSettings: React.FC = () => {
           
           // Atualizar preferências de notificação
           if (data.notification_preferences) {
-            setNotificationSettings(data.notification_preferences as NotificationSettings);
+            const prefs = data.notification_preferences as unknown as NotificationSettings;
+            setNotificationSettings({
+              emailNotifications: prefs.emailNotifications ?? true,
+              smsNotifications: prefs.smsNotifications ?? true,
+              appointmentReminders: prefs.appointmentReminders ?? true,
+              systemUpdates: prefs.systemUpdates ?? false
+            });
           }
         }
       } catch (error) {
@@ -136,7 +142,7 @@ export const ProfileSettings: React.FC = () => {
     };
     
     fetchProfile();
-  }, [user, toast]);
+  }, [user, toast, profileForm]);
 
   // Salvar dados do perfil
   const onProfileSubmit = async (data: ProfileFormValues) => {
@@ -220,7 +226,7 @@ export const ProfileSettings: React.FC = () => {
       const { error } = await supabase
         .from('profiles')
         .update({
-          notification_preferences: updatedSettings,
+          notification_preferences: updatedSettings as any,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
@@ -247,7 +253,7 @@ export const ProfileSettings: React.FC = () => {
       const { error } = await supabase
         .from('profiles')
         .update({
-          notification_preferences: notificationSettings,
+          notification_preferences: notificationSettings as any,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);

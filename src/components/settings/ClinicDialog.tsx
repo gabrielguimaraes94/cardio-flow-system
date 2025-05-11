@@ -16,7 +16,7 @@ import {
   FormMessage
 } from '@/components/ui/form';
 
-interface Clinic {
+export interface Clinic {
   id: string;
   name: string;
   address: string;
@@ -86,8 +86,13 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
 
   const onSubmit = (data: ClinicFormData) => {
     onSave({
-      ...data,
       id: clinic?.id || '',
+      name: data.name,
+      address: data.address,
+      city: data.city,
+      phone: data.phone,
+      email: data.email,
+      active: data.active
     });
   };
 
