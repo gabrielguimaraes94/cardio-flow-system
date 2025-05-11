@@ -1,563 +1,416 @@
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useEffect, useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Save, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import * as yup from 'yup';
-import { yupResolver } from '@hookform/resolvers/yup';
-import {
+import { supabase } from '@/integrations/supabase/client';
+import { UserProfile } from '@/types/profile';
+import { 
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
-  FormMessage
+  FormMessage,
 } from '@/components/ui/form';
-import { Loader2 } from 'lucide-react';
-import { NotificationSettings } from '@/types/profile';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-// Schema para validação do formulário de perfil
-const profileSchema = yup.object({
-  first_name: yup.string().required('Nome é obrigatório'),
-  last_name: yup.string().required('Sobrenome é obrigatório'),
-  phone: yup.string().nullable(),
-  title: yup.string().nullable(),
-  bio: yup.string().nullable(),
-  crm: yup.string().required('CRM é obrigatório')
+// Utilizando o tipo do arquivo profile.ts em vez de redefinir
+import type { NotificationSettings } from '@/types/profile';
+
+const profileFormSchema = z.object({
+  firstName: z.string().min(2, {
+    message: "Nome deve ter pelo menos 2 caracteres",
+  }),
+  lastName: z.string().min(2, {
+    message: "Sobrenome deve ter pelo menos 2 caracteres",
+  }),
+  email: z.string().email({
+    message: "Email inválido",
+  }),
+  phone: z.string().optional(),
+  crm: z.string().min(4, {
+    message: "CRM deve ter pelo menos 4 caracteres",
+  }),
+  title: z.string().optional(),
+  bio: z.string().optional(),
+  notificationPreferences: z.object({
+    emailNotifications: z.boolean().default(true),
+    smsNotifications: z.boolean().default(true),
+    appointmentReminders: z.boolean().default(true),
+    systemUpdates: z.boolean().default(false),
+  }),
 });
 
-// Schema para validação do formulário de senha
-const passwordSchema = yup.object({
-  currentPassword: yup.string().required('Senha atual é obrigatória'),
-  newPassword: yup.string()
-    .required('Nova senha é obrigatória')
-    .min(8, 'A senha deve ter pelo menos 8 caracteres'),
-  confirmPassword: yup.string()
-    .required('Confirmação de senha é obrigatória')
-    .oneOf([yup.ref('newPassword')], 'As senhas não coincidem')
-});
-
-type ProfileFormValues = yup.InferType<typeof profileSchema>;
-type PasswordFormValues = yup.InferType<typeof passwordSchema>;
-
-// Tipo para preferências de notificação
-interface NotificationSettings {
-  emailNotifications: boolean;
-  smsNotifications: boolean;
-  appointmentReminders: boolean;
-  systemUpdates: boolean;
-}
+type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 export const ProfileSettings: React.FC = () => {
-  const { toast } = useToast();
   const { user } = useAuth();
-  const [loading, setLoading] = useState<boolean>(true);
-  const [updating, setUpdating] = useState<boolean>(false);
-  const [changingPassword, setChangingPassword] = useState<boolean>(false);
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
-    emailNotifications: true,
-    smsNotifications: true,
-    appointmentReminders: true,
-    systemUpdates: false
-  });
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
-  // Formulário de perfil
-  const profileForm = useForm<ProfileFormValues>({
-    resolver: yupResolver(profileSchema),
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      first_name: '',
-      last_name: '',
-      phone: '',
-      title: '',
-      bio: '',
-      crm: ''
-    }
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      crm: "",
+      title: "",
+      bio: "",
+      notificationPreferences: {
+        emailNotifications: true,
+        smsNotifications: true,
+        appointmentReminders: true,
+        systemUpdates: false,
+      },
+    },
   });
 
-  // Formulário de senha
-  const passwordForm = useForm<PasswordFormValues>({
-    resolver: yupResolver(passwordSchema),
-    defaultValues: {
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    }
-  });
-
-  // Carregar dados do perfil do usuário
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user) return;
+    const loadProfile = async () => {
+      if (user) {
+        setIsLoading(true);
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
 
-      try {
-        setLoading(true);
-        
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        
-        if (error) throw error;
-        
-        if (data) {
-          // Atualizar formulário com dados do perfil
-          profileForm.reset({
-            first_name: data.first_name || '',
-            last_name: data.last_name || '',
-            phone: data.phone || '',
-            title: data.title || '',
-            bio: data.bio || '',
-            crm: data.crm || ''
-          });
-          
-          // Atualizar preferências de notificação
-          if (data.notification_preferences) {
-            const prefs = data.notification_preferences as unknown as NotificationSettings;
-            setNotificationSettings({
-              emailNotifications: prefs.emailNotifications ?? true,
-              smsNotifications: prefs.smsNotifications ?? true,
-              appointmentReminders: prefs.appointmentReminders ?? true,
-              systemUpdates: prefs.systemUpdates ?? false
+          if (error) {
+            throw error;
+          }
+
+          if (data) {
+            setProfile(data);
+            form.reset({
+              firstName: data.first_name || "",
+              lastName: data.last_name || "",
+              email: data.email || "",
+              phone: data.phone || "",
+              crm: data.crm || "",
+              title: data.title || "",
+              bio: data.bio || "",
+              notificationPreferences: {
+                emailNotifications: data.email_notifications !== false,
+                smsNotifications: data.sms_notifications !== false,
+                appointmentReminders: data.appointment_reminders !== false,
+                systemUpdates: data.system_updates !== false,
+              },
             });
           }
+        } catch (error: any) {
+          console.error("Error loading profile:", error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os dados do perfil",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
         }
-      } catch (error) {
-        console.error('Erro ao carregar perfil:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar os dados do perfil.",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
       }
     };
-    
-    fetchProfile();
-  }, [user, toast, profileForm]);
 
-  // Salvar dados do perfil
-  const onProfileSubmit = async (data: ProfileFormValues) => {
-    if (!user) return;
-    
+    loadProfile();
+  }, [user, form, toast]);
+
+  const onSubmit = async (values: ProfileFormValues) => {
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar logado para salvar as configurações do perfil",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      setUpdating(true);
-      
+      setIsLoading(true);
+
       const { error } = await supabase
         .from('profiles')
         .update({
-          first_name: data.first_name,
-          last_name: data.last_name,
-          phone: data.phone,
-          title: data.title,
-          bio: data.bio,
-          crm: data.crm,
-          updated_at: new Date().toISOString()
+          first_name: values.firstName,
+          last_name: values.lastName,
+          email: values.email,
+          phone: values.phone,
+          crm: values.crm,
+          title: values.title,
+          bio: values.bio,
+          email_notifications: values.notificationPreferences.emailNotifications,
+          sms_notifications: values.notificationPreferences.smsNotifications,
+          appointment_reminders: values.notificationPreferences.appointmentReminders,
+          system_updates: values.notificationPreferences.systemUpdates,
         })
         .eq('id', user.id);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Perfil atualizado",
-        description: "Suas informações foram atualizadas com sucesso."
-      });
-    } catch (error) {
-      console.error('Erro ao atualizar perfil:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar seu perfil.",
-        variant: "destructive"
-      });
-    } finally {
-      setUpdating(false);
-    }
-  };
 
-  // Alterar senha
-  const onPasswordSubmit = async (data: PasswordFormValues) => {
-    try {
-      setChangingPassword(true);
-      
-      const { error } = await supabase.auth.updateUser({
-        password: data.newPassword
-      });
-      
-      if (error) throw error;
-      
+      if (error) {
+        throw error;
+      }
+
       toast({
-        title: "Senha atualizada",
-        description: "Sua senha foi atualizada com sucesso."
-      });
-      
-      passwordForm.reset({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
+        title: "Sucesso",
+        description: "Perfil atualizado com sucesso",
       });
     } catch (error: any) {
-      console.error('Erro ao alterar senha:', error);
+      console.error("Error saving profile:", error);
       toast({
         title: "Erro",
-        description: error.message || "Não foi possível alterar sua senha.",
-        variant: "destructive"
+        description: error.message || "Não foi possível salvar o perfil",
+        variant: "destructive",
       });
     } finally {
-      setChangingPassword(false);
-    }
-  };
-
-  // Atualizar preferências de notificação
-  const handleNotificationChange = async (key: keyof NotificationSettings, value: boolean) => {
-    if (!user) return;
-    
-    const updatedSettings = { ...notificationSettings, [key]: value };
-    setNotificationSettings(updatedSettings);
-    
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          notification_preferences: updatedSettings as any,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
-      
-      if (error) throw error;
-    } catch (error) {
-      console.error('Erro ao atualizar preferências:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível salvar suas preferências.",
-        variant: "destructive"
-      });
-      
-      // Reverter alteração em caso de erro
-      setNotificationSettings({ ...notificationSettings });
-    }
-  };
-
-  // Salvar todas as preferências de notificação
-  const saveAllNotificationPreferences = async () => {
-    if (!user) return;
-    
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          notification_preferences: notificationSettings as any,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Preferências atualizadas",
-        description: "Suas preferências de notificação foram salvas."
-      });
-    } catch (error) {
-      console.error('Erro ao salvar preferências:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível salvar suas preferências.",
-        variant: "destructive"
-      });
+      setIsLoading(false);
     }
   };
 
   return (
-    <Tabs defaultValue="general">
-      <TabsList className="mb-4">
-        <TabsTrigger value="general">Informações Gerais</TabsTrigger>
-        <TabsTrigger value="password">Senha</TabsTrigger>
-        <TabsTrigger value="notifications">Notificações</TabsTrigger>
-      </TabsList>
-      
-      {loading ? (
-        <Card className="flex items-center justify-center p-8">
-          <Loader2 className="h-8 w-8 animate-spin text-cardio-500" />
-        </Card>
-      ) : (
-        <>
-          <TabsContent value="general">
-            <Card>
-              <CardHeader>
-                <CardTitle>Informações do Perfil</CardTitle>
-                <CardDescription>
-                  Atualize suas informações pessoais e profissionais.
-                </CardDescription>
-              </CardHeader>
-              <Form {...profileForm}>
-                <form onSubmit={profileForm.handleSubmit(onProfileSubmit)}>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={profileForm.control}
-                        name="first_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Nome</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Seu nome" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={profileForm.control}
-                        name="last_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Sobrenome</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Seu sobrenome" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={profileForm.control}
-                        name="phone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Telefone</FormLabel>
-                            <FormControl>
-                              <Input placeholder="(00) 00000-0000" {...field} value={field.value || ''} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={profileForm.control}
-                        name="crm"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>CRM</FormLabel>
-                            <FormControl>
-                              <Input placeholder="CRM 12345" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    
+    <Card>
+      <CardContent className="p-6">
+        <div className="space-y-6">
+          <div className="flex items-center space-x-4">
+            <Avatar className="h-12 w-12">
+              <AvatarImage src={`https://avatar.vercel.sh/${form.getValues('email')}.png`} />
+              <AvatarFallback>
+                <User className="h-6 w-6" />
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h2 className="text-lg font-medium">Meu Perfil</h2>
+              <p className="text-sm text-muted-foreground">
+                Atualize suas informações de perfil e configurações de notificação.
+              </p>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cardio-500"></div>
+            </div>
+          ) : (
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Seu nome" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sobrenome</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Seu sobrenome" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="seuemail@exemplo.com" {...field} type="email" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefone</FormLabel>
+                        <FormControl>
+                          <Input placeholder="(00) 0000-0000" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="crm"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CRM</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Número do CRM" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Título/Cargo</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Médico Cardiologista" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="bio"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bio</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Escreva uma breve descrição sobre você"
+                          className="resize-none"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div>
+                  <h3 className="text-lg font-medium">Notificações</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Gerencie suas preferências de notificação.
+                  </p>
+
+                  <div className="mt-4 space-y-4">
                     <FormField
-                      control={profileForm.control}
-                      name="title"
+                      control={form.control}
+                      name="notificationPreferences.emailNotifications"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Título/Especialidade</FormLabel>
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">Notificações por Email</FormLabel>
+                            <FormDescription>
+                              Receba notificações importantes por email.
+                            </FormDescription>
+                          </div>
                           <FormControl>
-                            <Input placeholder="Ex: Cardiologista" {...field} value={field.value || ''} />
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
                           </FormControl>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
-                      control={profileForm.control}
-                      name="bio"
+                      control={form.control}
+                      name="notificationPreferences.smsNotifications"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Biografia</FormLabel>
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">Notificações por SMS</FormLabel>
+                            <FormDescription>
+                              Receba notificações urgentes por SMS.
+                            </FormDescription>
+                          </div>
                           <FormControl>
-                            <Input placeholder="Sua biografia profissional" {...field} value={field.value || ''} />
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
                           </FormControl>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />
-                  </CardContent>
-                  <CardFooter>
-                    <Button type="submit" disabled={updating}>
-                      {updating ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Salvando...
-                        </>
-                      ) : (
-                        'Salvar Alterações'
-                      )}
-                    </Button>
-                  </CardFooter>
-                </form>
-              </Form>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="password">
-            <Card>
-              <CardHeader>
-                <CardTitle>Alterar Senha</CardTitle>
-                <CardDescription>
-                  Atualize sua senha para manter sua conta segura.
-                </CardDescription>
-              </CardHeader>
-              <Form {...passwordForm}>
-                <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)}>
-                  <CardContent className="space-y-4">
+
                     <FormField
-                      control={passwordForm.control}
-                      name="currentPassword"
+                      control={form.control}
+                      name="notificationPreferences.appointmentReminders"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Senha Atual</FormLabel>
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">Lembretes de Consulta</FormLabel>
+                            <FormDescription>
+                              Receba lembretes de suas consultas agendadas.
+                            </FormDescription>
+                          </div>
                           <FormControl>
-                            <Input type="password" placeholder="Sua senha atual" {...field} />
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
                           </FormControl>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
-                    <Separator />
-                    
+
                     <FormField
-                      control={passwordForm.control}
-                      name="newPassword"
+                      control={form.control}
+                      name="notificationPreferences.systemUpdates"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nova Senha</FormLabel>
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">Atualizações do Sistema</FormLabel>
+                            <FormDescription>
+                              Seja notificado sobre novas funcionalidades e atualizações do sistema.
+                            </FormDescription>
+                          </div>
                           <FormControl>
-                            <Input type="password" placeholder="Nova senha" {...field} />
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
                           </FormControl>
-                          <FormMessage />
                         </FormItem>
                       )}
-                    />
-                    
-                    <FormField
-                      control={passwordForm.control}
-                      name="confirmPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Confirmar Nova Senha</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="Confirme a nova senha" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                  <CardFooter>
-                    <Button type="submit" disabled={changingPassword}>
-                      {changingPassword ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Atualizando...
-                        </>
-                      ) : (
-                        'Atualizar Senha'
-                      )}
-                    </Button>
-                  </CardFooter>
-                </form>
-              </Form>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="notifications">
-            <Card>
-              <CardHeader>
-                <CardTitle>Preferências de Notificação</CardTitle>
-                <CardDescription>
-                  Configure como e quando você deseja receber notificações.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="emailNotifications">Notificações por Email</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Receba atualizações importantes por email.
-                      </p>
-                    </div>
-                    <Switch
-                      id="emailNotifications"
-                      checked={notificationSettings.emailNotifications}
-                      onCheckedChange={(checked) => handleNotificationChange('emailNotifications', checked)}
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="smsNotifications">Notificações por SMS</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Receba alertas via mensagem de texto.
-                      </p>
-                    </div>
-                    <Switch
-                      id="smsNotifications"
-                      checked={notificationSettings.smsNotifications}
-                      onCheckedChange={(checked) => handleNotificationChange('smsNotifications', checked)}
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="appointmentReminders">Lembretes de Consulta</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Receba lembretes de consultas e procedimentos agendados.
-                      </p>
-                    </div>
-                    <Switch
-                      id="appointmentReminders"
-                      checked={notificationSettings.appointmentReminders}
-                      onCheckedChange={(checked) => handleNotificationChange('appointmentReminders', checked)}
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="systemUpdates">Atualizações do Sistema</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Seja notificado sobre novas funcionalidades e atualizações.
-                      </p>
-                    </div>
-                    <Switch
-                      id="systemUpdates"
-                      checked={notificationSettings.systemUpdates}
-                      onCheckedChange={(checked) => handleNotificationChange('systemUpdates', checked)}
                     />
                   </div>
                 </div>
-              </CardContent>
-              <CardFooter>
-                <Button onClick={saveAllNotificationPreferences}>
-                  Salvar Preferências
+
+                <Button type="submit" className="bg-cardio-500 hover:bg-cardio-600">
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar Alterações
                 </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-        </>
-      )}
-    </Tabs>
+              </form>
+            </Form>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };

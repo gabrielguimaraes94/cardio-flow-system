@@ -1,230 +1,151 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { PlusCircle, Search, Building2, FileText, Settings, File } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { toast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Plus, Edit2, Building2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2 } from 'lucide-react';
-import { InsuranceCompany } from '@/types/insurance';
+import { useToast } from '@/hooks/use-toast';
+import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
+
+interface InsuranceCompany {
+  id: string;
+  company_name: string;
+  trading_name: string;
+  cnpj: string;
+  active: boolean;
+  logo_url?: string;
+  created_at: string;
+}
 
 export const InsuranceSettings: React.FC = () => {
   const [insuranceCompanies, setInsuranceCompanies] = useState<InsuranceCompany[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { selectedClinic } = useClinic();
   const { user } = useAuth();
 
   useEffect(() => {
-    const loadInsuranceCompanies = async () => {
-      try {
-        setIsLoading(true);
-        
-        if (!user) return;
+    const fetchInsuranceCompanies = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-        const { data, error } = await supabase
+      try {
+        setLoading(true);
+        
+        const query = supabase
           .from('insurance_companies')
           .select('*')
           .eq('created_by', user.id);
+          
+        if (selectedClinic) {
+          query.eq('clinic_id', selectedClinic.id);
+        }
         
-        if (error) throw error;
-
-        // Mapeamento dos dados do banco para o formato da interface
-        const mappedCompanies: InsuranceCompany[] = data.map(company => ({
-          id: company.id,
-          companyName: company.company_name,
-          tradingName: company.trading_name,
-          cnpj: company.cnpj,
-          ansRegistry: company.ans_registry,
-          address: {
-            street: company.street,
-            number: company.number,
-            complement: company.complement || undefined,
-            neighborhood: company.neighborhood,
-            city: company.city,
-            state: company.state,
-            zipCode: company.zip_code,
-          },
-          contactInfo: {
-            email: company.email,
-            phone: company.phone,
-            contactPerson: company.contact_person || undefined,
-          },
-          logoUrl: company.logo_url || undefined,
-          active: company.active,
-          createdAt: company.created_at,
-          updatedAt: company.updated_at
-        }));
+        const { data, error } = await query;
         
-        setInsuranceCompanies(mappedCompanies);
-      } catch (error) {
-        console.error("Erro ao carregar convênios:", error);
+        if (error) {
+          throw error;
+        }
+        
+        setInsuranceCompanies(data || []);
+      } catch (error: any) {
+        console.error('Erro ao buscar convênios:', error);
         toast({
-          title: "Erro",
-          description: "Não foi possível carregar os convênios. Tente novamente mais tarde.",
-          variant: "destructive",
+          title: 'Erro',
+          description: 'Não foi possível carregar os convênios',
+          variant: 'destructive',
         });
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
-
-    loadInsuranceCompanies();
-  }, [user]);
-
-  const filteredCompanies = insuranceCompanies.filter(company => 
-    company.tradingName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    company.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    company.cnpj.includes(searchTerm)
-  );
-
-  const handleNewInsurance = () => {
-    navigate('/insurance/new');
-  };
-
-  const handleEditInsurance = (id: string) => {
-    navigate(`/insurance/${id}`);
-  };
-
-  const handleViewContracts = (id: string) => {
-    navigate(`/insurance/${id}/contracts`);
-  };
-
-  const handleViewForms = (id: string) => {
-    navigate(`/insurance/${id}/forms`);
-  };
-
-  const handleViewAuditRules = (id: string) => {
-    navigate(`/insurance/${id}/audit-rules`);
-  };
+    
+    fetchInsuranceCompanies();
+  }, [user, selectedClinic, toast]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Convênios Médicos</h2>
-          <p className="text-muted-foreground">
-            Gerencie operadoras, contratos e configurações de convênios
-          </p>
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-medium">Convênios</h3>
+          <Button 
+            onClick={() => navigate('/insurance/new')}
+            className="bg-cardio-500 hover:bg-cardio-600"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Convênio
+          </Button>
         </div>
-        <Button onClick={handleNewInsurance} className="bg-cardio-500 hover:bg-cardio-600">
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Novo Convênio
-        </Button>
-      </div>
-
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center mb-6">
-            <Search className="mr-2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome, razão social ou CNPJ..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
+        
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cardio-500"></div>
           </div>
-
-          {isLoading ? (
-            <div className="flex justify-center items-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-cardio-500" />
-            </div>
-          ) : filteredCompanies.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Building2 className="h-12 w-12 text-gray-300 mb-2" />
-              <h3 className="text-lg font-medium">Nenhum convênio encontrado</h3>
-              <p className="text-muted-foreground">
-                {searchTerm ? "Tente buscar com outros termos" : "Clique em 'Novo Convênio' para adicionar"}
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[300px]">Nome / Razão Social</TableHead>
-                    <TableHead>CNPJ</TableHead>
-                    <TableHead>Registro ANS</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCompanies.map((company) => (
-                    <TableRow key={company.id}>
-                      <TableCell className="font-medium">
-                        <div>
-                          <div className="font-medium">{company.tradingName}</div>
-                          <div className="text-sm text-muted-foreground">{company.companyName}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{company.cnpj}</TableCell>
-                      <TableCell>{company.ansRegistry}</TableCell>
-                      <TableCell>
-                        {company.active ? (
-                          <Badge className="bg-green-500">Ativo</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-gray-500">Inativo</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleViewContracts(company.id)}
-                            title="Contratos"
-                            className="hidden md:inline-flex"
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleViewForms(company.id)}
-                            title="Formulários"
-                            className="hidden md:inline-flex"
-                          >
-                            <File className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleViewAuditRules(company.id)}
-                            title="Regras de Auditoria"
-                            className="hidden md:inline-flex"
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="default" 
-                            size="sm" 
-                            onClick={() => handleEditInsurance(company.id)}
-                          >
-                            Editar
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+        ) : insuranceCompanies.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12"></TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>CNPJ</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {insuranceCompanies.map((insurance) => (
+                <TableRow key={insurance.id}>
+                  <TableCell>
+                    <div className="h-10 w-10 rounded bg-gray-100 flex items-center justify-center overflow-hidden">
+                      {insurance.logo_url ? (
+                        <img src={insurance.logo_url} alt={insurance.trading_name} className="h-full w-full object-contain" />
+                      ) : (
+                        <Building2 className="h-5 w-5 text-gray-400" />
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">{insurance.trading_name}</div>
+                      <div className="text-sm text-gray-500">{insurance.company_name}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>{insurance.cnpj}</TableCell>
+                  <TableCell>
+                    <span className={`px-2 py-1 rounded-full text-xs ${insurance.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {insurance.active ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(`/insurance/${insurance.id}`)}
+                    >
+                      <Edit2 className="h-4 w-4 mr-1" />
+                      Editar
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <div className="text-center py-8">
+            <Building2 className="h-12 w-12 mx-auto text-gray-300 mb-2" />
+            <h3 className="text-lg font-medium text-gray-900 mb-1">Nenhum convênio encontrado</h3>
+            <p className="text-gray-500 mb-4">
+              Você ainda não cadastrou nenhum convênio. Clique no botão acima para adicionar seu primeiro convênio.
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };

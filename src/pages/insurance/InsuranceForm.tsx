@@ -23,7 +23,7 @@ import {
   Trash2 
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -64,7 +64,7 @@ export const InsuranceForm: React.FC = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const { user } = useAuth();
-  const { currentClinic } = useClinic();
+  const { selectedClinic } = useClinic(); // Corrigido: usamos selectedClinic em vez de currentClinic
 
   const form = useForm<InsuranceFormValues>({
     resolver: zodResolver(insuranceFormSchema),
@@ -149,7 +149,7 @@ export const InsuranceForm: React.FC = () => {
   }, [id, form, navigate, user?.id]);
 
   const onSubmit = async (values: InsuranceFormValues) => {
-    if (!user || !currentClinic) {
+    if (!user || !selectedClinic) { // Corrigido: usamos selectedClinic em vez de currentClinic
       toast({
         title: "Erro",
         description: "Você precisa estar logado e ter uma clínica selecionada para salvar um convênio",
@@ -178,7 +178,7 @@ export const InsuranceForm: React.FC = () => {
         contact_person: values.contactPerson,
         active: values.active,
         created_by: user.id,
-        clinic_id: currentClinic.id,
+        clinic_id: selectedClinic.id, // Corrigido: usamos selectedClinic em vez de currentClinic
       };
       
       let logoUrl = null;
@@ -213,7 +213,7 @@ export const InsuranceForm: React.FC = () => {
       }
       
       if (logoUrl) {
-        insuranceData.logo_url = logoUrl;
+        insuranceData.logo_url = logoUrl; // logo_url é uma propriedade válida no objeto que criamos
       }
       
       if (id && id !== 'new') {
