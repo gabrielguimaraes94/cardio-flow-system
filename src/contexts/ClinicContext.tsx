@@ -53,7 +53,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   console.log("Initial user:", user);
 
   const fetchClinics = async () => {
-    console.log("Fetching clinics for user:", user);
+    console.log("Fetching clinics for user:", user?.id);
     
     if (!user) {
       console.log("No user, clearing clinic data");
@@ -84,17 +84,25 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (data && data.length > 0) {
         setClinics(data);
         
-        // If no clinic is selected, or the selected clinic is not in the list, select the first one
-        if (!selectedClinic || !data.find(c => c.id === selectedClinic.id)) {
-          console.log("Setting initial clinic selection to:", data[0]);
-          handleSetSelectedClinic(data[0]);
+        // Verifica se já existe uma clínica selecionada no localStorage
+        const storedClinicId = localStorage.getItem('selectedClinicId');
+        console.log("Found stored clinic ID:", storedClinicId);
+        
+        // Se existir uma clínica no localStorage e ela estiver na lista, seleciona ela
+        // Caso contrário, seleciona a primeira da lista
+        if (storedClinicId && data.find(c => c.id === storedClinicId)) {
+          const matchingClinic = data.find(c => c.id === storedClinicId);
+          console.log("Using previously selected clinic:", matchingClinic);
+          handleSetSelectedClinic(matchingClinic || data[0]);
         } else {
-          console.log("Keeping existing clinic selection:", selectedClinic);
+          console.log("No matching stored clinic found, selecting first clinic:", data[0]);
+          handleSetSelectedClinic(data[0]);
         }
       } else {
         console.log("No clinics found");
         setClinics([]);
         setSelectedClinic(null);
+        localStorage.removeItem('selectedClinicId');
       }
     } catch (error) {
       console.error("Error fetching clinics:", error);
@@ -116,25 +124,6 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     console.log("User changed, fetching clinics");
     fetchClinics();
   }, [user]);
-
-  // Restore selected clinic from localStorage
-  useEffect(() => {
-    console.log("Checking localStorage for selectedClinicId");
-    const storedClinicId = localStorage.getItem('selectedClinicId');
-    console.log("Found storedClinicId:", storedClinicId);
-    
-    if (storedClinicId && clinics.length > 0) {
-      console.log("Looking for match in clinics:", clinics);
-      const clinic = clinics.find(c => c.id === storedClinicId);
-      if (clinic) {
-        console.log("Found matching clinic:", clinic);
-        setSelectedClinic(clinic);
-      } else {
-        console.log("No matching clinic found, clearing localStorage");
-        localStorage.removeItem('selectedClinicId');
-      }
-    }
-  }, [clinics]);
 
   const handleSetSelectedClinic = (clinic: Clinic | null) => {
     console.log("Setting selected clinic to:", clinic);

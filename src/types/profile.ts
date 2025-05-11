@@ -4,7 +4,7 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   email: string;
-  phone?: string;
+  phone?: string | null;
   crm: string;
   title?: string;
   bio?: string;

@@ -12,10 +12,11 @@ import { UserProfile } from '@/types/profile';
 
 export const Header: React.FC = () => {
   const { user, signOut } = useAuth();
-  const { selectedClinic } = useClinic();
+  const { selectedClinic, refetchClinics } = useClinic();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const navigate = useNavigate();
 
+  // Fetch user profile whenever user changes
   useEffect(() => {
     if (user) {
       const getProfile = async () => {
@@ -50,6 +51,13 @@ export const Header: React.FC = () => {
     }
   }, [user]);
 
+  // Refresh clinics list when component mounts
+  useEffect(() => {
+    if (user) {
+      refetchClinics();
+    }
+  }, [user]);
+
   const handleLogout = async () => {
     await signOut();
     navigate('/');
@@ -63,11 +71,11 @@ export const Header: React.FC = () => {
   }, [selectedClinic]);
 
   return (
-    <header className="w-full bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+    <header className="w-full bg-white border-b border-gray-200 px-6 py-4 flex flex-col md:flex-row items-center justify-between sticky top-0 z-10">
       <div className="flex items-center">
         <ClinicSelector />
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 mt-2 md:mt-0">
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>

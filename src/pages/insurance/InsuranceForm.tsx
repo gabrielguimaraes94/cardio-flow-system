@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { 
   Form, 
-  FormControl, 
+  FormControl,
   FormDescription, 
   FormField, 
   FormItem, 
@@ -20,7 +20,8 @@ import {
   Save, 
   Upload, 
   Building2, 
-  Trash2 
+  Trash2,
+  AlertCircle
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +31,7 @@ import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { InsuranceCompany } from '@/types/insurance';
 
 // Schema for form validation
@@ -65,14 +67,44 @@ export const InsuranceForm: React.FC = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const { user } = useAuth();
-  const { selectedClinic } = useClinic();
+  const { selectedClinic, clinics, refetchClinics } = useClinic();
   const { toast } = useToast();
+  const [hasRequiredData, setHasRequiredData] = useState(false);
+
+  // Verificar se temos os dados necessários para seguir
+  useEffect(() => {
+    const checkRequiredData = async () => {
+      if (user && selectedClinic) {
+        console.log("InsuranceForm - User and clinic available:", { 
+          user: user.id,
+          clinic: selectedClinic.id
+        });
+        setHasRequiredData(true);
+      } else {
+        console.log("InsuranceForm - Missing required data:", { 
+          user: user?.id || "Missing", 
+          clinic: selectedClinic?.id || "Missing"
+        });
+        setHasRequiredData(false);
+        
+        // Se temos usuário mas não temos clínica selecionada e há clínicas disponíveis
+        // tenta atualizar a lista de clínicas
+        if (user && !selectedClinic && clinics.length === 0) {
+          console.log("InsuranceForm - No clinics loaded, refreshing clinic data");
+          await refetchClinics();
+        }
+      }
+    };
+    
+    checkRequiredData();
+  }, [user, selectedClinic, clinics, refetchClinics]);
 
   // Debug logs to trace the user and clinic context
   useEffect(() => {
     console.log("InsuranceForm - Current user:", user);
     console.log("InsuranceForm - Selected clinic:", selectedClinic);
-  }, [user, selectedClinic]);
+    console.log("InsuranceForm - Available clinics:", clinics);
+  }, [user, selectedClinic, clinics]);
 
   const form = useForm<InsuranceFormValues>({
     resolver: zodResolver(insuranceFormSchema),
@@ -153,8 +185,10 @@ export const InsuranceForm: React.FC = () => {
       }
     };
 
-    loadInsuranceCompany();
-  }, [id, form, navigate, user?.id, toast]);
+    if (user) {
+      loadInsuranceCompany();
+    }
+  }, [id, user, form, navigate, toast]);
 
   const onSubmit = async (values: InsuranceFormValues) => {
     console.log("Submit button clicked!");
@@ -216,12 +250,14 @@ export const InsuranceForm: React.FC = () => {
         const filePath = `insurance_logos/${user.id}/${Date.now()}.${fileExt}`;
         
         try {
-          // Check if storage bucket exists, create if not
-          const { data: buckets } = await supabase.storage.listBuckets();
-          if (!buckets?.find(bucket => bucket.name === 'insurance_logos')) {
+          // Create storage bucket if it doesn't exist
+          const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('insurance_logos');
+          
+          if (bucketError && bucketError.message.includes("not found")) {
             await supabase.storage.createBucket('insurance_logos', {
               public: true,
             });
+            console.log("Created insurance_logos bucket");
           }
           
           const { error: uploadError, data: uploadData } = await supabase.storage
@@ -238,6 +274,7 @@ export const InsuranceForm: React.FC = () => {
             .getPublicUrl(filePath);
             
           logoUrl = publicUrl;
+          console.log("Logo uploaded successfully:", logoUrl);
           
           // Add logo URL to insurance data
           if (logoUrl) {
@@ -323,7 +360,24 @@ export const InsuranceForm: React.FC = () => {
           </div>
         </div>
 
-        {/* Add debug info section */}
+        {/* Alerta sobre status */}
+        {!hasRequiredData && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4 mr-2" />
+            <AlertTitle>Atenção</AlertTitle>
+            <AlertDescription>
+              {!user ? (
+                <span>Você precisa estar logado para gerenciar convênios.</span>
+              ) : !selectedClinic ? (
+                <span>Selecione uma clínica para gerenciar convênios. Use o seletor de clínicas no cabeçalho.</span>
+              ) : (
+                <span>Verificando disponibilidade do sistema...</span>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Debug info - Remova em produção */}
         <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200 mb-4">
           <h3 className="text-sm font-medium text-yellow-800">Informações de Debug</h3>
           <div className="mt-2 text-xs text-yellow-700">
@@ -332,6 +386,8 @@ export const InsuranceForm: React.FC = () => {
             <div>Status da clínica: {selectedClinic ? 'Selecionada' : 'Não selecionada'}</div>
             <div>ID da clínica: {selectedClinic?.id || 'N/A'}</div>
             <div>Nome da clínica: {selectedClinic?.name || 'N/A'}</div>
+            <div>Total de clínicas disponíveis: {clinics.length}</div>
+            <div>Clínicas disponíveis: {clinics.map(c => c.name).join(', ') || 'Nenhuma'}</div>
           </div>
         </div>
 
@@ -645,7 +701,7 @@ export const InsuranceForm: React.FC = () => {
                   type="button" 
                   variant="outline" 
                   onClick={handleCancel}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !hasRequiredData}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Cancelar
@@ -653,7 +709,7 @@ export const InsuranceForm: React.FC = () => {
                 <Button 
                   type="submit" 
                   className="bg-cardio-500 hover:bg-cardio-600"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !hasRequiredData}
                 >
                   <Save className="h-4 w-4 mr-2" />
                   {isSubmitting ? 'Salvando...' : 'Salvar Convênio'}
