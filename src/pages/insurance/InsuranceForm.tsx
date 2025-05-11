@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
@@ -30,7 +31,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
 import { InsuranceCompany } from '@/types/insurance';
-import * as yup from 'yup';
 
 // Schema for form validation
 const insuranceFormSchema = z.object({
@@ -68,10 +68,10 @@ export const InsuranceForm: React.FC = () => {
   const { selectedClinic } = useClinic();
   const { toast } = useToast();
 
-  // Debug logs to check user and clinic selection
+  // Debug logs to trace the user and clinic context
   useEffect(() => {
-    console.log("Current user:", user);
-    console.log("Selected clinic:", selectedClinic);
+    console.log("InsuranceForm - Current user:", user);
+    console.log("InsuranceForm - Selected clinic:", selectedClinic);
   }, [user, selectedClinic]);
 
   const form = useForm<InsuranceFormValues>({
@@ -157,9 +157,10 @@ export const InsuranceForm: React.FC = () => {
   }, [id, form, navigate, user?.id, toast]);
 
   const onSubmit = async (values: InsuranceFormValues) => {
-    // Double check user and selectedClinic
-    console.log("Submitting form with user:", user);
-    console.log("Submitting form with clinic:", selectedClinic);
+    console.log("Submit button clicked!");
+    console.log("Form values:", values);
+    console.log("Current user:", user);
+    console.log("Selected clinic:", selectedClinic);
     
     if (!user) {
       console.error("No user found when submitting form");
@@ -183,6 +184,8 @@ export const InsuranceForm: React.FC = () => {
     
     try {
       setIsSubmitting(true);
+      console.log("Starting submission process with user:", user.id);
+      console.log("Using clinic:", selectedClinic.id);
       
       // Insurance data object
       const insuranceData: any = {
@@ -275,7 +278,11 @@ export const InsuranceForm: React.FC = () => {
           title: "Sucesso",
           description: "Convênio criado com sucesso",
         });
-        navigate(`/insurance/${data.id}`);
+        
+        console.log("New insurance created with ID:", data?.id);
+        if (data?.id) {
+          navigate(`/insurance/${data.id}`);
+        }
       }
     } catch (error: any) {
       console.error("Error saving insurance company:", error);
@@ -301,9 +308,6 @@ export const InsuranceForm: React.FC = () => {
     navigate('/insurance');
   };
 
-  // Adicione logs para entender o state
-  console.log("Form values:", form.getValues());
-
   return (
     <Layout>
       <div className="space-y-6">
@@ -316,6 +320,18 @@ export const InsuranceForm: React.FC = () => {
             <p className="text-muted-foreground">
               {id && id !== 'new' ? 'Atualize os dados do convênio' : 'Preencha os dados para cadastrar um novo convênio'}
             </p>
+          </div>
+        </div>
+
+        {/* Add debug info section */}
+        <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200 mb-4">
+          <h3 className="text-sm font-medium text-yellow-800">Informações de Debug</h3>
+          <div className="mt-2 text-xs text-yellow-700">
+            <div>Status do usuário: {user ? 'Logado' : 'Não logado'}</div>
+            <div>ID do usuário: {user?.id || 'N/A'}</div>
+            <div>Status da clínica: {selectedClinic ? 'Selecionada' : 'Não selecionada'}</div>
+            <div>ID da clínica: {selectedClinic?.id || 'N/A'}</div>
+            <div>Nome da clínica: {selectedClinic?.name || 'N/A'}</div>
           </div>
         </div>
 

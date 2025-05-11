@@ -5,16 +5,14 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ClinicSelector } from './ClinicSelector';
 import { useAuth } from '@/contexts/AuthContext';
+import { useClinic } from '@/contexts/ClinicContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-
-interface UserProfile {
-  first_name: string;
-  last_name: string;
-}
+import { UserProfile } from '@/types/profile';
 
 export const Header: React.FC = () => {
   const { user, signOut } = useAuth();
+  const { selectedClinic } = useClinic();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const navigate = useNavigate();
 
@@ -23,12 +21,28 @@ export const Header: React.FC = () => {
       const getProfile = async () => {
         const { data, error } = await supabase
           .from('profiles')
-          .select('first_name, last_name')
+          .select('*')
           .eq('id', user.id)
           .single();
         
         if (data && !error) {
-          setProfile(data);
+          // Transform database profile to match UserProfile type
+          const userProfile: UserProfile = {
+            id: data.id,
+            firstName: data.first_name,
+            lastName: data.last_name,
+            email: data.email,
+            phone: data.phone,
+            crm: data.crm,
+            title: data.title,
+            bio: data.bio,
+            role: data.role
+          };
+          
+          setProfile(userProfile);
+          console.log("Profile loaded successfully:", userProfile);
+        } else {
+          console.error("Error loading profile:", error);
         }
       };
       
@@ -41,7 +55,12 @@ export const Header: React.FC = () => {
     navigate('/');
   };
 
-  const displayName = profile ? `${profile.first_name} ${profile.last_name}` : 'Usuário';
+  const displayName = profile ? `${profile.firstName} ${profile.lastName}` : 'Usuário';
+
+  // Debug logs to trace selected clinic
+  useEffect(() => {
+    console.log("Current selected clinic in Header:", selectedClinic);
+  }, [selectedClinic]);
 
   return (
     <header className="w-full bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">

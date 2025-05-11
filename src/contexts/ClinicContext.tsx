@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -48,8 +49,14 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { toast } = useToast();
   const { user } = useAuth();
 
+  console.log("ClinicProvider initialized");
+  console.log("Initial user:", user);
+
   const fetchClinics = async () => {
+    console.log("Fetching clinics for user:", user);
+    
     if (!user) {
+      console.log("No user, clearing clinic data");
       setClinics([]);
       setSelectedClinic(null);
       setLoading(false);
@@ -61,6 +68,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setLoading(true);
       setError(null);
       
+      console.log("Fetching clinics from database for user:", user.id);
       const { data, error } = await supabase
         .from('clinics')
         .select('*')
@@ -71,19 +79,25 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw error;
       }
 
+      console.log("Clinics fetched:", data);
+
       if (data && data.length > 0) {
         setClinics(data);
         
-        {/* If no clinic is selected, or the selected clinic is not in the list, select the first one */}
+        // If no clinic is selected, or the selected clinic is not in the list, select the first one
         if (!selectedClinic || !data.find(c => c.id === selectedClinic.id)) {
+          console.log("Setting initial clinic selection to:", data[0]);
           handleSetSelectedClinic(data[0]);
+        } else {
+          console.log("Keeping existing clinic selection:", selectedClinic);
         }
       } else {
+        console.log("No clinics found");
         setClinics([]);
         setSelectedClinic(null);
       }
     } catch (error) {
-      console.error('Error fetching clinics:', error);
+      console.error("Error fetching clinics:", error);
       setError('Erro ao carregar clínicas');
       toast({
         title: "Erro",
@@ -97,42 +111,48 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  {/* Fetch clinics when user changes */}
+  // Fetch clinics when user changes
   useEffect(() => {
+    console.log("User changed, fetching clinics");
     fetchClinics();
   }, [user]);
 
-  {/* Restore selected clinic from localStorage */}
+  // Restore selected clinic from localStorage
   useEffect(() => {
+    console.log("Checking localStorage for selectedClinicId");
     const storedClinicId = localStorage.getItem('selectedClinicId');
+    console.log("Found storedClinicId:", storedClinicId);
     
     if (storedClinicId && clinics.length > 0) {
+      console.log("Looking for match in clinics:", clinics);
       const clinic = clinics.find(c => c.id === storedClinicId);
       if (clinic) {
+        console.log("Found matching clinic:", clinic);
         setSelectedClinic(clinic);
       } else {
-        {/* If the stored clinic is not found, reset storage */}
+        console.log("No matching clinic found, clearing localStorage");
         localStorage.removeItem('selectedClinicId');
       }
     }
   }, [clinics]);
 
   const handleSetSelectedClinic = (clinic: Clinic | null) => {
+    console.log("Setting selected clinic to:", clinic);
     setSelectedClinic(clinic);
     
     if (clinic) {
-      {/* Save to localStorage with error handling */}
       try {
+        console.log("Saving clinic ID to localStorage:", clinic.id);
         localStorage.setItem('selectedClinicId', clinic.id);
         
-        {/* Dispatch a custom event that components can listen for */}
+        // Dispatch a custom event that components can listen for
         const event = new CustomEvent('clinicChanged', { detail: { clinicId: clinic.id } });
         window.dispatchEvent(event);
       } catch (error) {
         console.warn('Failed to save selected clinic to localStorage:', error);
       }
     } else {
-      {/* Remove from localStorage when clinic is null */}
+      console.log("Removing clinic ID from localStorage");
       try {
         localStorage.removeItem('selectedClinicId');
       } catch (error) {
@@ -140,6 +160,12 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     }
   };
+
+  // Debug output for current clinic state
+  useEffect(() => {
+    console.log("Current ClinicContext state - selectedClinic:", selectedClinic);
+    console.log("Current ClinicContext state - clinics:", clinics);
+  }, [selectedClinic, clinics]);
 
   return (
     <ClinicContext.Provider

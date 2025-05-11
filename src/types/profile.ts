@@ -8,5 +8,5 @@ export interface UserProfile {
   crm: string;
   title?: string;
   bio?: string;
-  role: 'admin' | 'doctor' | 'staff';
+  role: 'admin' | 'doctor' | 'staff' | 'nurse' | 'receptionist';
 }

@@ -22,7 +22,6 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import * as yup from 'yup';
 
 // Schema for form validation
 const profileFormSchema = z.object({
@@ -90,7 +89,7 @@ export const ProfileSettings: React.FC = () => {
               crm: data.crm || "",
               title: data.title || "",
               bio: data.bio || "",
-              role: data.role as 'admin' | 'doctor' | 'staff',
+              role: data.role as 'admin' | 'doctor' | 'staff' | 'nurse' | 'receptionist',
             };
 
             setProfile(userProfile);
