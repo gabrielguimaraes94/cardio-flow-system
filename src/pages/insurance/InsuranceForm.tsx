@@ -64,7 +64,8 @@ export const InsuranceForm: React.FC = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const { user } = useAuth();
-  const { selectedClinic } = useClinic(); // Corrigido: usamos selectedClinic em vez de currentClinic
+  const { selectedClinic } = useClinic();
+  const { toast } = useToast();
 
   const form = useForm<InsuranceFormValues>({
     resolver: zodResolver(insuranceFormSchema),
@@ -146,10 +147,10 @@ export const InsuranceForm: React.FC = () => {
     };
 
     loadInsuranceCompany();
-  }, [id, form, navigate, user?.id]);
+  }, [id, form, navigate, user?.id, toast]);
 
   const onSubmit = async (values: InsuranceFormValues) => {
-    if (!user || !selectedClinic) { // Corrigido: usamos selectedClinic em vez de currentClinic
+    if (!user || !selectedClinic) {
       toast({
         title: "Erro",
         description: "Você precisa estar logado e ter uma clínica selecionada para salvar um convênio",
@@ -161,7 +162,8 @@ export const InsuranceForm: React.FC = () => {
     try {
       setIsSubmitting(true);
       
-      const insuranceData = {
+      // Insurance data object
+      const insuranceData: any = {
         company_name: values.companyName,
         trading_name: values.tradingName,
         cnpj: values.cnpj,
@@ -178,7 +180,7 @@ export const InsuranceForm: React.FC = () => {
         contact_person: values.contactPerson,
         active: values.active,
         created_by: user.id,
-        clinic_id: selectedClinic.id, // Corrigido: usamos selectedClinic em vez de currentClinic
+        clinic_id: selectedClinic.id,
       };
       
       let logoUrl = null;
@@ -213,7 +215,7 @@ export const InsuranceForm: React.FC = () => {
       }
       
       if (logoUrl) {
-        insuranceData.logo_url = logoUrl; // logo_url é uma propriedade válida no objeto que criamos
+        insuranceData.logo_url = logoUrl; 
       }
       
       if (id && id !== 'new') {

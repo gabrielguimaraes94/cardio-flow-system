@@ -1,3 +1,4 @@
+
 export interface NotificationSettings {
   emailNotifications: boolean;
   smsNotifications: boolean;

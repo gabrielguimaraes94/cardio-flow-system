@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { Save, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { UserProfile } from '@/types/profile';
+import { UserProfile, NotificationSettings } from '@/types/profile';
 import { 
   Form,
   FormControl,
@@ -24,9 +25,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-// Utilizando o tipo do arquivo profile.ts em vez de redefinir
-import type { NotificationSettings } from '@/types/profile';
-
+// Schema for form validation
 const profileFormSchema = z.object({
   firstName: z.string().min(2, {
     message: "Nome deve ter pelo menos 2 caracteres",
@@ -94,8 +93,9 @@ export const ProfileSettings: React.FC = () => {
           }
 
           if (data) {
-            setProfile(data);
-            form.reset({
+            // Create a UserProfile object from the database data
+            const userProfile: UserProfile = {
+              id: data.id,
               firstName: data.first_name || "",
               lastName: data.last_name || "",
               email: data.email || "",
@@ -104,11 +104,25 @@ export const ProfileSettings: React.FC = () => {
               title: data.title || "",
               bio: data.bio || "",
               notificationPreferences: {
-                emailNotifications: data.email_notifications !== false,
-                smsNotifications: data.sms_notifications !== false,
-                appointmentReminders: data.appointment_reminders !== false,
-                systemUpdates: data.system_updates !== false,
+                emailNotifications: data.notification_preferences?.emailNotifications !== false,
+                smsNotifications: data.notification_preferences?.smsNotifications !== false,
+                appointmentReminders: data.notification_preferences?.appointmentReminders !== false,
+                systemUpdates: data.notification_preferences?.systemUpdates !== false,
               },
+              role: data.role as 'admin' | 'doctor' | 'staff',
+            };
+
+            setProfile(userProfile);
+            
+            form.reset({
+              firstName: userProfile.firstName,
+              lastName: userProfile.lastName,
+              email: userProfile.email,
+              phone: userProfile.phone || "",
+              crm: userProfile.crm,
+              title: userProfile.title || "",
+              bio: userProfile.bio || "",
+              notificationPreferences: userProfile.notificationPreferences,
             });
           }
         } catch (error: any) {
@@ -150,10 +164,12 @@ export const ProfileSettings: React.FC = () => {
           crm: values.crm,
           title: values.title,
           bio: values.bio,
-          email_notifications: values.notificationPreferences.emailNotifications,
-          sms_notifications: values.notificationPreferences.smsNotifications,
-          appointment_reminders: values.notificationPreferences.appointmentReminders,
-          system_updates: values.notificationPreferences.systemUpdates,
+          notification_preferences: {
+            emailNotifications: values.notificationPreferences.emailNotifications,
+            smsNotifications: values.notificationPreferences.smsNotifications,
+            appointmentReminders: values.notificationPreferences.appointmentReminders,
+            systemUpdates: values.notificationPreferences.systemUpdates,
+          }
         })
         .eq('id', user.id);
 
