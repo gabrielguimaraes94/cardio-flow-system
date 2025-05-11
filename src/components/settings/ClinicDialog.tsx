@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
+import type { Resolver } from 'react-hook-form';
 import {
   Form,
   FormControl,
@@ -33,7 +33,7 @@ interface ClinicDialogProps {
   clinic: Clinic | null;
 }
 
-// Define ClinicFormData with all fields marked as required to match Yup schema
+{/* Define ClinicFormData with all fields marked as required to match Yup schema */}
 type ClinicFormData = {
   name: string;
   address: string;
@@ -43,19 +43,25 @@ type ClinicFormData = {
   active: boolean;
 };
 
-// Schema de validação com yup - ensuring all fields required in ClinicFormData match
+{/* Schema validation with yup - using InferType for proper type inference */}
 const clinicSchema = yup.object({
   name: yup.string().required('Nome é obrigatório'),
   address: yup.string().required('Endereço é obrigatório'),
   city: yup.string().required('Cidade é obrigatória'),
   phone: yup.string().required('Telefone é obrigatório'),
   email: yup.string().email('Email inválido').required('Email é obrigatório'),
-  active: yup.boolean().default(true)
+  active: yup.boolean().required().default(true)
 });
+
+{/* Infer the type from the schema to ensure compatibility */}
+type InferredFormData = yup.InferType<typeof clinicSchema>;
+
+{/* Explicitly type the resolver to ensure compatibility */}
+const resolver: Resolver<ClinicFormData> = yupResolver(clinicSchema) as Resolver<ClinicFormData>;
 
 export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onSave, clinic }) => {
   const form = useForm<ClinicFormData>({
-    resolver: yupResolver(clinicSchema),
+    resolver,
     defaultValues: {
       name: '',
       address: '',
@@ -66,7 +72,7 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
     }
   });
 
-  // Reset form when clinic changes
+  {/* Reset form when clinic changes */}
   useEffect(() => {
     if (isOpen) {
       if (clinic) {
@@ -94,7 +100,7 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
   const onSubmit = (data: ClinicFormData) => {
     onSave({
       ...data,
-      id: clinic?.id || '', // O ID será gerado pelo Supabase para novas clínicas
+      id: clinic?.id || '',
     });
   };
 
