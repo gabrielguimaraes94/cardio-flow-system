@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Bell, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ClinicSelector } from './ClinicSelector';
+import { ClinicSwitcher } from './ClinicSwitcher';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -65,15 +65,10 @@ export const Header: React.FC = () => {
 
   const displayName = profile ? `${profile.firstName} ${profile.lastName}` : 'Usuário';
 
-  // Debug logs to trace selected clinic
-  useEffect(() => {
-    console.log("Current selected clinic in Header:", selectedClinic);
-  }, [selectedClinic]);
-
   return (
     <header className="w-full bg-white border-b border-gray-200 px-6 py-4 flex flex-col md:flex-row items-center justify-between sticky top-0 z-10">
       <div className="flex items-center">
-        <ClinicSelector />
+        <ClinicSwitcher />
       </div>
       <div className="flex items-center gap-4 mt-2 md:mt-0">
         <Button variant="ghost" size="icon" className="relative">

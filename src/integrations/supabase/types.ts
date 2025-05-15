@@ -9,6 +9,54 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      clinic_staff: {
+        Row: {
+          active: boolean
+          clinic_id: string
+          created_at: string
+          id: string
+          is_admin: boolean
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          clinic_id: string
+          created_at?: string
+          id?: string
+          is_admin?: boolean
+          role: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          clinic_id?: string
+          created_at?: string
+          id?: string
+          is_admin?: boolean
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_staff_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_staff_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinics: {
         Row: {
           active: boolean
@@ -493,6 +541,14 @@ export type Database = {
           _user_id: string
           _role: Database["public"]["Enums"]["user_role"]
         }
+        Returns: boolean
+      }
+      is_clinic_admin: {
+        Args: { user_uuid: string; clinic_uuid: string }
+        Returns: boolean
+      }
+      is_clinic_member: {
+        Args: { user_uuid: string; clinic_uuid: string }
         Returns: boolean
       }
     }

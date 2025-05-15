@@ -2,12 +2,9 @@
 import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserProfile } from '@/types/profile';
-import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Form,
@@ -17,6 +14,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import * as z from 'zod';
 
 interface UserDialogProps {
   isOpen: boolean;
@@ -32,7 +30,7 @@ const userSchema = z.object({
   lastName: z.string().min(1, { message: "Sobrenome é obrigatório" }),
   email: z.string().email({ message: "Email inválido" }),
   crm: z.string().min(1, { message: "CRM é obrigatório" }),
-  role: z.enum(["admin", "doctor", "nurse", "receptionist"], { 
+  role: z.enum(["admin", "doctor", "nurse", "receptionist", "staff"], { 
     required_error: "Perfil é obrigatório" 
   }),
   title: z.string().optional(),
@@ -77,15 +75,15 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
         });
       }
     }
-  }, [isOpen, user, form.reset]);
+  }, [isOpen, user, form]);
 
   const onSubmit = (data: UserFormData) => {
     onSave({
       id: user?.id || Date.now().toString(),
-      firstName: data.firstName || '',
-      lastName: data.lastName || '',
-      email: data.email || '',
-      crm: data.crm || '',
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      crm: data.crm,
       role: data.role,
       title: data.title || '',
       bio: data.bio || '',
@@ -108,7 +106,7 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
                 <FormItem>
                   <FormLabel>Nome</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nome" {...field} />
+                    <input className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" placeholder="Nome" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -122,7 +120,7 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
                 <FormItem>
                   <FormLabel>Sobrenome</FormLabel>
                   <FormControl>
-                    <Input placeholder="Sobrenome" {...field} />
+                    <input className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" placeholder="Sobrenome" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -136,7 +134,7 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="usuario@exemplo.com" {...field} />
+                    <input type="email" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" placeholder="usuario@exemplo.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -150,7 +148,7 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
                 <FormItem>
                   <FormLabel>CRM</FormLabel>
                   <FormControl>
-                    <Input placeholder="CRM" {...field} />
+                    <input className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" placeholder="CRM" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -164,7 +162,8 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
                 <FormItem>
                   <FormLabel>Telefone</FormLabel>
                   <FormControl>
-                    <Input 
+                    <input 
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" 
                       placeholder="Telefone" 
                       {...field} 
                       value={field.value || ''}
@@ -214,7 +213,7 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
                 <FormItem>
                   <FormLabel>Título</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Cardiologista" {...field} value={field.value || ''} />
+                    <input className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" placeholder="Ex: Cardiologista" {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -228,7 +227,7 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
                 <FormItem>
                   <FormLabel>Bio</FormLabel>
                   <FormControl>
-                    <Input placeholder="Breve descrição profissional" {...field} value={field.value || ''} />
+                    <input className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" placeholder="Breve descrição profissional" {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

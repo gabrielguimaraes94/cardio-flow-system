@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Pencil, Trash, Loader2, UserCheck } from 'lucide-react';
+import { Plus, Search, Pencil, Trash, Loader2, UserCheck, UserPlus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,9 +9,16 @@ import { Badge } from '@/components/ui/badge';
 import { UserDialog } from './UserDialog';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useToast } from '@/hooks/use-toast';
-import { fetchUsers } from '@/services/userService';
+import { 
+  fetchUsers, 
+  fetchClinicStaff,
+  checkUserExists,
+  addClinicStaff,
+  removeClinicStaff
+} from '@/services/userService';
 import { UserProfile } from '@/types/profile';
 import { useAuth } from '@/contexts/AuthContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 
 export const UserManagement = () => {
@@ -20,35 +27,44 @@ export const UserManagement = () => {
   const { toast } = useToast();
   
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [staffMembers, setStaffMembers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAddExistingOpen, setIsAddExistingOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchEmail, setSearchEmail] = useState('');
+  const [searchCrm, setSearchCrm] = useState('');
+  const [searchResult, setSearchResult] = useState<UserProfile | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedRole, setSelectedRole] = useState('doctor');
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // Fetch users based on selected clinic
+  // Buscar funcionários da clínica selecionada
   useEffect(() => {
-    const loadUsers = async () => {
+    const loadStaff = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        console.log('Loading users for clinic:', selectedClinic?.id);
         
-        const userData = await fetchUsers(selectedClinic?.id);
-        setUsers(userData);
-        
-        if (selectedClinic) {
-          toast({
-            title: "Clínica alterada",
-            description: `Mostrando usuários da clínica: ${selectedClinic.name}`,
-          });
+        if (!selectedClinic?.id) {
+          setStaffMembers([]);
+          setIsLoading(false);
+          return;
         }
+        
+        console.log('Loading staff for clinic:', selectedClinic?.id);
+        
+        const staffData = await fetchClinicStaff(selectedClinic.id);
+        setStaffMembers(staffData);
+        
       } catch (error) {
-        console.error('Failed to load users:', error);
-        setError('Falha ao carregar usuários');
+        console.error('Failed to load staff:', error);
+        setError('Falha ao carregar funcionários');
         toast({
           title: "Erro",
-          description: "Não foi possível carregar os usuários.",
+          description: "Não foi possível carregar os funcionários.",
           variant: "destructive",
         });
       } finally {
@@ -56,13 +72,12 @@ export const UserManagement = () => {
       }
     };
 
-    loadUsers();
+    loadStaff();
   }, [selectedClinic, toast]);
 
   // Listen for clinic change events
   useEffect(() => {
     const handleClinicChange = () => {
-      // This will trigger the useEffect above
       setSearchTerm('');
     };
 
@@ -72,9 +87,10 @@ export const UserManagement = () => {
     };
   }, []);
 
-  const filteredUsers = users.filter(user => 
-    `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredStaff = staffMembers.filter(staff => 
+    `${staff.user.firstName} ${staff.user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    staff.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    staff.user.crm.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getRoleName = (role: string): string => {
@@ -106,8 +122,91 @@ export const UserManagement = () => {
     setIsDialogOpen(true);
   };
 
-  const handleEditUser = (user: UserProfile) => {
-    setCurrentUser(user);
+  const handleAddExisting = () => {
+    setSearchEmail('');
+    setSearchCrm('');
+    setSearchResult(null);
+    setSelectedRole('doctor');
+    setIsAdmin(false);
+    setIsAddExistingOpen(true);
+  };
+
+  const handleSearchUser = async () => {
+    if (!searchEmail && !searchCrm) {
+      toast({
+        title: "Erro de validação",
+        description: "Informe email ou CRM para buscar um usuário existente.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      setIsSearching(true);
+      const existingUser = await checkUserExists(searchEmail, searchCrm);
+      setSearchResult(existingUser);
+      
+      if (!existingUser) {
+        toast({
+          title: "Usuário não encontrado",
+          description: "Nenhum usuário encontrado com esse email/CRM.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error searching user:', error);
+      toast({
+        title: "Erro",
+        description: "Falha ao buscar usuário.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleAddStaffMember = async () => {
+    if (!searchResult || !selectedClinic) return;
+    
+    try {
+      // Verificar se o usuário já está associado a esta clínica
+      const isAlreadyStaff = staffMembers.some(staff => 
+        staff.user.id === searchResult.id
+      );
+      
+      if (isAlreadyStaff) {
+        toast({
+          title: "Usuário já associado",
+          description: "Este usuário já está associado a esta clínica.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      await addClinicStaff(selectedClinic.id, searchResult.id, selectedRole, isAdmin);
+      
+      // Recarregar lista de funcionários
+      const staffData = await fetchClinicStaff(selectedClinic.id);
+      setStaffMembers(staffData);
+      
+      toast({
+        title: "Sucesso",
+        description: "Funcionário adicionado com sucesso!",
+      });
+      
+      setIsAddExistingOpen(false);
+    } catch (error) {
+      console.error('Error adding staff member:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar o funcionário.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditUser = (staffMember: any) => {
+    setCurrentUser(staffMember.user);
     setIsDialogOpen(true);
   };
 
@@ -133,31 +232,90 @@ export const UserManagement = () => {
         
         if (error) throw error;
         
-        setUsers(users.map(u => u.id === userData.id ? userData : u));
+        // Atualizar na lista local
+        setStaffMembers(staffMembers.map(staff => 
+          staff.user.id === userData.id 
+            ? { ...staff, user: userData } 
+            : staff
+        ));
+        
         toast({
           title: "Sucesso",
           description: "Usuário atualizado com sucesso!",
         });
       } else {
-        // Add new user - In a real application you would need to invite the user via email
-        console.log('Creating new user:', userData);
+        // Add new user (via auth signup) e depois associar à clínica
+        if (!selectedClinic) {
+          toast({
+            title: "Erro",
+            description: "Nenhuma clínica selecionada.",
+            variant: "destructive",
+          });
+          return;
+        }
         
-        // In a production environment, this would involve sending an invitation email
-        // For demo purposes, we'll just simulate adding the user to the database
-        const newUserId = `new-${Date.now()}`;
-        const newUser = { 
-          ...userData, 
-          id: newUserId 
-        };
+        // Verificar se o usuário já existe
+        const existingUser = await checkUserExists(userData.email, userData.crm);
         
-        // Since this is just a simulation, we're adding to local state
-        // In reality, you would use Supabase's built-in invite functionality
-        setUsers([...users, newUser]);
+        if (existingUser) {
+          toast({
+            title: "Usuário já existe",
+            description: "Um usuário com este email/CRM já existe. Use a opção 'Adicionar Existente'.",
+            variant: "destructive",
+          });
+          return;
+        }
         
-        toast({
-          title: "Sucesso",
-          description: "Convite enviado para o novo usuário!",
+        // Criar um usuário no Auth (feito geralmente pelo admin)
+        const password = Math.random().toString(36).slice(-8) + Math.random().toString(10).slice(-2).toUpperCase() + "!";
+        
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: userData.email,
+          password: password,
+          options: {
+            data: {
+              first_name: userData.firstName,
+              last_name: userData.lastName,
+            },
+          },
         });
+        
+        if (authError) throw authError;
+        
+        if (authData.user) {
+          // Atualizar perfil com os dados completos
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({
+              first_name: userData.firstName,
+              last_name: userData.lastName,
+              crm: userData.crm,
+              phone: userData.phone || null,
+              title: userData.title || '',
+              bio: userData.bio || '',
+              role: userData.role
+            })
+            .eq('id', authData.user.id);
+            
+          if (profileError) throw profileError;
+          
+          // Associar à clínica
+          await addClinicStaff(
+            selectedClinic.id, 
+            authData.user.id, 
+            userData.role, 
+            userData.role === 'admin' || userData.role === 'clinic_admin'
+          );
+          
+          // Recarregar lista de funcionários
+          const staffData = await fetchClinicStaff(selectedClinic.id);
+          setStaffMembers(staffData);
+          
+          toast({
+            title: "Sucesso",
+            description: "Novo funcionário criado e senha temporária enviada!",
+          });
+        }
       }
     } catch (error) {
       console.error('Error saving user:', error);
@@ -171,33 +329,32 @@ export const UserManagement = () => {
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    // Prevent users from deleting themselves
-    if (user && user.id === userId) {
-      toast({
-        title: "Operação não permitida",
-        description: "Você não pode excluir sua própria conta.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleRemoveStaff = async (staffId: string) => {
+    if (!user) return;
     
     try {
-      console.log('Deleting user:', userId);
+      const success = await removeClinicStaff(staffId, user.id);
       
-      // In a real application, this would delete from the database
-      // Currently we're simulating this with local state
-      setUsers(users.filter(user => user.id !== userId));
-      
-      toast({
-        title: "Sucesso",
-        description: "Usuário removido com sucesso!",
-      });
+      if (success) {
+        // Atualizar a lista local removendo o funcionário
+        setStaffMembers(staffMembers.filter(staff => staff.id !== staffId));
+        
+        toast({
+          title: "Sucesso",
+          description: "Funcionário removido com sucesso!",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Você não tem permissão para remover este funcionário.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
-      console.error('Error deleting user:', error);
+      console.error('Error removing staff:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível excluir o usuário.",
+        description: "Não foi possível remover o funcionário.",
         variant: "destructive",
       });
     }
@@ -208,17 +365,23 @@ export const UserManagement = () => {
       <CardHeader>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <CardTitle>Gestão de Usuários</CardTitle>
+            <CardTitle>Gestão de Funcionários</CardTitle>
             <CardDescription>
               {selectedClinic 
-                ? `Gerenciando usuários da clínica: ${selectedClinic.name}` 
-                : 'Gerencie os usuários do sistema e suas permissões.'}
+                ? `Gerenciando funcionários da clínica: ${selectedClinic.name}` 
+                : 'Gerencie os funcionários da clínica e suas permissões.'}
             </CardDescription>
           </div>
-          <Button onClick={handleAddUser}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Usuário
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleAddUser}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Funcionário
+            </Button>
+            <Button variant="outline" onClick={handleAddExisting}>
+              <UserPlus className="mr-2 h-4 w-4" />
+              Adicionar Existente
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -226,7 +389,7 @@ export const UserManagement = () => {
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar usuários..."
+              placeholder="Buscar funcionários..."
               className="pl-8"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -242,65 +405,71 @@ export const UserManagement = () => {
                 <TableHead className="hidden md:table-cell">Email</TableHead>
                 <TableHead className="hidden md:table-cell">CRM</TableHead>
                 <TableHead>Perfil</TableHead>
+                <TableHead>Cargo na Clínica</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10">
+                  <TableCell colSpan={6} className="text-center py-10">
                     <div className="flex justify-center items-center">
                       <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                      <span>Carregando usuários...</span>
+                      <span>Carregando funcionários...</span>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 text-red-500">
+                  <TableCell colSpan={6} className="text-center py-10 text-red-500">
                     {error}
                   </TableCell>
                 </TableRow>
-              ) : filteredUsers.length === 0 ? (
+              ) : filteredStaff.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                    Nenhum usuário encontrado
+                  <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                    {selectedClinic ? 'Nenhum funcionário encontrado' : 'Selecione uma clínica para ver seus funcionários'}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers.map((userData) => {
-                  const isCurrentUser = user && user.id === userData.id;
+                filteredStaff.map((staffMember) => {
+                  const isCurrentUser = user && user.id === staffMember.user.id;
                   
                   return (
-                    <TableRow key={userData.id}>
+                    <TableRow key={staffMember.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center">
                           {isCurrentUser && (
                             <UserCheck className="h-4 w-4 text-green-500 mr-2" />
                           )}
                           <span>
-                            {userData.firstName} {userData.lastName}
+                            {staffMember.user.firstName} {staffMember.user.lastName}
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">{userData.email}</TableCell>
-                      <TableCell className="hidden md:table-cell">{userData.crm}</TableCell>
+                      <TableCell className="hidden md:table-cell">{staffMember.user.email}</TableCell>
+                      <TableCell className="hidden md:table-cell">{staffMember.user.crm}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={getRoleColor(userData.role)}>
-                          {getRoleName(userData.role)}
+                        <Badge variant="outline" className={getRoleColor(staffMember.user.role)}>
+                          {getRoleName(staffMember.user.role)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={staffMember.isAdmin ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}>
+                          {staffMember.isAdmin ? 'Administrador' : 'Funcionário'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleEditUser(userData)}>
+                          <Button variant="ghost" size="icon" onClick={() => handleEditUser(staffMember)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            onClick={() => handleDeleteUser(userData.id)}
+                            onClick={() => handleRemoveStaff(staffMember.id)}
                             disabled={isCurrentUser}
-                            title={isCurrentUser ? "Não é possível excluir seu próprio perfil" : "Excluir usuário"}
+                            title={isCurrentUser ? "Não é possível remover seu próprio perfil" : "Remover funcionário"}
                           >
                             <Trash className={`h-4 w-4 ${isCurrentUser ? 'text-gray-300' : ''}`} />
                           </Button>
@@ -320,6 +489,104 @@ export const UserManagement = () => {
         onSave={handleSaveUser} 
         user={currentUser} 
       />
+      
+      {/* Dialog para adicionar usuário existente */}
+      <Dialog open={isAddExistingOpen} onOpenChange={setIsAddExistingOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Adicionar Funcionário Existente</DialogTitle>
+            <DialogDescription>
+              Busque um usuário existente no sistema pelo email ou CRM.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium">Email</label>
+              <Input 
+                id="email"
+                placeholder="Email do funcionário"
+                value={searchEmail}
+                onChange={(e) => setSearchEmail(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="crm" className="text-sm font-medium">CRM</label>
+              <Input 
+                id="crm"
+                placeholder="CRM do funcionário"
+                value={searchCrm}
+                onChange={(e) => setSearchCrm(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex justify-end">
+              <Button 
+                onClick={handleSearchUser} 
+                disabled={isSearching || (!searchEmail && !searchCrm)}
+              >
+                {isSearching ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Buscando...
+                  </>
+                ) : (
+                  'Buscar'
+                )}
+              </Button>
+            </div>
+            
+            {searchResult && (
+              <div className="space-y-4 border rounded-md p-4 mt-4">
+                <h4 className="font-medium">Usuário Encontrado</h4>
+                <div className="space-y-2">
+                  <p><strong>Nome:</strong> {searchResult.firstName} {searchResult.lastName}</p>
+                  <p><strong>Email:</strong> {searchResult.email}</p>
+                  <p><strong>CRM:</strong> {searchResult.crm}</p>
+                  <p><strong>Função no Sistema:</strong> {getRoleName(searchResult.role)}</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="role" className="text-sm font-medium">Cargo na Clínica</label>
+                  <select 
+                    id="role"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={selectedRole}
+                    onChange={(e) => setSelectedRole(e.target.value)}
+                  >
+                    <option value="doctor">Médico</option>
+                    <option value="nurse">Enfermeiro</option>
+                    <option value="receptionist">Recepção</option>
+                    <option value="staff">Equipe</option>
+                  </select>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id="is_admin"
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    checked={isAdmin}
+                    onChange={(e) => setIsAdmin(e.target.checked)}
+                  />
+                  <label htmlFor="is_admin" className="text-sm font-medium">Administrador da Clínica</label>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddExistingOpen(false)}>Cancelar</Button>
+            <Button 
+              onClick={handleAddStaffMember} 
+              disabled={!searchResult}
+            >
+              Adicionar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
