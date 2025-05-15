@@ -225,7 +225,7 @@ export const UserManagement = () => {
             phone: userData.phone,
             title: userData.title,
             bio: userData.bio,
-            role: userData.role as string
+            role: userData.role
           })
           .eq('id', userData.id);
         
@@ -589,3 +589,5 @@ export const UserManagement = () => {
     </Card>
   );
 };
+
+export default UserManagement;

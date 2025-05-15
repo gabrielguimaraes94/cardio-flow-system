@@ -102,8 +102,8 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
             id: clinic.id,
             name: clinic.name,
             city: clinic.city,
-            // The logo property might be undefined in the database schema
-            logo: clinic.logo || undefined,
+            // Handle the logo property safely - it might be logo_url or undefined
+            logo: clinic.logo_url || undefined,
             staffId: staffRecord?.id || '',
             is_admin: staffRecord?.is_admin || false
           };
