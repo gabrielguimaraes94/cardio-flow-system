@@ -539,6 +539,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_clinic_staff: {
+        Args: {
+          p_user_id: string
+          p_clinic_id: string
+          p_is_admin: boolean
+          p_role: string
+        }
+        Returns: boolean
+      }
+      create_clinic: {
+        Args: {
+          p_name: string
+          p_city: string
+          p_address: string
+          p_phone: string
+          p_email: string
+          p_created_by: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _user_id: string
