@@ -182,7 +182,7 @@ export const UserManagement = () => {
         return;
       }
       
-      await addClinicStaff(selectedClinic.id, searchResult.id, selectedRole, isAdmin);
+      await addClinicStaff(selectedClinic.id, searchResult.id, selectedRole as string, isAdmin);
       
       // Recarregar lista de funcionários
       const staffData = await fetchClinicStaff(selectedClinic.id);
@@ -225,7 +225,7 @@ export const UserManagement = () => {
             phone: userData.phone,
             title: userData.title,
             bio: userData.bio,
-            role: userData.role
+            role: userData.role as string
           })
           .eq('id', userData.id);
         
