@@ -1,6 +1,25 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
+// Tipos para a função registerClinic
+type AdminData = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  phone: string | null;
+  crm: string;
+  role: 'clinic_admin';
+};
+
+type ClinicData = {
+  name: string;
+  city: string;
+  address: string;
+  phone: string;
+  email: string;
+};
+
 // Verifica se um usuário é administrador global
 export const isGlobalAdmin = async (userId: string): Promise<boolean> => {
   try {
@@ -40,5 +59,80 @@ export const isClinicAdmin = async (userId: string, clinicId: string): Promise<b
   } catch (error) {
     console.error('Erro ao verificar se usuário é admin da clínica:', error);
     return false;
+  }
+};
+
+// Registra uma nova clínica e seu administrador
+export const registerClinic = async ({
+  admin,
+  clinic,
+}: {
+  admin: AdminData;
+  clinic: ClinicData;
+}): Promise<void> => {
+  try {
+    // 1. Criar o usuário administrador da clínica
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: admin.email,
+      password: admin.password,
+      options: {
+        data: {
+          first_name: admin.firstName,
+          last_name: admin.lastName,
+        },
+      },
+    });
+
+    if (authError) throw authError;
+    if (!authData.user) throw new Error('Falha ao criar usuário');
+
+    const userId = authData.user.id;
+
+    // 2. Atualizar o perfil do usuário com os dados adicionais
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        first_name: admin.firstName,
+        last_name: admin.lastName,
+        phone: admin.phone,
+        crm: admin.crm,
+        role: admin.role
+      })
+      .eq('id', userId);
+
+    if (profileError) throw profileError;
+
+    // 3. Criar a clínica
+    const { data: clinicData, error: clinicError } = await supabase
+      .from('clinics')
+      .insert({
+        name: clinic.name,
+        city: clinic.city,
+        address: clinic.address,
+        phone: clinic.phone,
+        email: clinic.email,
+        created_by: userId,
+      })
+      .select()
+      .single();
+
+    if (clinicError) throw clinicError;
+
+    // 4. Associar o usuário à clínica como administrador
+    const { error: staffError } = await supabase
+      .from('clinic_staff')
+      .insert({
+        user_id: userId,
+        clinic_id: clinicData.id,
+        is_admin: true,
+        role: 'doctor',
+      });
+
+    if (staffError) throw staffError;
+
+    console.log('Clínica e administrador registrados com sucesso');
+  } catch (error) {
+    console.error('Erro ao registrar clínica:', error);
+    throw error;
   }
 };
