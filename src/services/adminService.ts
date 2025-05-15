@@ -124,33 +124,40 @@ export const registerClinic = async ({
 
     if (profileError) throw profileError;
 
-    // 3. Criar a clínica
+    // 3. Criar a clínica usando RPC para contornar as políticas de segurança de linha (RLS)
     const { data: clinicData, error: clinicError } = await supabase
-      .from('clinics')
-      .insert({
-        name: clinic.name,
-        city: clinic.city,
-        address: clinic.address,
-        phone: clinic.phone,
-        email: clinic.email,
-        created_by: userId,
-      })
-      .select()
-      .single();
+      .rpc('create_clinic', { 
+        p_name: clinic.name,
+        p_city: clinic.city,
+        p_address: clinic.address,
+        p_phone: clinic.phone,
+        p_email: clinic.email,
+        p_created_by: userId
+      });
 
-    if (clinicError) throw clinicError;
+    if (clinicError) {
+      console.error('Erro ao criar clínica:', clinicError);
+      throw clinicError;
+    }
+
+    // Vamos verificar se a clínica foi realmente criada
+    if (!clinicData) {
+      throw new Error('A clínica não foi criada. Verifique se a função RPC está configurada corretamente.');
+    }
 
     // 4. Associar o usuário à clínica como administrador
     const { error: staffError } = await supabase
-      .from('clinic_staff')
-      .insert({
-        user_id: userId,
-        clinic_id: clinicData.id,
-        is_admin: true,
-        role: 'doctor',
+      .rpc('add_clinic_staff', {
+        p_user_id: userId,
+        p_clinic_id: clinicData.id,
+        p_is_admin: true,
+        p_role: 'doctor'
       });
 
-    if (staffError) throw staffError;
+    if (staffError) {
+      console.error('Erro ao adicionar administrador à clínica:', staffError);
+      throw staffError;
+    }
 
     console.log('Clínica e administrador registrados com sucesso');
   } catch (error) {
