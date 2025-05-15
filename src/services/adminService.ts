@@ -126,7 +126,7 @@ export const registerClinic = async ({
 
     // 3. Criar a clínica usando RPC para contornar as políticas de segurança de linha (RLS)
     const { data: clinicData, error: clinicError } = await supabase
-      .rpc('create_clinic', { 
+      .rpc<{ id: string }>('create_clinic', { 
         p_name: clinic.name,
         p_city: clinic.city,
         p_address: clinic.address,
