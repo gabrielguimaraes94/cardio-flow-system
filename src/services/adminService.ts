@@ -8,7 +8,6 @@ type AdminData = {
   email: string;
   password: string;
   phone: string | null;
-  crm: string;
   role: 'clinic_admin';
 };
 
@@ -119,7 +118,6 @@ export const registerClinic = async ({
         first_name: admin.firstName,
         last_name: admin.lastName,
         phone: admin.phone,
-        crm: admin.crm,
         role: admin.role
       })
       .eq('id', userId);

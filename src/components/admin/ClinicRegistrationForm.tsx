@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { registerClinic } from '@/services/adminService';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Schema de validação do formulário
@@ -19,8 +19,8 @@ const formSchema = z.object({
   lastName: z.string().min(1, { message: "Sobrenome é obrigatório" }),
   email: z.string().email({ message: "Email inválido" }),
   password: z.string().min(6, { message: "A senha deve ter pelo menos 6 caracteres" }),
+  confirmPassword: z.string().min(1, { message: "Confirmação de senha é obrigatória" }),
   phone: z.string().optional(),
-  crm: z.string().min(1, { message: "CRM é obrigatório" }),
   
   // Dados da clínica
   clinicName: z.string().min(1, { message: "Nome da clínica é obrigatório" }),
@@ -28,11 +28,16 @@ const formSchema = z.object({
   clinicAddress: z.string().min(1, { message: "Endereço é obrigatório" }),
   clinicPhone: z.string().min(1, { message: "Telefone é obrigatório" }),
   clinicEmail: z.string().email({ message: "Email da clínica inválido" })
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "As senhas não coincidem",
+  path: ["confirmPassword"],
 });
 
 export const ClinicRegistrationForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast } = useToast();
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -42,8 +47,8 @@ export const ClinicRegistrationForm = () => {
       lastName: "",
       email: "",
       password: "",
+      confirmPassword: "",
       phone: "",
-      crm: "",
       clinicName: "",
       clinicCity: "",
       clinicAddress: "",
@@ -64,7 +69,6 @@ export const ClinicRegistrationForm = () => {
           email: data.email,
           password: data.password,
           phone: data.phone || null,
-          crm: data.crm,
           role: 'clinic_admin'
         },
         clinic: {
@@ -95,6 +99,14 @@ export const ClinicRegistrationForm = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
   };
 
   return (
@@ -158,20 +170,6 @@ export const ClinicRegistrationForm = () => {
             
             <FormField
               control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Senha</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="******" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
               name="phone"
               render={({ field }) => (
                 <FormItem>
@@ -186,12 +184,54 @@ export const ClinicRegistrationForm = () => {
             
             <FormField
               control={form.control}
-              name="crm"
+              name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>CRM</FormLabel>
+                  <FormLabel>Senha</FormLabel>
                   <FormControl>
-                    <Input placeholder="12345/UF" {...field} />
+                    <div className="relative">
+                      <Input 
+                        type={showPassword ? "text" : "password"} 
+                        placeholder="******" 
+                        {...field} 
+                      />
+                      <button 
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        onClick={togglePasswordVisibility}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirmar Senha</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input 
+                        type={showConfirmPassword ? "text" : "password"} 
+                        placeholder="******" 
+                        {...field} 
+                      />
+                      <button 
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        onClick={toggleConfirmPasswordVisibility}
+                        tabIndex={-1}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
