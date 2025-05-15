@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Shield, LogIn } from 'lucide-react';
+import { Shield, LogIn, Loader2 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +28,7 @@ export const AdminLogin = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [checkingAdmin, setCheckingAdmin] = useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -41,19 +42,30 @@ export const AdminLogin = () => {
     // Verificar se o usuário já está logado e é um admin global
     const checkAdmin = async () => {
       if (user) {
+        setCheckingAdmin(true);
         try {
+          console.log('Verificando admin no login:', user.id);
           const isAdmin = await isGlobalAdmin(user.id);
+          console.log('Resultado verificação admin no login:', isAdmin);
+          
           if (isAdmin) {
+            toast({
+              title: "Acesso administrativo",
+              description: "Você já está logado como administrador.",
+            });
             navigate('/admin/dashboard');
+          } else {
+            setCheckingAdmin(false);
           }
         } catch (error) {
           console.error('Erro ao verificar permissões:', error);
+          setCheckingAdmin(false);
         }
       }
     };
     
     checkAdmin();
-  }, [user, navigate]);
+  }, [user, navigate, toast]);
   
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
@@ -67,6 +79,7 @@ export const AdminLogin = () => {
       }
       
       if (data?.user) {
+        setCheckingAdmin(true);
         // Verificar se o usuário é um administrador global
         const isAdmin = await isGlobalAdmin(data.user.id);
         
@@ -83,6 +96,7 @@ export const AdminLogin = () => {
             description: "Você não tem permissão para acessar esta área.",
             variant: "destructive",
           });
+          setCheckingAdmin(false);
         }
       }
     } catch (error: any) {
@@ -91,6 +105,7 @@ export const AdminLogin = () => {
         description: error.message || "Credenciais inválidas. Por favor, tente novamente.",
         variant: "destructive",
       });
+      setCheckingAdmin(false);
     }
   };
 
@@ -138,9 +153,16 @@ export const AdminLogin = () => {
                   )}
                 />
                 
-                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? (
-                    "Entrando..."
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={form.formState.isSubmitting || checkingAdmin}
+                >
+                  {form.formState.isSubmitting || checkingAdmin ? (
+                    <span className="flex items-center">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Entrando...
+                    </span>
                   ) : (
                     <>
                       <LogIn className="mr-2 h-4 w-4" />

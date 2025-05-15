@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,11 +8,13 @@ import { ClinicRegistrationForm } from '@/components/admin/ClinicRegistrationFor
 import { useAuth } from '@/contexts/AuthContext';
 import { isGlobalAdmin } from '@/services/adminService';
 import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 export const AdminDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
     // Verificar se o usuário está autenticado e é um admin global
@@ -23,7 +25,10 @@ export const AdminDashboard = () => {
       }
       
       try {
+        console.log('Verificando admin no dashboard:', user.id);
         const isAdmin = await isGlobalAdmin(user.id);
+        console.log('Resultado verificação admin:', isAdmin);
+        
         if (!isAdmin) {
           toast({
             title: "Acesso negado",
@@ -31,15 +36,33 @@ export const AdminDashboard = () => {
             variant: "destructive",
           });
           navigate('/');
+        } else {
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('Erro ao verificar permissões:', error);
+        toast({
+          title: "Erro ao verificar permissões",
+          description: "Ocorreu um erro ao verificar suas permissões. Tente novamente mais tarde.",
+          variant: "destructive",
+        });
         navigate('/admin/login');
       }
     };
     
     checkAdmin();
   }, [user, navigate, toast]);
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex justify-center items-center h-[50vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Verificando permissões...</span>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
