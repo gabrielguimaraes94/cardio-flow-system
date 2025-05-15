@@ -102,7 +102,7 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
             id: clinic.id,
             name: clinic.name,
             city: clinic.city,
-            logo: clinic.logo,
+            logo: clinic.logo || undefined,
             staffId: staffRecord?.id || '',
             is_admin: staffRecord?.is_admin || false
           };

@@ -30,7 +30,7 @@ const userSchema = z.object({
   lastName: z.string().min(1, { message: "Sobrenome é obrigatório" }),
   email: z.string().email({ message: "Email inválido" }),
   crm: z.string().min(1, { message: "CRM é obrigatório" }),
-  role: z.enum(["admin", "doctor", "nurse", "receptionist", "staff"], { 
+  role: z.enum(["admin", "clinic_admin", "doctor", "nurse", "receptionist", "staff"], { 
     required_error: "Perfil é obrigatório" 
   }),
   title: z.string().optional(),
@@ -194,6 +194,7 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
                     <SelectContent>
                       <SelectGroup>
                         <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="clinic_admin">Admin. Clínica</SelectItem>
                         <SelectItem value="doctor">Médico</SelectItem>
                         <SelectItem value="nurse">Enfermeiro</SelectItem>
                         <SelectItem value="receptionist">Recepção</SelectItem>
