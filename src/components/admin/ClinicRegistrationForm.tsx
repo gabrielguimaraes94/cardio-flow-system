@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { registerClinic } from '@/services/adminService';
+import { AlertCircle, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Schema de validação do formulário
 const formSchema = z.object({
@@ -30,6 +32,7 @@ const formSchema = z.object({
 
 export const ClinicRegistrationForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -52,6 +55,7 @@ export const ClinicRegistrationForm = () => {
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     try {
       setIsSubmitting(true);
+      setError(null);
       
       await registerClinic({
         admin: {
@@ -81,6 +85,8 @@ export const ClinicRegistrationForm = () => {
       form.reset();
       
     } catch (error: any) {
+      setError(error.message || "Ocorreu um erro ao cadastrar a clínica e seu administrador.");
+      
       toast({
         title: "Erro ao registrar clínica",
         description: error.message || "Ocorreu um erro ao cadastrar a clínica e seu administrador.",
@@ -94,6 +100,13 @@ export const ClinicRegistrationForm = () => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        
         <div>
           <h3 className="text-lg font-medium">Dados do Administrador</h3>
           <p className="text-sm text-muted-foreground mb-4">
@@ -274,7 +287,12 @@ export const ClinicRegistrationForm = () => {
             size="lg" 
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Registrando..." : "Registrar Clínica"}
+            {isSubmitting ? (
+              <span className="flex items-center">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Registrando...
+              </span>
+            ) : "Registrar Clínica"}
           </Button>
         </div>
       </form>

@@ -71,22 +71,46 @@ export const registerClinic = async ({
   clinic: ClinicData;
 }): Promise<void> => {
   try {
-    // 1. Criar o usuário administrador da clínica
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: admin.email,
-      password: admin.password,
-      options: {
-        data: {
-          first_name: admin.firstName,
-          last_name: admin.lastName,
+    // 1. Primeiro verificamos se o usuário já existe para evitar o erro de limite de taxa
+    const { data: existingUser } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('email', admin.email)
+      .maybeSingle();
+    
+    let userId: string;
+    
+    if (existingUser) {
+      // Se o usuário já existe, usamos seu ID
+      console.log('Usuário já existe, usando ID existente:', existingUser.id);
+      userId = existingUser.id;
+    } else {
+      // Caso contrário, criamos um novo usuário
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: admin.email,
+        password: admin.password,
+        options: {
+          data: {
+            first_name: admin.firstName,
+            last_name: admin.lastName,
+          },
         },
-      },
-    });
+      });
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error('Falha ao criar usuário');
-
-    const userId = authData.user.id;
+      if (authError) {
+        // Se o erro for de limite de taxa, exibimos uma mensagem mais amigável
+        if (authError.status === 429) {
+          throw new Error('Limite de cadastros excedido. Por favor, aguarde alguns segundos antes de tentar novamente.');
+        }
+        throw authError;
+      }
+      
+      if (!authData.user) throw new Error('Falha ao criar usuário');
+      userId = authData.user.id;
+      
+      // Aguardamos um momento para garantir que o perfil foi criado pelo trigger
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
 
     // 2. Atualizar o perfil do usuário com os dados adicionais
     const { error: profileError } = await supabase
