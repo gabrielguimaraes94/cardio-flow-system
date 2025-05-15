@@ -25,6 +25,8 @@ import Schedule from "./pages/Schedule";
 import Settings from "./pages/Settings";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ClinicProvider } from "./contexts/ClinicContext";
+import { AdminLogin } from "./pages/admin/AdminLogin";
+import { AdminDashboard } from "./pages/admin/AdminDashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,7 +37,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// Componente de proteção de rotas
+// Componente de proteção de rotas para usuários normais
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   
@@ -46,6 +48,18 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   return user ? <>{children}</> : <Navigate to="/" />;
 };
 
+// Componente de proteção para rotas de administração global
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+  }
+  
+  // O AdminDashboard já verifica se o usuário é um admin global
+  return user ? <>{children}</> : <Navigate to="/admin/login" />;
+};
+
 const AppRoutes = () => {
   const { user } = useAuth();
   
@@ -53,7 +67,11 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/" element={user ? <Navigate to="/dashboard" /> : <LoginForm />} />
       
-      {/* Rotas protegidas */}
+      {/* Rotas de Administração Global */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+      
+      {/* Rotas protegidas da aplicação normal */}
       <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
       <Route path="/patients" element={<PrivateRoute><PatientList /></PrivateRoute>} />
       <Route path="/patients/new" element={<PrivateRoute><PatientForm /></PrivateRoute>} />

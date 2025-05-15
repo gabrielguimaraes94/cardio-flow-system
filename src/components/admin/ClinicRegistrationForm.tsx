@@ -1,0 +1,283 @@
+
+import React, { useState } from 'react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { registerClinic } from '@/services/adminService';
+
+// Schema de validação do formulário
+const formSchema = z.object({
+  // Dados do administrador da clínica
+  firstName: z.string().min(1, { message: "Nome é obrigatório" }),
+  lastName: z.string().min(1, { message: "Sobrenome é obrigatório" }),
+  email: z.string().email({ message: "Email inválido" }),
+  password: z.string().min(6, { message: "A senha deve ter pelo menos 6 caracteres" }),
+  phone: z.string().optional(),
+  crm: z.string().min(1, { message: "CRM é obrigatório" }),
+  
+  // Dados da clínica
+  clinicName: z.string().min(1, { message: "Nome da clínica é obrigatório" }),
+  clinicCity: z.string().min(1, { message: "Cidade é obrigatória" }),
+  clinicAddress: z.string().min(1, { message: "Endereço é obrigatório" }),
+  clinicPhone: z.string().min(1, { message: "Telefone é obrigatório" }),
+  clinicEmail: z.string().email({ message: "Email da clínica inválido" })
+});
+
+export const ClinicRegistrationForm = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      phone: "",
+      crm: "",
+      clinicName: "",
+      clinicCity: "",
+      clinicAddress: "",
+      clinicPhone: "",
+      clinicEmail: ""
+    }
+  });
+  
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
+    try {
+      setIsSubmitting(true);
+      
+      await registerClinic({
+        admin: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          password: data.password,
+          phone: data.phone || null,
+          crm: data.crm,
+          role: 'clinic_admin'
+        },
+        clinic: {
+          name: data.clinicName,
+          city: data.clinicCity,
+          address: data.clinicAddress,
+          phone: data.clinicPhone,
+          email: data.clinicEmail
+        }
+      });
+      
+      toast({
+        title: "Clínica registrada com sucesso",
+        description: `A clínica ${data.clinicName} e seu administrador foram cadastrados.`
+      });
+      
+      // Limpar o formulário
+      form.reset();
+      
+    } catch (error: any) {
+      toast({
+        title: "Erro ao registrar clínica",
+        description: error.message || "Ocorreu um erro ao cadastrar a clínica e seu administrador.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <div>
+          <h3 className="text-lg font-medium">Dados do Administrador</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Informações do administrador que terá acesso à clínica
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="firstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nome" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="lastName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sobrenome</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Sobrenome" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="email@exemplo.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Senha</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="******" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefone</FormLabel>
+                  <FormControl>
+                    <Input placeholder="(00) 00000-0000" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="crm"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>CRM</FormLabel>
+                  <FormControl>
+                    <Input placeholder="12345/UF" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+        
+        <Separator />
+        
+        <div>
+          <h3 className="text-lg font-medium">Dados da Clínica</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Informações da clínica a ser cadastrada no sistema
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="clinicName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome da Clínica</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nome da Clínica" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="clinicCity"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cidade</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Cidade" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="clinicAddress"
+              render={({ field }) => (
+                <FormItem className="col-span-1 md:col-span-2">
+                  <FormLabel>Endereço</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Endereço completo" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="clinicPhone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefone da Clínica</FormLabel>
+                  <FormControl>
+                    <Input placeholder="(00) 0000-0000" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="clinicEmail"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email da Clínica</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="clinica@exemplo.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+        
+        <div className="flex justify-end">
+          <Button 
+            type="submit" 
+            size="lg" 
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Registrando..." : "Registrar Clínica"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+};
