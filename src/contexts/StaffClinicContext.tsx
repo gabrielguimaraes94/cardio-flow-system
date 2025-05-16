@@ -76,7 +76,7 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
         _role: 'admin'
       });
 
-      let clinicsData = [];
+      let clinicsList = [];
       
       if (isAdmin) {
         // Global admins can see all clinics
@@ -88,7 +88,7 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (clinicsError) throw clinicsError;
         
         // Format data for global admin - they're admin for all clinics
-        clinicsData = allClinics.map(clinic => ({
+        clinicsList = allClinics.map(clinic => ({
           id: clinic.id,
           name: clinic.name,
           city: clinic.city,
@@ -120,7 +120,7 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
           if (clinicsError) throw clinicsError;
 
           // Combine staff and clinic data
-          clinicsData = clinicsData.map(clinic => {
+          clinicsList = clinicsData.map(clinic => {
             const staffRecord = staffData.find(staff => staff.clinic_id === clinic.id);
             return {
               id: clinic.id,
@@ -134,14 +134,14 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
       }
 
-      setUserClinics(clinicsData);
+      setUserClinics(clinicsList);
       
       // Auto-select clinic logic:
       // 1. If only one clinic is available, select it automatically
       // 2. Otherwise, try to restore previous selection from localStorage
-      if (clinicsData.length === 1) {
+      if (clinicsList.length === 1) {
         // Auto-select the only clinic
-        const onlyClinic = clinicsData[0];
+        const onlyClinic = clinicsList[0];
         setSelectedClinic({
           id: onlyClinic.id,
           name: onlyClinic.name,
@@ -156,10 +156,10 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
           title: "Clínica selecionada",
           description: `${onlyClinic.name} foi automaticamente selecionada.`,
         });
-      } else if (clinicsData.length > 1) {
+      } else if (clinicsList.length > 1) {
         // Try to restore previous selection
         const storedClinicId = localStorage.getItem('selectedClinicId');
-        const defaultClinic = clinicsData.find(c => c.id === storedClinicId) || clinicsData[0];
+        const defaultClinic = clinicsList.find(c => c.id === storedClinicId) || clinicsList[0];
         
         setSelectedClinic({
           id: defaultClinic.id,
