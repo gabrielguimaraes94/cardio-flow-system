@@ -11,18 +11,24 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 export const AdminDashboard = () => {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [adminChecked, setAdminChecked] = useState(false);
   
   useEffect(() => {
     // Verificar se o usuário está autenticado e é um admin global
     const checkAdmin = async () => {
+      if (authLoading) return;
+      
       if (!user) {
+        console.log("AdminDashboard: No user, redirecting to login");
         navigate('/admin/login');
         return;
       }
+      
+      if (adminChecked) return;
       
       try {
         console.log('Verificando admin no dashboard:', user.id);
@@ -39,6 +45,7 @@ export const AdminDashboard = () => {
         } else {
           setIsLoading(false);
         }
+        setAdminChecked(true);
       } catch (error) {
         console.error('Erro ao verificar permissões:', error);
         toast({
@@ -51,9 +58,9 @@ export const AdminDashboard = () => {
     };
     
     checkAdmin();
-  }, [user, navigate, toast]);
+  }, [user, authLoading, navigate, toast, adminChecked]);
 
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <AdminLayout>
         <div className="flex justify-center items-center h-[50vh]">

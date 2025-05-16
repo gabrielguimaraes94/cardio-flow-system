@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Shield, LogIn, Loader2 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -29,6 +29,7 @@ export const AdminLogin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [checkingAdmin, setCheckingAdmin] = useState(false);
+  const [adminChecked, setAdminChecked] = useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -41,7 +42,7 @@ export const AdminLogin = () => {
   useEffect(() => {
     // Verificar se o usuário já está logado e é um admin global
     const checkAdmin = async () => {
-      if (user) {
+      if (user && !adminChecked) {
         setCheckingAdmin(true);
         try {
           console.log('Verificando admin no login:', user.id);
@@ -57,15 +58,17 @@ export const AdminLogin = () => {
           } else {
             setCheckingAdmin(false);
           }
+          setAdminChecked(true);
         } catch (error) {
           console.error('Erro ao verificar permissões:', error);
           setCheckingAdmin(false);
+          setAdminChecked(true);
         }
       }
     };
     
     checkAdmin();
-  }, [user, navigate, toast]);
+  }, [user, navigate, toast, adminChecked]);
   
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {

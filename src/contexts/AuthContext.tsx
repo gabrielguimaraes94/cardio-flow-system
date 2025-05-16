@@ -18,46 +18,80 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const [authChangeProcessed, setAuthChangeProcessed] = useState(false);
 
   useEffect(() => {
-    // Configurar listener de mudança de estado de autenticação
-    // A inscrição deve ocorrer antes de verificar a sessão atual
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
-        console.log('Auth state changed:', event);
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        setIsLoading(false);
+    console.log('AuthProvider effect running');
+    let mounted = true;
+
+    // Verificar se já existe uma sessão ativa primeiro
+    const checkSession = async () => {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        console.log('Current session check:', currentSession ? 'Exists' : 'None');
         
-        if (event === 'SIGNED_IN') {
-          toast({
-            title: "Login bem-sucedido",
-            description: "Bem-vindo de volta!",
-          });
-        } else if (event === 'SIGNED_OUT') {
-          toast({
-            title: "Desconectado",
-            description: "Você foi desconectado com sucesso.",
-          });
+        if (mounted) {
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
+          // Mantemos isLoading como true até que o listener seja configurado
+        }
+      } catch (error) {
+        console.error('Error checking session:', error);
+        if (mounted) {
+          setIsLoading(false);
         }
       }
-    );
+    };
 
-    // Verificar se já existe uma sessão ativa
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      console.log('Current session:', currentSession ? 'Exists' : 'None');
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      setIsLoading(false);
-    });
+    // Configurar listener de mudança de estado de autenticação
+    const setupAuthListener = () => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        (event, currentSession) => {
+          console.log('Auth state changed:', event);
+          if (!mounted) return;
+          
+          if (currentSession !== session) {
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
+          }
+          
+          if (!authChangeProcessed) {
+            setAuthChangeProcessed(true);
+          }
+          
+          setIsLoading(false);
+          
+          if (event === 'SIGNED_IN') {
+            toast({
+              title: "Login bem-sucedido",
+              description: "Bem-vindo de volta!",
+            });
+          } else if (event === 'SIGNED_OUT') {
+            toast({
+              title: "Desconectado",
+              description: "Você foi desconectado com sucesso.",
+            });
+          }
+        }
+      );
+
+      return subscription;
+    };
+
+    // Execute verificação de sessão e configuração do listener
+    checkSession();
+    const subscription = setupAuthListener();
+    setIsLoading(false);
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
-  }, [toast]);
+  }, [toast, authChangeProcessed]);
 
   const signOut = async () => {
     console.log('Signing out...');
+    setIsLoading(true);
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
@@ -70,6 +104,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.error('Exception during signOut:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
