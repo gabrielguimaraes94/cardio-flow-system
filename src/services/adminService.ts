@@ -25,6 +25,24 @@ type CreateClinicResponse = {
   id: string;
 };
 
+// Parâmetros para a função create_clinic
+type CreateClinicParams = {
+  p_name: string;
+  p_city: string;
+  p_address: string;
+  p_phone: string;
+  p_email: string;
+  p_created_by: string;
+}
+
+// Parâmetros para a função add_clinic_staff
+type AddClinicStaffParams = {
+  p_user_id: string;
+  p_clinic_id: string;
+  p_is_admin: boolean;
+  p_role: string;
+}
+
 // Verifica se um usuário é administrador global
 export const isGlobalAdmin = async (userId: string): Promise<boolean> => {
   try {
@@ -56,7 +74,7 @@ export const isGlobalAdmin = async (userId: string): Promise<boolean> => {
 export const isClinicAdmin = async (userId: string, clinicId: string): Promise<boolean> => {
   try {
     const { data, error } = await supabase
-      .rpc('is_clinic_admin', { user_uuid: userId, clinic_uuid: clinicId });
+      .rpc<boolean, { user_uuid: string; clinic_uuid: string }>('is_clinic_admin', { user_uuid: userId, clinic_uuid: clinicId });
     
     if (error) throw error;
     
@@ -132,7 +150,7 @@ export const registerClinic = async ({
 
     // 3. Criar a clínica usando RPC para contornar as políticas de segurança de linha (RLS)
     const { data: clinicData, error: clinicError } = await supabase
-      .rpc<CreateClinicResponse>('create_clinic', { 
+      .rpc<CreateClinicResponse, CreateClinicParams>('create_clinic', { 
         p_name: clinic.name,
         p_city: clinic.city,
         p_address: clinic.address,
@@ -153,7 +171,7 @@ export const registerClinic = async ({
 
     // Como o retorno é do tipo Json, precisamos garantir que clinicData contenha um objeto com a propriedade id
     const clinicId = typeof clinicData === 'object' && clinicData !== null && 'id' in clinicData 
-      ? clinicData.id 
+      ? (clinicData as { id: string }).id 
       : null;
 
     if (!clinicId) {
@@ -162,7 +180,7 @@ export const registerClinic = async ({
 
     // 4. Associar o usuário à clínica como administrador
     const { error: staffError } = await supabase
-      .rpc('add_clinic_staff', {
+      .rpc<boolean, AddClinicStaffParams>('add_clinic_staff', {
         p_user_id: userId,
         p_clinic_id: clinicId,
         p_is_admin: true,
