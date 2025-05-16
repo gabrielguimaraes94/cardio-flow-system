@@ -21,13 +21,16 @@ const formSchema = z.object({
   password: z.string().min(6, { message: "A senha deve ter pelo menos 6 caracteres" }),
   confirmPassword: z.string().min(1, { message: "Confirmação de senha é obrigatória" }),
   phone: z.string().optional(),
+  crm: z.string().optional(), // Make CRM optional for clinic admins
   
   // Dados da clínica
   clinicName: z.string().min(1, { message: "Nome da clínica é obrigatório" }),
   clinicCity: z.string().min(1, { message: "Cidade é obrigatória" }),
   clinicAddress: z.string().min(1, { message: "Endereço é obrigatório" }),
   clinicPhone: z.string().min(1, { message: "Telefone é obrigatório" }),
-  clinicEmail: z.string().email({ message: "Email da clínica inválido" })
+  clinicEmail: z.string().email({ message: "Email da clínica inválido" }),
+  clinicTradingName: z.string().min(1, { message: "Nome fantasia é obrigatório" }),
+  clinicCnpj: z.string().min(1, { message: "CNPJ é obrigatório" })
 }).refine((data) => data.password === data.confirmPassword, {
   message: "As senhas não coincidem",
   path: ["confirmPassword"],
@@ -53,11 +56,14 @@ export const ClinicRegistrationForm = ({ onSuccess }: ClinicRegistrationFormProp
       password: "",
       confirmPassword: "",
       phone: "",
+      crm: "",
       clinicName: "",
       clinicCity: "",
       clinicAddress: "",
       clinicPhone: "",
-      clinicEmail: ""
+      clinicEmail: "",
+      clinicTradingName: "",
+      clinicCnpj: ""
     }
   });
   
@@ -72,13 +78,16 @@ export const ClinicRegistrationForm = ({ onSuccess }: ClinicRegistrationFormProp
           lastName: data.lastName,
           email: data.email,
           phone: data.phone || null,
+          crm: data.crm || '',
         },
         clinic: {
           name: data.clinicName,
           city: data.clinicCity,
           address: data.clinicAddress,
           phone: data.clinicPhone,
-          email: data.clinicEmail
+          email: data.clinicEmail,
+          tradingName: data.clinicTradingName,
+          cnpj: data.clinicCnpj
         }
       });
       
@@ -89,14 +98,17 @@ export const ClinicRegistrationForm = ({ onSuccess }: ClinicRegistrationFormProp
           email: data.email,
           password: data.password,
           phone: data.phone || null,
-          role: 'clinic_admin'
+          role: 'clinic_admin',
+          crm: data.crm || ''
         },
         clinic: {
           name: data.clinicName,
           city: data.clinicCity,
           address: data.clinicAddress,
           phone: data.clinicPhone,
-          email: data.clinicEmail
+          email: data.clinicEmail,
+          tradingName: data.clinicTradingName,
+          cnpj: data.clinicCnpj
         }
       });
       
@@ -207,6 +219,23 @@ export const ClinicRegistrationForm = ({ onSuccess }: ClinicRegistrationFormProp
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="crm"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>CRM (opcional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="CRM do administrador" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                  <FormDescription>
+                    CRM é opcional para administradores de clínica
+                  </FormDescription>
+                </FormItem>
+              )}
+            />
             
             <FormField
               control={form.control}
@@ -280,9 +309,37 @@ export const ClinicRegistrationForm = ({ onSuccess }: ClinicRegistrationFormProp
               name="clinicName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome da Clínica</FormLabel>
+                  <FormLabel>Razão Social</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nome da Clínica" {...field} />
+                    <Input placeholder="Razão Social" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="clinicTradingName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome Fantasia</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nome Fantasia" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="clinicCnpj"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>CNPJ</FormLabel>
+                  <FormControl>
+                    <Input placeholder="00.000.000/0000-00" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

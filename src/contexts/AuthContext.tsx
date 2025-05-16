@@ -19,6 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [authChangeProcessed, setAuthChangeProcessed] = useState(false);
+  const [eventProcessing, setEventProcessing] = useState(false); // Flag to prevent multiple event processing
 
   useEffect(() => {
     console.log('AuthProvider effect running');
@@ -28,44 +29,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
         console.log('Auth state changed:', event);
-        if (!mounted) return;
+        if (!mounted || eventProcessing) return;
         
-        // Handle different authentication events
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (mounted) {
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
-          }
-          
-          if (event === 'SIGNED_IN') {
+        // Set flag to prevent re-entrancy
+        setEventProcessing(true);
+        
+        try {
+          // Handle different authentication events
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            if (mounted) {
+              setSession(currentSession);
+              setUser(currentSession?.user ?? null);
+            }
+            
+            if (event === 'SIGNED_IN') {
+              toast({
+                title: "Login bem-sucedido",
+                description: "Bem-vindo de volta!",
+              });
+            }
+          } else if (event === 'SIGNED_OUT') {
+            if (mounted) {
+              setSession(null);
+              setUser(null);
+            }
+            
             toast({
-              title: "Login bem-sucedido",
-              description: "Bem-vindo de volta!",
+              title: "Desconectado",
+              description: "Você foi desconectado com sucesso.",
             });
-          }
-        } else if (event === 'SIGNED_OUT') {
-          if (mounted) {
-            setSession(null);
-            setUser(null);
+          } else if (event === 'USER_UPDATED') {
+            if (mounted) {
+              setSession(currentSession);
+              setUser(currentSession?.user ?? null);
+            }
           }
           
-          toast({
-            title: "Desconectado",
-            description: "Você foi desconectado com sucesso.",
-          });
-        } else if (event === 'USER_UPDATED') {
-          if (mounted) {
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
+          if (!authChangeProcessed && mounted) {
+            setAuthChangeProcessed(true);
           }
-        }
-        
-        if (!authChangeProcessed && mounted) {
-          setAuthChangeProcessed(true);
-        }
-        
-        if (mounted) {
-          setIsLoading(false);
+          
+          if (mounted) {
+            setIsLoading(false);
+          }
+        } finally {
+          // Reset the flag
+          if (mounted) {
+            setTimeout(() => setEventProcessing(false), 0);
+          }
         }
       }
     );

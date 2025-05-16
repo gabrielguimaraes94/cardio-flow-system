@@ -52,6 +52,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleForm }) => {
           data: {
             first_name: data.firstName,
             last_name: data.lastName,
+            crm: data.crm || '',
           },
         },
       });
@@ -60,6 +61,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleForm }) => {
 
       if (authData.user) {
         // 2. Atualizar o perfil com os dados adicionais
+        // O trigger handle_new_user já criou o perfil, então apenas atualizamos
         const { error: updateError } = await supabase
           .from('profiles')
           .update({
@@ -67,7 +69,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleForm }) => {
             last_name: data.lastName,
             crm: data.crm,
             phone: data.phone || null,
-            role: 'admin',
+            role: 'doctor', // Garantir que o papel é doctor para registros regulares
           })
           .eq('id', authData.user.id);
 

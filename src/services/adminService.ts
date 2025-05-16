@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { UserProfile } from '@/types/profile';
@@ -11,6 +10,7 @@ type AdminData = {
   password: string;
   phone: string | null;
   role: 'clinic_admin';
+  crm?: string; // Make crm optional
 };
 
 type ClinicData = {
@@ -19,6 +19,8 @@ type ClinicData = {
   address: string;
   phone: string;
   email: string;
+  tradingName?: string; // New field for trading name
+  cnpj?: string; // New field for CNPJ
 };
 
 // Interface para o retorno da função create_clinic
@@ -34,6 +36,8 @@ type CreateClinicParams = {
   p_phone: string;
   p_email: string;
   p_created_by: string;
+  p_trading_name?: string; // New field for trading name
+  p_cnpj?: string; // New field for CNPJ
 }
 
 // Parâmetros para a função add_clinic_staff
@@ -234,7 +238,7 @@ export const registerClinic = async ({
           data: {
             first_name: admin.firstName,
             last_name: admin.lastName,
-            crm: admin.crm || '',  // Garantindo que o CRM seja enviado
+            crm: admin.crm || '', // Use crm if provided or empty string
           },
         },
       });
@@ -260,23 +264,25 @@ export const registerClinic = async ({
       .update({
         first_name: admin.firstName,
         last_name: admin.lastName,
-        crm: admin.crm || '',  // Garantindo que o CRM seja enviado
+        crm: admin.crm || '', // Use crm if provided or empty string
         phone: admin.phone,
-        role: admin.role
+        role: admin.role // Ensure admin.role is 'clinic_admin'
       })
       .eq('id', userId);
 
     if (profileError) throw profileError;
 
-    // 3. Criar a clínica usando RPC
+    // 3. Criar a clínica usando RPC com os novos campos
     const { data: clinicData, error: clinicError } = await supabase
-      .rpc<CreateClinicResponse>('create_clinic', { 
+      .rpc<CreateClinicResponse, CreateClinicParams>('create_clinic', { 
         p_name: clinic.name,
         p_city: clinic.city,
         p_address: clinic.address,
         p_phone: clinic.phone,
         p_email: clinic.email,
-        p_created_by: userId
+        p_created_by: userId,
+        p_trading_name: clinic.tradingName, // Pass the trading name
+        p_cnpj: clinic.cnpj // Pass the CNPJ
       });
 
     if (clinicError) {
@@ -299,7 +305,7 @@ export const registerClinic = async ({
 
     // 4. Associar o usuário à clínica como administrador
     const { error: staffError } = await supabase
-      .rpc<boolean>('add_clinic_staff', {
+      .rpc<boolean, AddClinicStaffParams>('add_clinic_staff', {
         p_user_id: userId,
         p_clinic_id: clinicId,
         p_is_admin: true,
