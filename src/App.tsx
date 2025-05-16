@@ -13,6 +13,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ClinicProvider } from "@/contexts/ClinicContext";
 import { StaffClinicProvider } from "@/contexts/StaffClinicContext";
 import NoAccess from "./pages/NoAccess";
+import NotFound from "./pages/NotFound";
 
 const router = createBrowserRouter([
   {
@@ -38,6 +39,10 @@ const router = createBrowserRouter([
   {
     path: "/no-access",
     element: <NoAccess />
+  },
+  {
+    path: "*",
+    element: <NotFound />
   },
 ]);
 
