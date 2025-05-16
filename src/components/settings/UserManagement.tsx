@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash, Loader2, UserCheck, UserPlus, UserSearch, AlertTriangle, Mail, Phone, User, Briefcase } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -244,7 +243,7 @@ export const UserManagement = () => {
         toast({
           title: "Usuário já associado",
           description: "Este usuário já está associado a esta clínica.",
-          variant: "warning",
+          variant: "destructive",
         });
         return;
       }
