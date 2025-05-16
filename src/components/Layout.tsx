@@ -3,7 +3,6 @@ import React from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { StaffClinicProvider } from '@/contexts/StaffClinicContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,19 +11,17 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <StaffClinicProvider>
-        <SidebarProvider>
-          <div className="flex min-h-screen w-full">
-            <Sidebar />
-            <div className="flex-1 flex flex-col w-full">
-              <Header />
-              <main className="flex-1 p-6 overflow-auto">
-                {children}
-              </main>
-            </div>
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <Sidebar />
+          <div className="flex-1 flex flex-col w-full">
+            <Header />
+            <main className="flex-1 p-6 overflow-auto">
+              {children}
+            </main>
           </div>
-        </SidebarProvider>
-      </StaffClinicProvider>
+        </div>
+      </SidebarProvider>
     </div>
   );
 };
