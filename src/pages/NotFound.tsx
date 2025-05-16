@@ -24,6 +24,18 @@ const NotFound = () => {
     navigate("/");
   };
 
+  const getCategoryFromPath = (path: string) => {
+    if (path.includes('/catheterization')) return { name: 'Cateterismo', path: '/catheterization' };
+    if (path.includes('/angioplasty')) return { name: 'Angioplastia', path: '/angioplasty' };
+    if (path.includes('/patients')) return { name: 'Pacientes', path: '/patients' };
+    if (path.includes('/reports')) return { name: 'Relatórios', path: '/reports' };
+    if (path.includes('/settings')) return { name: 'Configurações', path: '/settings' };
+    if (path.includes('/admin')) return { name: 'Administração', path: '/admin/dashboard' };
+    return { name: 'Página Inicial', path: '/' };
+  };
+
+  const category = getCategoryFromPath(location.pathname);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="text-center max-w-md w-full">
@@ -52,10 +64,10 @@ const NotFound = () => {
           
           <Button 
             className="flex items-center gap-2 bg-cardio-500 hover:bg-cardio-600" 
-            onClick={goHome}
+            onClick={() => navigate(category.path)}
           >
             <Home className="h-4 w-4" />
-            Página inicial
+            Ir para {category.name}
           </Button>
         </div>
       </div>

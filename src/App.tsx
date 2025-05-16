@@ -19,6 +19,8 @@ import { PatientForm } from "./pages/PatientForm";
 import { PatientAnamnesisHistory } from "./pages/PatientAnamnesisHistory";
 import { AnamnesisForm } from "./pages/AnamnesisForm";
 import { CatheterizationReport } from "./pages/CatheterizationReport";
+import { CatheterizationTemplateEditor } from "./pages/CatheterizationTemplateEditor";
+import { CatheterizationReportList } from "./pages/CatheterizationReportList";
 import { Angioplasty } from "./pages/Angioplasty";
 import { Reports } from "./pages/Reports";
 import { Schedule } from "./pages/Schedule";
@@ -58,7 +60,19 @@ const router = createBrowserRouter([
   },
   {
     path: "/catheterization",
+    element: <CatheterizationReportList />,
+  },
+  {
+    path: "/catheterization/report",
     element: <CatheterizationReport />,
+  },
+  {
+    path: "/catheterization/report/:reportId",
+    element: <CatheterizationReport />,
+  },
+  {
+    path: "/catheterization/templates",
+    element: <CatheterizationTemplateEditor />,
   },
   {
     path: "/angioplasty",
