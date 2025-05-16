@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
 
 // Tipos para a função registerClinic
 type AdminData = {
@@ -17,6 +18,11 @@ type ClinicData = {
   address: string;
   phone: string;
   email: string;
+};
+
+// Tipo de retorno para a função create_clinic
+type CreateClinicResponse = {
+  id: string;
 };
 
 // Verifica se um usuário é administrador global
@@ -126,7 +132,7 @@ export const registerClinic = async ({
 
     // 3. Criar a clínica usando RPC para contornar as políticas de segurança de linha (RLS)
     const { data: clinicData, error: clinicError } = await supabase
-      .rpc<{ id: string }>('create_clinic', { 
+      .rpc<CreateClinicResponse>('create_clinic', { 
         p_name: clinic.name,
         p_city: clinic.city,
         p_address: clinic.address,
@@ -145,11 +151,20 @@ export const registerClinic = async ({
       throw new Error('A clínica não foi criada. Verifique se a função RPC está configurada corretamente.');
     }
 
+    // Como o retorno é do tipo Json, precisamos garantir que clinicData contenha um objeto com a propriedade id
+    const clinicId = typeof clinicData === 'object' && clinicData !== null && 'id' in clinicData 
+      ? clinicData.id 
+      : null;
+
+    if (!clinicId) {
+      throw new Error('ID da clínica não recebido. Verifique se a função RPC está retornando corretamente.');
+    }
+
     // 4. Associar o usuário à clínica como administrador
     const { error: staffError } = await supabase
       .rpc('add_clinic_staff', {
         p_user_id: userId,
-        p_clinic_id: clinicData.id,
+        p_clinic_id: clinicId,
         p_is_admin: true,
         p_role: 'doctor'
       });
