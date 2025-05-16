@@ -28,63 +28,23 @@ export const clinicService = {
 
       const userId = session.session.user.id;
 
-      // First check if the user is a global admin
-      const { data: isAdmin } = await supabase.rpc('is_global_admin', {
+      // Use our new RPC function to get user clinics
+      const { data, error } = await supabase.rpc('get_user_clinics', {
         user_uuid: userId
       });
 
-      if (isAdmin) {
-        // Global admins can see all clinics
-        const { data, error } = await supabase
-          .from('clinics')
-          .select('*')
-          .eq('active', true);
-
-        if (error) throw error;
-        return data || [];
-      }
-
-      // Get clinics created by the user
-      const { data: ownedClinics, error: ownedError } = await supabase
-        .from('clinics')
-        .select('*')
-        .eq('created_by', userId)
-        .eq('active', true);
-
-      if (ownedError) throw ownedError;
-
-      // Get clinics where user is staff - now using direct query without RLS recursion
-      const { data: staffData, error: staffError } = await supabase
-        .from('clinic_staff')
-        .select('clinic_id')
-        .eq('user_id', userId)
-        .eq('active', true);
-
-      if (staffError) throw staffError;
-
-      // If user is staff at some clinics, fetch those clinics' details
-      let staffClinics: Clinic[] = [];
-      if (staffData && staffData.length > 0) {
-        const clinicIds = staffData.map(staff => staff.clinic_id);
-        const { data: clinicsData, error: clinicsError } = await supabase
-          .from('clinics')
-          .select('*')
-          .in('id', clinicIds)
-          .eq('active', true);
-
-        if (clinicsError) throw clinicsError;
-        staffClinics = clinicsData || [];
-      }
-
-      // Combine and deduplicate owned and staff clinics
-      const combinedClinics = [...(ownedClinics || []), ...staffClinics];
-      const uniqueClinicMap = new Map<string, Clinic>();
+      if (error) throw error;
       
-      combinedClinics.forEach(clinic => {
-        uniqueClinicMap.set(clinic.id, clinic);
-      });
-
-      return Array.from(uniqueClinicMap.values());
+      // Transform the result to match our Clinic interface
+      const clinics: Clinic[] = data ? data.map((item: any) => ({
+        id: item.clinic_id,
+        name: item.clinic_name,
+        city: item.clinic_city,
+        logo: item.clinic_logo_url,
+        active: true
+      })) : [];
+      
+      return clinics;
     } catch (error) {
       console.error('Error fetching user clinics:', error);
       throw error;

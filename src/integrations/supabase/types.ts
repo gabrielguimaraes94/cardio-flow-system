@@ -576,6 +576,17 @@ export type Database = {
             }
         Returns: Json
       }
+      get_user_clinics: {
+        Args: { user_uuid: string }
+        Returns: {
+          clinic_id: string
+          clinic_name: string
+          clinic_city: string
+          clinic_logo_url: string
+          is_admin: boolean
+          staff_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _user_id: string
