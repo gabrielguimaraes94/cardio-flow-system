@@ -296,8 +296,11 @@ export const registerClinic = async ({
       throw new Error('A clínica não foi criada. Verifique se a função RPC está configurada corretamente.');
     }
 
-    // Precisamos garantir que temos um ID de clínica válido
-    const clinicId = clinicData.id;
+    // Fix the type issue here by properly checking and casting clinicData
+    const clinicId = typeof clinicData === 'object' && clinicData !== null ? 
+      (clinicData as CreateClinicResponse).id : 
+      '';
+
     if (!clinicId) {
       throw new Error('ID da clínica não recebido. Verifique se a função RPC está retornando corretamente.');
     }
