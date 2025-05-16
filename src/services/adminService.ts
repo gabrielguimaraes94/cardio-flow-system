@@ -20,10 +20,10 @@ type ClinicData = {
   email: string;
 };
 
-// Tipo de retorno para a função create_clinic
-type CreateClinicResponse = {
+// Interface para o retorno da função create_clinic
+interface CreateClinicResponse {
   id: string;
-};
+}
 
 // Parâmetros para a função create_clinic
 type CreateClinicParams = {
@@ -74,7 +74,7 @@ export const isGlobalAdmin = async (userId: string): Promise<boolean> => {
 export const isClinicAdmin = async (userId: string, clinicId: string): Promise<boolean> => {
   try {
     const { data, error } = await supabase
-      .rpc<boolean, { user_uuid: string; clinic_uuid: string }>('is_clinic_admin', { user_uuid: userId, clinic_uuid: clinicId });
+      .rpc('is_clinic_admin', { user_uuid: userId, clinic_uuid: clinicId });
     
     if (error) throw error;
     
@@ -148,9 +148,9 @@ export const registerClinic = async ({
 
     if (profileError) throw profileError;
 
-    // 3. Criar a clínica usando RPC para contornar as políticas de segurança de linha (RLS)
+    // 3. Criar a clínica usando RPC
     const { data: clinicData, error: clinicError } = await supabase
-      .rpc<CreateClinicResponse, CreateClinicParams>('create_clinic', { 
+      .rpc('create_clinic', { 
         p_name: clinic.name,
         p_city: clinic.city,
         p_address: clinic.address,
@@ -169,18 +169,17 @@ export const registerClinic = async ({
       throw new Error('A clínica não foi criada. Verifique se a função RPC está configurada corretamente.');
     }
 
-    // Como o retorno é do tipo Json, precisamos garantir que clinicData contenha um objeto com a propriedade id
-    const clinicId = typeof clinicData === 'object' && clinicData !== null && 'id' in clinicData 
-      ? (clinicData as { id: string }).id 
-      : null;
-
-    if (!clinicId) {
+    // Precisamos garantir que temos um ID de clínica válido
+    let clinicId: string;
+    if (typeof clinicData === 'object' && clinicData !== null && 'id' in clinicData) {
+      clinicId = (clinicData as { id: string }).id;
+    } else {
       throw new Error('ID da clínica não recebido. Verifique se a função RPC está retornando corretamente.');
     }
 
     // 4. Associar o usuário à clínica como administrador
     const { error: staffError } = await supabase
-      .rpc<boolean, AddClinicStaffParams>('add_clinic_staff', {
+      .rpc('add_clinic_staff', {
         p_user_id: userId,
         p_clinic_id: clinicId,
         p_is_admin: true,

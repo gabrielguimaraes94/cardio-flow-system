@@ -7,19 +7,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { RegisterForm } from './RegisterForm';
 
-// Esquema de validação com yup
-const schema = yup.object({
-  email: yup.string().email('Email inválido').required('Email é obrigatório'),
-  password: yup.string().required('Senha é obrigatória'),
+// Esquema de validação com zod
+const schema = z.object({
+  email: z.string().email('Email inválido').min(1, 'Email é obrigatório'),
+  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
 });
 
-type LoginFormData = yup.InferType<typeof schema>;
+type LoginFormData = z.infer<typeof schema>;
 
 export const LoginForm: React.FC = () => {
   const navigate = useNavigate();
@@ -27,8 +27,12 @@ export const LoginForm: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showRegisterForm, setShowRegisterForm] = useState(false);
   
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
-    resolver: yupResolver(schema),
+  const form = useForm<LoginFormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      email: '',
+      password: ''
+    }
   });
 
   const handleLogin = async (data: LoginFormData) => {
@@ -84,7 +88,7 @@ export const LoginForm: React.FC = () => {
             Sistema de Gestão para Clínicas de Cardiologia
           </p>
         </CardHeader>
-        <form onSubmit={handleSubmit(handleLogin)}>
+        <form onSubmit={form.handleSubmit(handleLogin)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -92,10 +96,11 @@ export const LoginForm: React.FC = () => {
                 id="email"
                 type="email" 
                 placeholder="seu-email@exemplo.com"
-                {...register('email')}
+                aria-invalid={!!form.formState.errors.email}
+                {...form.register('email')}
               />
-              {errors.email && (
-                <p className="text-xs text-red-500">{errors.email.message}</p>
+              {form.formState.errors.email && (
+                <p className="text-xs text-red-500">{form.formState.errors.email.message}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -108,10 +113,11 @@ export const LoginForm: React.FC = () => {
               <Input
                 id="password"
                 type="password"
-                {...register('password')}
+                aria-invalid={!!form.formState.errors.password}
+                {...form.register('password')}
               />
-              {errors.password && (
-                <p className="text-xs text-red-500">{errors.password.message}</p>
+              {form.formState.errors.password && (
+                <p className="text-xs text-red-500">{form.formState.errors.password.message}</p>
               )}
             </div>
           </CardContent>
