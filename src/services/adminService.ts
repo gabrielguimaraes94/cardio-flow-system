@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { UserProfile } from '@/types/profile';
@@ -296,13 +295,19 @@ export const registerClinic = async ({
       throw new Error('A clínica não foi criada. Verifique se a função RPC está configurada corretamente.');
     }
 
-    // Fix the type issue here by properly checking and casting clinicData
-    const clinicId = typeof clinicData === 'object' && clinicData !== null ? 
-      (clinicData as CreateClinicResponse).id : 
-      '';
-
-    if (!clinicId) {
-      throw new Error('ID da clínica não recebido. Verifique se a função RPC está retornando corretamente.');
+    // Fix the type issue by properly handling the JSON response
+    let clinicId: string;
+    
+    // Check if clinicData is an object with an id property
+    if (
+      typeof clinicData === 'object' && 
+      clinicData !== null && 
+      !Array.isArray(clinicData) && 
+      'id' in clinicData
+    ) {
+      clinicId = clinicData.id as string;
+    } else {
+      throw new Error('ID da clínica não recebido no formato esperado. Verifique a função RPC.');
     }
 
     console.log('Clínica criada com ID:', clinicId);
