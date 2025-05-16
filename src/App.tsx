@@ -77,6 +77,18 @@ const router = createBrowserRouter([
     element: <Settings />,
   },
   {
+    path: "/settings/clinics",
+    element: <Settings />,
+  },
+  {
+    path: "/settings/insurance",
+    element: <Settings />,
+  },
+  {
+    path: "/settings/profile",
+    element: <Settings />,
+  },
+  {
     path: "/admin/login",
     element: <AdminLogin />,
   },
