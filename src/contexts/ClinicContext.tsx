@@ -1,18 +1,8 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { clinicService, Clinic } from '@/services/clinicService';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-
-interface Clinic {
-  id: string;
-  name: string;
-  city: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  active?: boolean;
-  logo?: string;
-}
 
 interface ClinicContextType {
   selectedClinic: Clinic | null;
@@ -48,14 +38,8 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
 
-  console.log("ClinicProvider initialized");
-  console.log("Initial user:", user);
-
   const fetchClinics = async () => {
-    console.log("Fetching clinics for user:", user?.id);
-    
     if (!user || authLoading) {
-      console.log("No user or still loading auth, clearing clinic data");
       setClinics([]);
       setSelectedClinic(null);
       setLoading(false);
@@ -67,60 +51,24 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setLoading(true);
       setError(null);
       
-      console.log("Fetching clinics from database for user:", user.id);
+      const clinicsData = await clinicService.getUserClinics();
       
-      // First check if the user is a global admin
-      const { data: isAdmin } = await supabase.rpc('has_role', {
-        _user_id: user.id,
-        _role: 'admin'
-      });
-
-      let data = [];
-      
-      if (isAdmin) {
-        // If the user is a global admin, get all active clinics
-        const { data: adminClinics, error } = await supabase
-          .from('clinics')
-          .select('*')
-          .eq('active', true);
-        
-        if (error) throw error;
-        data = adminClinics;
-      } else {
-        // Otherwise get clinics this user created
-        const { data: userClinics, error } = await supabase
-          .from('clinics')
-          .select('*')
-          .eq('created_by', user.id)
-          .eq('active', true);
-          
-        if (error) throw error;
-        data = userClinics;
-      }
-      
-      console.log("Clinics fetched:", data);
-
-      if (data && data.length > 0) {
-        setClinics(data);
+      if (clinicsData && clinicsData.length > 0) {
+        setClinics(clinicsData);
         
         // Verifica se já existe uma clínica selecionada no localStorage
         const storedClinicId = localStorage.getItem('selectedClinicId');
-        console.log("Found stored clinic ID:", storedClinicId);
         
         // Se existir uma clínica no localStorage e ela estiver na lista, seleciona ela
         // Caso contrário, seleciona a primeira da lista
-        if (storedClinicId && data.find(c => c.id === storedClinicId)) {
-          const matchingClinic = data.find(c => c.id === storedClinicId);
-          console.log("Using previously selected clinic:", matchingClinic);
-          handleSetSelectedClinic(matchingClinic || data[0]);
+        if (storedClinicId && clinicsData.find(c => c.id === storedClinicId)) {
+          const matchingClinic = clinicsData.find(c => c.id === storedClinicId);
+          handleSetSelectedClinic(matchingClinic || clinicsData[0]);
         } else {
-          console.log("No matching stored clinic found, selecting first clinic:", data[0]);
-          handleSetSelectedClinic(data[0]);
+          handleSetSelectedClinic(clinicsData[0]);
         }
       } else {
-        console.log("No clinics found");
         setClinics([]);
-        // Don't clear selectedClinic here as the user might have access through clinic_staff
       }
     } catch (error) {
       console.error("Error fetching clinics:", error);
@@ -138,18 +86,15 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Fetch clinics when user changes
   useEffect(() => {
     if (!authLoading) {
-      console.log("User changed or auth state changed, fetching clinics");
       fetchClinics();
     }
   }, [user, authLoading]);
 
   const handleSetSelectedClinic = (clinic: Clinic | null) => {
-    console.log("Setting selected clinic to:", clinic);
     setSelectedClinic(clinic);
     
     if (clinic) {
       try {
-        console.log("Saving clinic ID to localStorage:", clinic.id);
         localStorage.setItem('selectedClinicId', clinic.id);
         
         // Dispatch a custom event that components can listen for
@@ -161,7 +106,6 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.warn('Failed to save selected clinic to localStorage:', error);
       }
     } else {
-      console.log("Removing clinic ID from localStorage");
       try {
         localStorage.removeItem('selectedClinicId');
       } catch (error) {
@@ -169,12 +113,6 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     }
   };
-
-  // Debug output for current clinic state
-  useEffect(() => {
-    console.log("Current ClinicContext state - selectedClinic:", selectedClinic);
-    console.log("Current ClinicContext state - clinics:", clinics);
-  }, [selectedClinic, clinics]);
 
   return (
     <ClinicContext.Provider

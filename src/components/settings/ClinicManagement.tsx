@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash, MapPin, Phone, Mail, Building } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -22,76 +21,49 @@ interface Clinic {
 }
 
 export const ClinicManagement = () => {
-  const { selectedClinic, refetchClinics } = useClinic();
+  const { selectedClinic, refetchClinics, clinics: contextClinics } = useClinic();
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const [clinics, setClinics] = useState<Clinic[]>([]);
-  const [displayedClinics, setDisplayedClinics] = useState<Clinic[]>([]);
+  const [displayedClinics, setDisplayedClinics] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [currentClinic, setCurrentClinic] = useState<Clinic | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [currentClinic, setCurrentClinic] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Buscar clínicas
-  const fetchClinics = async () => {
-    if (!user) return;
-    
-    try {
-      setIsLoading(true);
-      const { data, error } = await supabase
-        .from('clinics')
-        .select('*')
-        .eq('created_by', user.id);
-      
-      if (error) throw error;
-      
-      if (data) {
-        setClinics(data);
-        setDisplayedClinics(data);
-      }
-    } catch (error) {
-      console.error('Erro ao buscar clínicas:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar as clínicas.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // Use clinics from context instead of fetching again
   useEffect(() => {
-    fetchClinics();
-  }, [user]);
+    if (contextClinics) {
+      setDisplayedClinics(contextClinics);
+    }
+  }, [contextClinics]);
 
   // Filtrar clínicas com base no termo de pesquisa
   useEffect(() => {
     if (searchTerm === '') {
-      setDisplayedClinics(clinics);
+      setDisplayedClinics(contextClinics);
       return;
     }
     
-    const filtered = clinics.filter(clinic => 
+    const filtered = contextClinics.filter(clinic => 
       clinic.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
       clinic.city.toLowerCase().includes(searchTerm.toLowerCase())
     );
     
     setDisplayedClinics(filtered);
-  }, [searchTerm, clinics]);
+  }, [searchTerm, contextClinics]);
 
   const handleAddClinic = () => {
     setCurrentClinic(null);
     setIsDialogOpen(true);
   };
 
-  const handleEditClinic = (clinic: Clinic) => {
+  const handleEditClinic = (clinic: any) => {
     setCurrentClinic(clinic);
     setIsDialogOpen(true);
   };
 
-  const handleSaveClinic = async (clinic: Clinic) => {
+  const handleSaveClinic = async (clinic: any) => {
     if (!user) return;
     
     try {
@@ -138,8 +110,6 @@ export const ClinicManagement = () => {
         });
       }
       
-      // Atualizar a lista de clínicas
-      await fetchClinics();
       // Atualizar a lista de clínicas no contexto
       await refetchClinics();
       
@@ -169,8 +139,6 @@ export const ClinicManagement = () => {
         description: "A clínica foi excluída com sucesso."
       });
       
-      // Atualizar a lista de clínicas
-      await fetchClinics();
       // Atualizar a lista de clínicas no contexto
       await refetchClinics();
       

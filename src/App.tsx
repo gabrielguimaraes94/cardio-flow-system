@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   createBrowserRouter,
@@ -109,11 +108,11 @@ const router = createBrowserRouter([
 function App() {
   return (
     <AuthProvider>
-      <StaffClinicProvider>
-        <ClinicProvider>
+      <ClinicProvider>
+        <StaffClinicProvider>
           <RouterProvider router={router} />
-        </ClinicProvider>
-      </StaffClinicProvider>
+        </StaffClinicProvider>
+      </ClinicProvider>
     </AuthProvider>
   );
 }

@@ -41,9 +41,6 @@ export const Header: React.FC = () => {
           };
           
           setProfile(userProfile);
-          console.log("Profile loaded successfully:", userProfile);
-        } else {
-          console.error("Error loading profile:", error);
         }
       };
       
