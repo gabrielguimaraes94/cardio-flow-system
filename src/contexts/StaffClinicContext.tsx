@@ -70,11 +70,15 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setLoading(true);
       setError(null);
 
-      // First check if user is global admin
-      const { data: isAdmin } = await supabase.rpc('has_role', {
-        _user_id: user.id,
-        _role: 'admin'
+      // Check if user is global admin using our new security definer function
+      const { data: isAdmin, error: adminError } = await supabase.rpc('is_global_admin', {
+        user_uuid: user.id
       });
+      
+      if (adminError) {
+        console.error('Error checking if user is admin:', adminError);
+        throw adminError;
+      }
 
       let clinicsList = [];
       
@@ -97,7 +101,7 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
           is_admin: true
         }));
       } else {
-        // Regular users only see clinics they have access to via clinic_staff
+        // Direct query to clinic_staff table now that we've fixed RLS policies
         const { data: staffData, error: staffError } = await supabase
           .from('clinic_staff')
           .select('id, clinic_id, is_admin')
@@ -140,7 +144,6 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
       // 1. If only one clinic is available, select it automatically
       // 2. Otherwise, try to restore previous selection from localStorage
       if (clinicsList.length === 1) {
-        // Auto-select the only clinic
         const onlyClinic = clinicsList[0];
         setSelectedClinic({
           id: onlyClinic.id,
@@ -149,7 +152,6 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
           logo: onlyClinic.logo
         });
         
-        // Save to localStorage
         localStorage.setItem('selectedClinicId', onlyClinic.id);
         
         toast({
@@ -157,7 +159,6 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
           description: `${onlyClinic.name} foi automaticamente selecionada.`,
         });
       } else if (clinicsList.length > 1) {
-        // Try to restore previous selection
         const storedClinicId = localStorage.getItem('selectedClinicId');
         const defaultClinic = clinicsList.find(c => c.id === storedClinicId) || clinicsList[0];
         
@@ -168,7 +169,6 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
           logo: defaultClinic.logo
         });
       } else {
-        // No clinics available
         setSelectedClinic(null);
         localStorage.removeItem('selectedClinicId');
       }

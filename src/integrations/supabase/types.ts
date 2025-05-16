@@ -591,6 +591,14 @@ export type Database = {
         Args: { user_uuid: string; clinic_uuid: string }
         Returns: boolean
       }
+      is_clinic_staff_member: {
+        Args: { user_uuid: string }
+        Returns: boolean
+      }
+      is_global_admin: {
+        Args: { user_uuid: string }
+        Returns: boolean
+      }
       remove_clinic_staff: {
         Args: { staff_id: string; admin_user_id: string }
         Returns: boolean

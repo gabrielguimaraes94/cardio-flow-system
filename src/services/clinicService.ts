@@ -29,9 +29,8 @@ export const clinicService = {
       const userId = session.session.user.id;
 
       // First check if the user is a global admin
-      const { data: isAdmin } = await supabase.rpc('has_role', {
-        _user_id: userId,
-        _role: 'admin'
+      const { data: isAdmin } = await supabase.rpc('is_global_admin', {
+        user_uuid: userId
       });
 
       if (isAdmin) {
@@ -54,7 +53,7 @@ export const clinicService = {
 
       if (ownedError) throw ownedError;
 
-      // Get clinics where user is staff
+      // Get clinics where user is staff - now using direct query without RLS recursion
       const { data: staffData, error: staffError } = await supabase
         .from('clinic_staff')
         .select('clinic_id')
