@@ -33,7 +33,11 @@ const formSchema = z.object({
   path: ["confirmPassword"],
 });
 
-export const ClinicRegistrationForm = () => {
+interface ClinicRegistrationFormProps {
+  onSuccess?: () => void;
+}
+
+export const ClinicRegistrationForm = ({ onSuccess }: ClinicRegistrationFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -62,6 +66,22 @@ export const ClinicRegistrationForm = () => {
       setIsSubmitting(true);
       setError(null);
       
+      console.log('Enviando dados para cadastro:', {
+        admin: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          phone: data.phone || null,
+        },
+        clinic: {
+          name: data.clinicName,
+          city: data.clinicCity,
+          address: data.clinicAddress,
+          phone: data.clinicPhone,
+          email: data.clinicEmail
+        }
+      });
+      
       await registerClinic({
         admin: {
           firstName: data.firstName,
@@ -88,7 +108,13 @@ export const ClinicRegistrationForm = () => {
       // Limpar o formulário
       form.reset();
       
+      // Chamar callback de sucesso se fornecido
+      if (onSuccess) {
+        onSuccess();
+      }
+      
     } catch (error: any) {
+      console.error('Erro detalhado ao registrar clínica:', error);
       setError(error.message || "Ocorreu um erro ao cadastrar a clínica e seu administrador.");
       
       toast({

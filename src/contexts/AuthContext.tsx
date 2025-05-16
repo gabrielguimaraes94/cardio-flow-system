@@ -33,7 +33,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (mounted) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
-          // Mantemos isLoading como true até que o listener seja configurado
         }
       } catch (error) {
         console.error('Error checking session:', error);
@@ -50,9 +49,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('Auth state changed:', event);
           if (!mounted) return;
           
-          if (currentSession !== session) {
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
             setSession(currentSession);
             setUser(currentSession?.user ?? null);
+            
+            if (event === 'SIGNED_IN') {
+              toast({
+                title: "Login bem-sucedido",
+                description: "Bem-vindo de volta!",
+              });
+            }
+          } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+            setSession(null);
+            setUser(null);
+            
+            if (event === 'SIGNED_OUT') {
+              toast({
+                title: "Desconectado",
+                description: "Você foi desconectado com sucesso.",
+              });
+            }
           }
           
           if (!authChangeProcessed) {
@@ -60,18 +76,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           
           setIsLoading(false);
-          
-          if (event === 'SIGNED_IN') {
-            toast({
-              title: "Login bem-sucedido",
-              description: "Bem-vindo de volta!",
-            });
-          } else if (event === 'SIGNED_OUT') {
-            toast({
-              title: "Desconectado",
-              description: "Você foi desconectado com sucesso.",
-            });
-          }
         }
       );
 
@@ -79,15 +83,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     // Execute verificação de sessão e configuração do listener
-    checkSession();
-    const subscription = setupAuthListener();
-    setIsLoading(false);
+    checkSession().then(() => {
+      const subscription = setupAuthListener();
+      setIsLoading(false);
+      
+      return () => {
+        mounted = false;
+        subscription.unsubscribe();
+      };
+    });
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
     };
-  }, [toast, authChangeProcessed]);
+  }, [toast]);
 
   const signOut = async () => {
     console.log('Signing out...');
@@ -101,6 +110,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: error.message,
           variant: "destructive",
         });
+      } else {
+        console.log('Successfully signed out');
+        setUser(null);
+        setSession(null);
       }
     } catch (error) {
       console.error('Exception during signOut:', error);
