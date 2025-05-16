@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { UserProfile } from '@/types/profile';
@@ -274,7 +275,7 @@ export const registerClinic = async ({
 
     // 3. Criar a clínica usando RPC com os novos campos
     const { data: clinicData, error: clinicError } = await supabase
-      .rpc<CreateClinicResponse, CreateClinicParams>('create_clinic', { 
+      .rpc('create_clinic', { 
         p_name: clinic.name,
         p_city: clinic.city,
         p_address: clinic.address,
@@ -296,7 +297,7 @@ export const registerClinic = async ({
     }
 
     // Precisamos garantir que temos um ID de clínica válido
-    const clinicId = (clinicData as unknown as CreateClinicResponse).id;
+    const clinicId = clinicData.id;
     if (!clinicId) {
       throw new Error('ID da clínica não recebido. Verifique se a função RPC está retornando corretamente.');
     }
@@ -305,7 +306,7 @@ export const registerClinic = async ({
 
     // 4. Associar o usuário à clínica como administrador
     const { error: staffError } = await supabase
-      .rpc<boolean, AddClinicStaffParams>('add_clinic_staff', {
+      .rpc('add_clinic_staff', {
         p_user_id: userId,
         p_clinic_id: clinicId,
         p_is_admin: true,

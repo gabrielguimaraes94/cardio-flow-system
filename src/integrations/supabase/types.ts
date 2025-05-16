@@ -62,6 +62,7 @@ export type Database = {
           active: boolean
           address: string
           city: string
+          cnpj: string | null
           created_at: string
           created_by: string
           email: string
@@ -69,12 +70,14 @@ export type Database = {
           logo_url: string | null
           name: string
           phone: string
+          trading_name: string | null
           updated_at: string
         }
         Insert: {
           active?: boolean
           address: string
           city: string
+          cnpj?: string | null
           created_at?: string
           created_by: string
           email: string
@@ -82,12 +85,14 @@ export type Database = {
           logo_url?: string | null
           name: string
           phone: string
+          trading_name?: string | null
           updated_at?: string
         }
         Update: {
           active?: boolean
           address?: string
           city?: string
+          cnpj?: string | null
           created_at?: string
           created_by?: string
           email?: string
@@ -95,6 +100,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           phone?: string
+          trading_name?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -549,14 +555,25 @@ export type Database = {
         Returns: boolean
       }
       create_clinic: {
-        Args: {
-          p_name: string
-          p_city: string
-          p_address: string
-          p_phone: string
-          p_email: string
-          p_created_by: string
-        }
+        Args:
+          | {
+              p_name: string
+              p_city: string
+              p_address: string
+              p_phone: string
+              p_email: string
+              p_created_by: string
+            }
+          | {
+              p_name: string
+              p_city: string
+              p_address: string
+              p_phone: string
+              p_email: string
+              p_created_by: string
+              p_trading_name?: string
+              p_cnpj?: string
+            }
         Returns: Json
       }
       has_role: {
