@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -15,8 +14,9 @@ import {
   updateClinicStatus,
   deleteClinic
 } from '@/services/adminService';
+import { Database } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Search, Filter, Trash, Edit } from 'lucide-react';
+import { Loader2, Search, Filter, Trash } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -44,6 +44,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+type UserRole = Database["public"]["Enums"]["user_role"];
+
 export const AdminDashboard = () => {
   const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -68,7 +70,7 @@ export const AdminDashboard = () => {
   
   const [userFilters, setUserFilters] = useState({
     name: '',
-    role: '',
+    role: '' as UserRole | '',
     createdAfter: undefined as string | undefined,
     createdBefore: undefined as string | undefined
   });
@@ -151,7 +153,12 @@ export const AdminDashboard = () => {
   const fetchUsers = async () => {
     try {
       setLoadingUsers(true);
-      const data = await getAllUsers(userFilters);
+      // Here we ensure we're passing the correct role type or undefined
+      const filters = {
+        ...userFilters,
+        role: userFilters.role === '' ? undefined : userFilters.role
+      };
+      const data = await getAllUsers(filters);
       setUsers(data);
     } catch (error) {
       console.error('Erro ao buscar usuários:', error);

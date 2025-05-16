@@ -267,8 +267,8 @@ export const registerClinic = async ({
     if (profileError) throw profileError;
 
     // 3. Criar a clínica usando RPC
-    const { data: clinicData, error: clinicError } = await supabase.rpc<CreateClinicResponse>(
-      'create_clinic', 
+    const { data: clinicData, error: clinicError } = await supabase.rpc<CreateClinicResponse, CreateClinicParams>(
+      'create_clinic',
       { 
         p_name: clinic.name,
         p_city: clinic.city,
@@ -298,8 +298,8 @@ export const registerClinic = async ({
     console.log('Clínica criada com ID:', clinicId);
 
     // 4. Associar o usuário à clínica como administrador
-    const { error: staffError } = await supabase.rpc(
-      'add_clinic_staff', 
+    const { error: staffError } = await supabase.rpc<boolean, AddClinicStaffParams>(
+      'add_clinic_staff',
       {
         p_user_id: userId,
         p_clinic_id: clinicId,
