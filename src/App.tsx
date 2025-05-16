@@ -14,6 +14,14 @@ import { ClinicProvider } from "@/contexts/ClinicContext";
 import { StaffClinicProvider } from "@/contexts/StaffClinicContext";
 import NoAccess from "./pages/NoAccess";
 import NotFound from "./pages/NotFound";
+import { PatientList } from "./pages/PatientList";
+import { PatientForm } from "./pages/PatientForm";
+import { PatientAnamnesisHistory } from "./pages/PatientAnamnesisHistory";
+import { AnamnesisForm } from "./pages/AnamnesisForm";
+import { CatheterizationReport } from "./pages/CatheterizationReport";
+import { Angioplasty } from "./pages/Angioplasty";
+import { Reports } from "./pages/Reports";
+import { Schedule } from "./pages/Schedule";
 
 const router = createBrowserRouter([
   {
@@ -23,6 +31,46 @@ const router = createBrowserRouter([
   {
     path: "/dashboard",
     element: <Dashboard />,
+  },
+  {
+    path: "/patients",
+    element: <PatientList />,
+  },
+  {
+    path: "/patients/new",
+    element: <PatientForm />,
+  },
+  {
+    path: "/patients/:patientId/edit",
+    element: <PatientForm />,
+  },
+  {
+    path: "/patients/:patientId/anamnesis",
+    element: <PatientAnamnesisHistory />,
+  },
+  {
+    path: "/patients/:patientId/anamnesis/new",
+    element: <AnamnesisForm />,
+  },
+  {
+    path: "/patients/:patientId/anamnesis/:anamnesisId",
+    element: <AnamnesisForm />,
+  },
+  {
+    path: "/catheterization",
+    element: <CatheterizationReport />,
+  },
+  {
+    path: "/angioplasty",
+    element: <Angioplasty />,
+  },
+  {
+    path: "/reports",
+    element: <Reports />,
+  },
+  {
+    path: "/schedule",
+    element: <Schedule />,
   },
   {
     path: "/settings",
