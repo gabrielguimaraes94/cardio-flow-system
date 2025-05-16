@@ -1,15 +1,17 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ClinicCard } from './ClinicCard';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useStaffClinic } from '@/contexts/StaffClinicContext';
+import { useToast } from '@/hooks/use-toast';
 
 export const ClinicSwitcher: React.FC = () => {
   const { selectedClinic, setSelectedClinic, loading: clinicLoading } = useClinic();
   const { userClinics, loading: staffLoading } = useStaffClinic();
+  const { toast } = useToast();
   
   const loading = clinicLoading || staffLoading;
 
@@ -19,7 +21,18 @@ export const ClinicSwitcher: React.FC = () => {
     city: string;
     logo?: string;
   }) => {
+    if (selectedClinic?.id === clinic.id) return;
+    
     setSelectedClinic(clinic);
+    toast({
+      title: "Clínica alterada",
+      description: `Você está agora visualizando ${clinic.name}.`,
+    });
+    
+    // Dispatch clinic change event for components to reload their data
+    window.dispatchEvent(new CustomEvent('clinicChanged', { 
+      detail: { clinicId: clinic.id, clinicName: clinic.name } 
+    }));
   };
 
   // Show loading state

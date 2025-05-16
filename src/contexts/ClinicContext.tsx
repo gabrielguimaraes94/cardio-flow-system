@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -47,7 +46,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
   console.log("ClinicProvider initialized");
   console.log("Initial user:", user);
@@ -55,8 +54,8 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const fetchClinics = async () => {
     console.log("Fetching clinics for user:", user?.id);
     
-    if (!user) {
-      console.log("No user, clearing clinic data");
+    if (!user || authLoading) {
+      console.log("No user or still loading auth, clearing clinic data");
       setClinics([]);
       setSelectedClinic(null);
       setLoading(false);
@@ -69,16 +68,36 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setError(null);
       
       console.log("Fetching clinics from database for user:", user.id);
-      const { data, error } = await supabase
-        .from('clinics')
-        .select('*')
-        .eq('created_by', user.id)
-        .eq('active', true);
-      console.log("Fetch clinics response:", { data, error });
-      if (error) {
-        throw error;
-      }
+      
+      // First check if the user is a global admin
+      const { data: isAdmin } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'admin'
+      });
 
+      let data = [];
+      
+      if (isAdmin) {
+        // If the user is a global admin, get all active clinics
+        const { data: adminClinics, error } = await supabase
+          .from('clinics')
+          .select('*')
+          .eq('active', true);
+        
+        if (error) throw error;
+        data = adminClinics;
+      } else {
+        // Otherwise get clinics this user created
+        const { data: userClinics, error } = await supabase
+          .from('clinics')
+          .select('*')
+          .eq('created_by', user.id)
+          .eq('active', true);
+          
+        if (error) throw error;
+        data = userClinics;
+      }
+      
       console.log("Clinics fetched:", data);
 
       if (data && data.length > 0) {
@@ -101,8 +120,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       } else {
         console.log("No clinics found");
         setClinics([]);
-        setSelectedClinic(null);
-        localStorage.removeItem('selectedClinicId');
+        // Don't clear selectedClinic here as the user might have access through clinic_staff
       }
     } catch (error) {
       console.error("Error fetching clinics:", error);
@@ -112,8 +130,6 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         description: "Não foi possível carregar as clínicas.",
         variant: "destructive"
       });
-      setClinics([]);
-      setSelectedClinic(null);
     } finally {
       setLoading(false);
     }
@@ -121,9 +137,11 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Fetch clinics when user changes
   useEffect(() => {
-    console.log("User changed, fetching clinics");
-    fetchClinics();
-  }, [user]);
+    if (!authLoading) {
+      console.log("User changed or auth state changed, fetching clinics");
+      fetchClinics();
+    }
+  }, [user, authLoading]);
 
   const handleSetSelectedClinic = (clinic: Clinic | null) => {
     console.log("Setting selected clinic to:", clinic);
@@ -135,7 +153,9 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         localStorage.setItem('selectedClinicId', clinic.id);
         
         // Dispatch a custom event that components can listen for
-        const event = new CustomEvent('clinicChanged', { detail: { clinicId: clinic.id } });
+        const event = new CustomEvent('clinicChanged', { 
+          detail: { clinicId: clinic.id, clinicName: clinic.name } 
+        });
         window.dispatchEvent(event);
       } catch (error) {
         console.warn('Failed to save selected clinic to localStorage:', error);

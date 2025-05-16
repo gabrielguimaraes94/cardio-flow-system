@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Pencil, Trash, Loader2, UserCheck, UserPlus } from 'lucide-react';
+import { Plus, Search, Pencil, Trash, Loader2, UserCheck, UserPlus, UserSearch } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,26 +20,88 @@ import { UserProfile } from '@/types/profile';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
+// Schema for email search
+const emailSearchSchema = z.object({
+  email: z.string().email('Email inválido').min(1, 'Email é obrigatório'),
+});
+
+// Schema for adding a user to clinic
+const addToClinnicSchema = z.object({
+  role: z.enum(['doctor', 'nurse', 'receptionist', 'staff'], {
+    required_error: "Selecione uma função",
+  }),
+  isAdmin: z.boolean().default(false),
+});
+
+// Schema for creating a new user
+const newUserSchema = z.object({
+  firstName: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  lastName: z.string().min(2, 'Sobrenome deve ter pelo menos 2 caracteres'),
+  email: z.string().email('Email inválido'),
+  role: z.enum(['doctor', 'nurse', 'receptionist', 'staff'], {
+    required_error: "Selecione uma função",
+  }),
+  phone: z.string().optional(),
+  crm: z.string().optional(),
+  isAdmin: z.boolean().default(false),
+});
 
 export const UserManagement = () => {
   const { selectedClinic } = useClinic();
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const [users, setUsers] = useState<UserProfile[]>([]);
   const [staffMembers, setStaffMembers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isAddExistingOpen, setIsAddExistingOpen] = useState(false);
+  const [isAddExistingDialogOpen, setIsAddExistingDialogOpen] = useState(false);
+  const [isNewUserDialogOpen, setIsNewUserDialogOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchEmail, setSearchEmail] = useState('');
-  const [searchCrm, setSearchCrm] = useState('');
-  const [searchResult, setSearchResult] = useState<UserProfile | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('doctor');
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [searchResult, setSearchResult] = useState<UserProfile | null>(null);
+  const [userAlreadyInClinic, setUserAlreadyInClinic] = useState(false);
+  
+  // Form for email search
+  const emailSearchForm = useForm<z.infer<typeof emailSearchSchema>>({
+    resolver: zodResolver(emailSearchSchema),
+    defaultValues: {
+      email: '',
+    },
+  });
+
+  // Form for adding existing user to clinic
+  const addToClinicForm = useForm<z.infer<typeof addToClinnicSchema>>({
+    resolver: zodResolver(addToClinnicSchema),
+    defaultValues: {
+      role: 'doctor',
+      isAdmin: false,
+    },
+  });
+
+  // Form for creating new user
+  const newUserForm = useForm<z.infer<typeof newUserSchema>>({
+    resolver: zodResolver(newUserSchema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      role: 'doctor',
+      phone: '',
+      crm: '',
+      isAdmin: false,
+    },
+  });
 
   // Buscar funcionários da clínica selecionada
   useEffect(() => {
@@ -89,7 +152,7 @@ export const UserManagement = () => {
   const filteredStaff = staffMembers.filter(staff => 
     `${staff.user.firstName} ${staff.user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
     staff.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    staff.user.crm.toLowerCase().includes(searchTerm.toLowerCase())
+    (staff.user.crm && staff.user.crm.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const getRoleName = (role: string): string => {
@@ -121,37 +184,71 @@ export const UserManagement = () => {
     setIsDialogOpen(true);
   };
 
-  const handleAddExisting = () => {
-    setSearchEmail('');
-    setSearchCrm('');
-    setSearchResult(null);
-    setSelectedRole('doctor');
-    setIsAdmin(false);
-    setIsAddExistingOpen(true);
-  };
-
-  const handleSearchUser = async () => {
-    if (!searchEmail && !searchCrm) {
-      toast({
-        title: "Erro de validação",
-        description: "Informe email ou CRM para buscar um usuário existente.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleSearchUser = async (values: z.infer<typeof emailSearchSchema>) => {
+    if (!selectedClinic) return;
     
     try {
       setIsSearching(true);
-      const existingUser = await checkUserExists(searchEmail, searchCrm);
-      setSearchResult(existingUser);
+      setUserAlreadyInClinic(false);
       
-      if (!existingUser) {
+      // Search for user by email
+      const { data: userData, error: userError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('email', values.email)
+        .single();
+      
+      if (userError) {
+        if (userError.code === 'PGRST116') {
+          // No user found with that email
+          setSearchResult(null);
+          
+          // Pre-fill the new user form with the email
+          newUserForm.setValue('email', values.email);
+          setIsAddExistingDialogOpen(false);
+          setIsNewUserDialogOpen(true);
+          
+          toast({
+            title: "Usuário não encontrado",
+            description: "Nenhum usuário encontrado com esse email. Você pode criar um novo usuário.",
+          });
+        } else {
+          throw userError;
+        }
+        return;
+      }
+      
+      // Check if the user is already in this clinic
+      const isAlreadyStaff = staffMembers.some(staff => 
+        staff.user.id === userData.id
+      );
+      
+      if (isAlreadyStaff) {
+        setUserAlreadyInClinic(true);
         toast({
-          title: "Usuário não encontrado",
-          description: "Nenhum usuário encontrado com esse email/CRM.",
+          title: "Usuário já associado",
+          description: "Este usuário já está associado a esta clínica.",
           variant: "destructive",
         });
+        return;
       }
+      
+      // User found and not in clinic yet
+      setSearchResult({
+        id: userData.id,
+        firstName: userData.first_name,
+        lastName: userData.last_name,
+        email: userData.email,
+        phone: userData.phone || null,
+        crm: userData.crm || '',
+        title: userData.title || '',
+        bio: userData.bio || '',
+        role: userData.role
+      });
+      
+      // Reset the add to clinic form
+      addToClinicForm.reset();
+      
     } catch (error) {
       console.error('Error searching user:', error);
       toast({
@@ -163,28 +260,14 @@ export const UserManagement = () => {
       setIsSearching(false);
     }
   };
-
-  const handleAddStaffMember = async () => {
+  
+  const handleAddExistingUserToClinic = async (values: z.infer<typeof addToClinnicSchema>) => {
     if (!searchResult || !selectedClinic) return;
     
     try {
-      // Verificar se o usuário já está associado a esta clínica
-      const isAlreadyStaff = staffMembers.some(staff => 
-        staff.user.id === searchResult.id
-      );
+      await addClinicStaff(selectedClinic.id, searchResult.id, values.role, values.isAdmin);
       
-      if (isAlreadyStaff) {
-        toast({
-          title: "Usuário já associado",
-          description: "Este usuário já está associado a esta clínica.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      await addClinicStaff(selectedClinic.id, searchResult.id, selectedRole as string, isAdmin);
-      
-      // Recarregar lista de funcionários
+      // Reload staff list
       const staffData = await fetchClinicStaff(selectedClinic.id);
       setStaffMembers(staffData);
       
@@ -193,12 +276,80 @@ export const UserManagement = () => {
         description: "Funcionário adicionado com sucesso!",
       });
       
-      setIsAddExistingOpen(false);
+      setIsAddExistingDialogOpen(false);
+      setSearchResult(null);
+      emailSearchForm.reset();
+      
     } catch (error) {
       console.error('Error adding staff member:', error);
       toast({
         title: "Erro",
         description: "Não foi possível adicionar o funcionário.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleCreateNewUser = async (values: z.infer<typeof newUserSchema>) => {
+    if (!selectedClinic) return;
+    
+    try {
+      // Generate a random password
+      const password = Math.random().toString(36).slice(-8) + Math.random().toString(10).slice(-2).toUpperCase() + "!";
+      
+      // Create the user in Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: values.email,
+        password: password,
+        options: {
+          data: {
+            first_name: values.firstName,
+            last_name: values.lastName,
+          },
+        },
+      });
+      
+      if (authError) throw authError;
+      
+      if (!authData.user) {
+        throw new Error("Falha ao criar usuário");
+      }
+      
+      // Update the profile with additional data
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          first_name: values.firstName,
+          last_name: values.lastName,
+          email: values.email,
+          phone: values.phone || null,
+          crm: values.crm || '',
+          role: values.role
+        })
+        .eq('id', authData.user.id);
+        
+      if (profileError) throw profileError;
+      
+      // Associate with the clinic
+      await addClinicStaff(selectedClinic.id, authData.user.id, values.role, values.isAdmin);
+      
+      // Reload staff list
+      const staffData = await fetchClinicStaff(selectedClinic.id);
+      setStaffMembers(staffData);
+      
+      toast({
+        title: "Sucesso",
+        description: "Novo funcionário criado e associado à clínica!",
+      });
+      
+      setIsNewUserDialogOpen(false);
+      newUserForm.reset();
+      
+    } catch (error) {
+      console.error('Error creating user:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível criar o usuário.",
         variant: "destructive",
       });
     }
@@ -211,111 +362,35 @@ export const UserManagement = () => {
 
   const handleSaveUser = async (userData: UserProfile) => {
     try {
-      if (currentUser) {
-        // Update existing user
-        console.log('Updating user:', userData);
-        
-        const { data, error } = await supabase
-          .from('profiles')
-          .update({
-            first_name: userData.firstName,
-            last_name: userData.lastName,
-            email: userData.email,
-            crm: userData.crm,
-            phone: userData.phone,
-            title: userData.title,
-            bio: userData.bio,
-            role: userData.role
-          })
-          .eq('id', userData.id);
-        
-        if (error) throw error;
-        
-        // Atualizar na lista local
-        setStaffMembers(staffMembers.map(staff => 
-          staff.user.id === userData.id 
-            ? { ...staff, user: userData } 
-            : staff
-        ));
-        
-        toast({
-          title: "Sucesso",
-          description: "Usuário atualizado com sucesso!",
-        });
-      } else {
-        // Add new user (via auth signup) e depois associar à clínica
-        if (!selectedClinic) {
-          toast({
-            title: "Erro",
-            description: "Nenhuma clínica selecionada.",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        // Verificar se o usuário já existe
-        const existingUser = await checkUserExists(userData.email, userData.crm);
-        
-        if (existingUser) {
-          toast({
-            title: "Usuário já existe",
-            description: "Um usuário com este email/CRM já existe. Use a opção 'Adicionar Existente'.",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        // Criar um usuário no Auth (feito geralmente pelo admin)
-        const password = Math.random().toString(36).slice(-8) + Math.random().toString(10).slice(-2).toUpperCase() + "!";
-        
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          first_name: userData.firstName,
+          last_name: userData.lastName,
           email: userData.email,
-          password: password,
-          options: {
-            data: {
-              first_name: userData.firstName,
-              last_name: userData.lastName,
-            },
-          },
-        });
-        
-        if (authError) throw authError;
-        
-        if (authData.user) {
-          // Atualizar perfil com os dados completos
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .update({
-              first_name: userData.firstName,
-              last_name: userData.lastName,
-              crm: userData.crm,
-              phone: userData.phone || null,
-              title: userData.title || '',
-              bio: userData.bio || '',
-              role: userData.role
-            })
-            .eq('id', authData.user.id);
-            
-          if (profileError) throw profileError;
-          
-          // Associar à clínica
-          await addClinicStaff(
-            selectedClinic.id, 
-            authData.user.id, 
-            userData.role, 
-            userData.role === 'admin' || userData.role === 'clinic_admin'
-          );
-          
-          // Recarregar lista de funcionários
-          const staffData = await fetchClinicStaff(selectedClinic.id);
-          setStaffMembers(staffData);
-          
-          toast({
-            title: "Sucesso",
-            description: "Novo funcionário criado e senha temporária enviada!",
-          });
-        }
-      }
+          crm: userData.crm || '',
+          phone: userData.phone || null,
+          title: userData.title || '',
+          bio: userData.bio || '',
+          role: userData.role
+        })
+        .eq('id', userData.id);
+      
+      if (error) throw error;
+      
+      // Update the local staff list
+      setStaffMembers(staffMembers.map(staff => 
+        staff.user.id === userData.id 
+          ? { ...staff, user: userData } 
+          : staff
+      ));
+      
+      toast({
+        title: "Sucesso",
+        description: "Usuário atualizado com sucesso!",
+      });
+      
+      setIsDialogOpen(false);
     } catch (error) {
       console.error('Error saving user:', error);
       toast({
@@ -323,8 +398,6 @@ export const UserManagement = () => {
         description: "Não foi possível salvar o usuário.",
         variant: "destructive",
       });
-    } finally {
-      setIsDialogOpen(false);
     }
   };
 
@@ -335,7 +408,7 @@ export const UserManagement = () => {
       const success = await removeClinicStaff(staffId, user.id);
       
       if (success) {
-        // Atualizar a lista local removendo o funcionário
+        // Update the local staff list
         setStaffMembers(staffMembers.filter(staff => staff.id !== staffId));
         
         toast({
@@ -372,13 +445,12 @@ export const UserManagement = () => {
             </CardDescription>
           </div>
           <div className="flex gap-2">
-            <Button onClick={handleAddUser}>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Funcionário
-            </Button>
-            <Button variant="outline" onClick={handleAddExisting}>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Adicionar Existente
+            <Button 
+              onClick={() => setIsAddExistingDialogOpen(true)} 
+              disabled={!selectedClinic}
+            >
+              <UserSearch className="mr-2 h-4 w-4" />
+              Adicionar Funcionário
             </Button>
           </div>
         </div>
@@ -447,7 +519,7 @@ export const UserManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{staffMember.user.email}</TableCell>
-                      <TableCell className="hidden md:table-cell">{staffMember.user.crm}</TableCell>
+                      <TableCell className="hidden md:table-cell">{staffMember.user.crm || '-'}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={getRoleColor(staffMember.user.role)}>
                           {getRoleName(staffMember.user.role)}
@@ -463,15 +535,37 @@ export const UserManagement = () => {
                           <Button variant="ghost" size="icon" onClick={() => handleEditUser(staffMember)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleRemoveStaff(staffMember.id)}
-                            disabled={isCurrentUser}
-                            title={isCurrentUser ? "Não é possível remover seu próprio perfil" : "Remover funcionário"}
-                          >
-                            <Trash className={`h-4 w-4 ${isCurrentUser ? 'text-gray-300' : ''}`} />
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                disabled={isCurrentUser}
+                                title={isCurrentUser ? "Não é possível remover seu próprio perfil" : "Remover funcionário"}
+                              >
+                                <Trash className={`h-4 w-4 ${isCurrentUser ? 'text-gray-300' : 'text-red-500'}`} />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Remover funcionário</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja remover {staffMember.user.firstName} {staffMember.user.lastName} desta clínica?
+                                  <br /><br />
+                                  Esta ação não exclui o usuário do sistema, apenas remove seu acesso a esta clínica.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  className="bg-red-500 hover:bg-red-600" 
+                                  onClick={() => handleRemoveStaff(staffMember.id)}
+                                >
+                                  Remover
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -482,6 +576,8 @@ export const UserManagement = () => {
           </Table>
         </div>
       </CardContent>
+      
+      {/* Dialog para editar usuário existente */}
       <UserDialog 
         isOpen={isDialogOpen} 
         onClose={() => setIsDialogOpen(false)} 
@@ -489,101 +585,306 @@ export const UserManagement = () => {
         user={currentUser} 
       />
       
-      {/* Dialog para adicionar usuário existente */}
-      <Dialog open={isAddExistingOpen} onOpenChange={setIsAddExistingOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+      {/* Dialog para buscar e adicionar usuário existente */}
+      <Dialog open={isAddExistingDialogOpen} onOpenChange={setIsAddExistingDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Adicionar Funcionário Existente</DialogTitle>
+            <DialogTitle>Adicionar Funcionário à Clínica</DialogTitle>
             <DialogDescription>
-              Busque um usuário existente no sistema pelo email ou CRM.
+              Busque um usuário existente pelo email ou cadastre um novo.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">Email</label>
-              <Input 
-                id="email"
-                placeholder="Email do funcionário"
-                value={searchEmail}
-                onChange={(e) => setSearchEmail(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="crm" className="text-sm font-medium">CRM</label>
-              <Input 
-                id="crm"
-                placeholder="CRM do funcionário"
-                value={searchCrm}
-                onChange={(e) => setSearchCrm(e.target.value)}
-              />
-            </div>
-            
-            <div className="flex justify-end">
-              <Button 
-                onClick={handleSearchUser} 
-                disabled={isSearching || (!searchEmail && !searchCrm)}
-              >
-                {isSearching ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Buscando...
-                  </>
-                ) : (
-                  'Buscar'
+          <Form {...emailSearchForm}>
+            <form onSubmit={emailSearchForm.handleSubmit(handleSearchUser)} className="space-y-4">
+              <FormField
+                control={emailSearchForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email do Funcionário</FormLabel>
+                    <FormControl>
+                      <div className="flex space-x-2">
+                        <Input placeholder="email@example.com" {...field} />
+                        <Button 
+                          type="submit" 
+                          disabled={isSearching || !emailSearchForm.formState.isValid}
+                        >
+                          {isSearching ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Buscando...
+                            </>
+                          ) : (
+                            'Buscar'
+                          )}
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </Button>
+              />
+            </form>
+          </Form>
+          
+          {userAlreadyInClinic && (
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800">
+              <p className="text-sm font-medium">Este usuário já está associado a esta clínica</p>
             </div>
-            
-            {searchResult && (
-              <div className="space-y-4 border rounded-md p-4 mt-4">
-                <h4 className="font-medium">Usuário Encontrado</h4>
-                <div className="space-y-2">
-                  <p><strong>Nome:</strong> {searchResult.firstName} {searchResult.lastName}</p>
-                  <p><strong>Email:</strong> {searchResult.email}</p>
-                  <p><strong>CRM:</strong> {searchResult.crm}</p>
-                  <p><strong>Função no Sistema:</strong> {getRoleName(searchResult.role)}</p>
-                </div>
-                
-                <div className="space-y-2">
-                  <label htmlFor="role" className="text-sm font-medium">Cargo na Clínica</label>
-                  <select 
-                    id="role"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    value={selectedRole}
-                    onChange={(e) => setSelectedRole(e.target.value)}
-                  >
-                    <option value="doctor">Médico</option>
-                    <option value="nurse">Enfermeiro</option>
-                    <option value="receptionist">Recepção</option>
-                    <option value="staff">Equipe</option>
-                  </select>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <input 
-                    type="checkbox" 
-                    id="is_admin"
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    checked={isAdmin}
-                    onChange={(e) => setIsAdmin(e.target.checked)}
-                  />
-                  <label htmlFor="is_admin" className="text-sm font-medium">Administrador da Clínica</label>
+          )}
+          
+          {searchResult && !userAlreadyInClinic && (
+            <>
+              <Separator className="my-4" />
+              
+              <div className="mb-4">
+                <h3 className="text-lg font-medium">Usuário Encontrado</h3>
+                <div className="mt-2 p-4 border rounded-md">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-sm text-gray-500">Nome:</p>
+                      <p className="font-medium">{searchResult.firstName} {searchResult.lastName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Email:</p>
+                      <p className="font-medium">{searchResult.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Função no Sistema:</p>
+                      <Badge variant="outline" className={getRoleColor(searchResult.role)}>
+                        {getRoleName(searchResult.role)}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">CRM:</p>
+                      <p className="font-medium">{searchResult.crm || '-'}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
+              
+              <Form {...addToClinicForm}>
+                <form onSubmit={addToClinicForm.handleSubmit(handleAddExistingUserToClinic)} className="space-y-4">
+                  <FormField
+                    control={addToClinicForm.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Função na Clínica</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione uma função" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="doctor">Médico</SelectItem>
+                            <SelectItem value="nurse">Enfermeiro</SelectItem>
+                            <SelectItem value="receptionist">Recepção</SelectItem>
+                            <SelectItem value="staff">Equipe</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={addToClinicForm.control}
+                    name="isAdmin"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>
+                            Administrador da Clínica
+                          </FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            Pode gerenciar funcionários, configurações e dados desta clínica
+                          </p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <DialogFooter>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setIsAddExistingDialogOpen(false)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button type="submit">
+                      Adicionar à Clínica
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog para criar novo usuário */}
+      <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Criar Novo Funcionário</DialogTitle>
+            <DialogDescription>
+              Cadastre um novo usuário e associe-o à clínica atual.
+            </DialogDescription>
+          </DialogHeader>
           
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddExistingOpen(false)}>Cancelar</Button>
-            <Button 
-              onClick={handleAddStaffMember} 
-              disabled={!searchResult}
-            >
-              Adicionar
-            </Button>
-          </DialogFooter>
+          <Form {...newUserForm}>
+            <form onSubmit={newUserForm.handleSubmit(handleCreateNewUser)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={newUserForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nome" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={newUserForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sobrenome</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Sobrenome" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={newUserForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="email@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={newUserForm.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Telefone (opcional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="(00) 00000-0000" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={newUserForm.control}
+                  name="crm"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CRM (opcional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="CRM" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={newUserForm.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Função no Sistema</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione uma função" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="doctor">Médico</SelectItem>
+                        <SelectItem value="nurse">Enfermeiro</SelectItem>
+                        <SelectItem value="receptionist">Recepção</SelectItem>
+                        <SelectItem value="staff">Equipe</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={newUserForm.control}
+                name="isAdmin"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Administrador da Clínica
+                      </FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Pode gerenciar funcionários, configurações e dados desta clínica
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsNewUserDialogOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit">
+                  Criar & Associar
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </Card>
