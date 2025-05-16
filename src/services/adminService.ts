@@ -267,17 +267,15 @@ export const registerClinic = async ({
     if (profileError) throw profileError;
 
     // 3. Criar a clínica usando RPC
-    const { data: clinicData, error: clinicError } = await supabase.rpc<CreateClinicResponse, CreateClinicParams>(
-      'create_clinic',
-      { 
+    const { data: clinicData, error: clinicError } = await supabase
+      .rpc('create_clinic', { 
         p_name: clinic.name,
         p_city: clinic.city,
         p_address: clinic.address,
         p_phone: clinic.phone,
         p_email: clinic.email,
         p_created_by: userId
-      }
-    );
+      });
 
     if (clinicError) {
       console.error('Erro ao criar clínica:', clinicError);
@@ -298,15 +296,13 @@ export const registerClinic = async ({
     console.log('Clínica criada com ID:', clinicId);
 
     // 4. Associar o usuário à clínica como administrador
-    const { error: staffError } = await supabase.rpc<boolean, AddClinicStaffParams>(
-      'add_clinic_staff',
-      {
+    const { error: staffError } = await supabase
+      .rpc('add_clinic_staff', {
         p_user_id: userId,
         p_clinic_id: clinicId,
         p_is_admin: true,
         p_role: 'doctor'
-      }
-    );
+      });
 
     if (staffError) {
       console.error('Erro ao adicionar administrador à clínica:', staffError);
