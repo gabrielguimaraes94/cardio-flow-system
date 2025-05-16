@@ -24,7 +24,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('AuthProvider effect running');
     let mounted = true;
 
-    // Verificar se já existe uma sessão ativa primeiro
+    // Configure authentication state listener first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, currentSession) => {
+        console.log('Auth state changed:', event);
+        if (!mounted) return;
+        
+        // Handle different authentication events
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          if (mounted) {
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
+          }
+          
+          if (event === 'SIGNED_IN') {
+            toast({
+              title: "Login bem-sucedido",
+              description: "Bem-vindo de volta!",
+            });
+          }
+        } else if (event === 'SIGNED_OUT') {
+          if (mounted) {
+            setSession(null);
+            setUser(null);
+          }
+          
+          toast({
+            title: "Desconectado",
+            description: "Você foi desconectado com sucesso.",
+          });
+        } else if (event === 'USER_UPDATED') {
+          if (mounted) {
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
+          }
+        }
+        
+        if (!authChangeProcessed && mounted) {
+          setAuthChangeProcessed(true);
+        }
+        
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    );
+
+    // Then check for existing session
     const checkSession = async () => {
       try {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
@@ -33,6 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (mounted) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('Error checking session:', error);
@@ -42,61 +89,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    // Configurar listener de mudança de estado de autenticação
-    const setupAuthListener = () => {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        (event, currentSession) => {
-          console.log('Auth state changed:', event);
-          if (!mounted) return;
-          
-          // Fix for TS2367 error - use proper event type checking
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
-            
-            if (event === 'SIGNED_IN') {
-              toast({
-                title: "Login bem-sucedido",
-                description: "Bem-vindo de volta!",
-              });
-            }
-          } else if (event === 'SIGNED_OUT') {
-            setSession(null);
-            setUser(null);
-            
-            toast({
-              title: "Desconectado",
-              description: "Você foi desconectado com sucesso.",
-            });
-          } else if (event === 'USER_UPDATED') {
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
-          }
-          
-          if (!authChangeProcessed) {
-            setAuthChangeProcessed(true);
-          }
-          
-          setIsLoading(false);
-        }
-      );
-
-      return subscription;
-    };
-
-    // Execute verificação de sessão e configuração do listener
-    checkSession().then(() => {
-      const subscription = setupAuthListener();
-      setIsLoading(false);
-      
-      return () => {
-        mounted = false;
-        subscription.unsubscribe();
-      };
-    });
+    checkSession();
 
     return () => {
       mounted = false;
+      subscription.unsubscribe();
     };
   }, [toast]);
 

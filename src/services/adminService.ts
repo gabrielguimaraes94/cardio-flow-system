@@ -234,6 +234,7 @@ export const registerClinic = async ({
           data: {
             first_name: admin.firstName,
             last_name: admin.lastName,
+            crm: admin.crm || '',  // Garantindo que o CRM seja enviado
           },
         },
       });
@@ -259,6 +260,7 @@ export const registerClinic = async ({
       .update({
         first_name: admin.firstName,
         last_name: admin.lastName,
+        crm: admin.crm || '',  // Garantindo que o CRM seja enviado
         phone: admin.phone,
         role: admin.role
       })
@@ -268,7 +270,7 @@ export const registerClinic = async ({
 
     // 3. Criar a clínica usando RPC
     const { data: clinicData, error: clinicError } = await supabase
-      .rpc('create_clinic', { 
+      .rpc<CreateClinicResponse>('create_clinic', { 
         p_name: clinic.name,
         p_city: clinic.city,
         p_address: clinic.address,
@@ -297,7 +299,7 @@ export const registerClinic = async ({
 
     // 4. Associar o usuário à clínica como administrador
     const { error: staffError } = await supabase
-      .rpc('add_clinic_staff', {
+      .rpc<boolean>('add_clinic_staff', {
         p_user_id: userId,
         p_clinic_id: clinicId,
         p_is_admin: true,

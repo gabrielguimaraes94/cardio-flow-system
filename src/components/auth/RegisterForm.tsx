@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,22 +11,23 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-// Esquema de validação com yup
-const schema = yup.object({
-  firstName: yup.string().required('Nome é obrigatório'),
-  lastName: yup.string().required('Sobrenome é obrigatório'),
-  email: yup.string().email('Email inválido').required('Email é obrigatório'),
-  crm: yup.string().required('CRM é obrigatório'),
-  phone: yup.string(),
-  password: yup.string()
-    .required('Senha é obrigatória')
+// Esquema de validação com zod
+const registerSchema = z.object({
+  firstName: z.string().min(1, 'Nome é obrigatório'),
+  lastName: z.string().min(1, 'Sobrenome é obrigatório'),
+  email: z.string().email('Email inválido').min(1, 'Email é obrigatório'),
+  crm: z.string().min(1, 'CRM é obrigatório'),
+  phone: z.string().optional(),
+  password: z.string()
     .min(6, 'A senha deve ter pelo menos 6 caracteres'),
-  confirmPassword: yup.string()
-    .oneOf([yup.ref('password')], 'As senhas não coincidem')
-    .required('Confirmação de senha é obrigatória'),
+  confirmPassword: z.string()
+    .min(1, 'Confirmação de senha é obrigatória'),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "As senhas não coincidem",
+  path: ["confirmPassword"],
 });
 
-type RegisterFormData = yup.InferType<typeof schema>;
+type RegisterFormData = z.infer<typeof registerSchema>;
 
 interface RegisterFormProps {
   onToggleForm: () => void;
@@ -37,7 +38,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleForm }) => {
   const { toast } = useToast();
   
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
-    resolver: yupResolver(schema),
+    resolver: zodResolver(registerSchema),
   });
 
   const onSubmit = async (data: RegisterFormData) => {
