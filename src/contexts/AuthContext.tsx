@@ -49,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('Auth state changed:', event);
           if (!mounted) return;
           
+          // Fix for TS2367 error - use proper event type checking
           if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
             setSession(currentSession);
             setUser(currentSession?.user ?? null);
@@ -59,16 +60,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 description: "Bem-vindo de volta!",
               });
             }
-          } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+          } else if (event === 'SIGNED_OUT') {
             setSession(null);
             setUser(null);
             
-            if (event === 'SIGNED_OUT') {
-              toast({
-                title: "Desconectado",
-                description: "Você foi desconectado com sucesso.",
-              });
-            }
+            toast({
+              title: "Desconectado",
+              description: "Você foi desconectado com sucesso.",
+            });
+          } else if (event === 'USER_UPDATED') {
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
           }
           
           if (!authChangeProcessed) {

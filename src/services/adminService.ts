@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { Json } from '@/integrations/supabase/types';
+import { Database } from '@/integrations/supabase/types';
 import { UserProfile } from '@/types/profile';
 
 // Tipos para a função registerClinic
@@ -109,7 +109,7 @@ export const getAllClinics = async (
 
 // Obter todos os usuários para o painel de administração
 export const getAllUsers = async (
-  filters?: { role?: string; createdAfter?: string; createdBefore?: string; name?: string }
+  filters?: { role?: Database['public']['Enums']['user_role']; createdAfter?: string; createdBefore?: string; name?: string }
 ): Promise<AdminUser[]> => {
   try {
     let query = supabase
@@ -189,10 +189,10 @@ export const isGlobalAdmin = async (userId: string): Promise<boolean> => {
 export const isClinicAdmin = async (userId: string, clinicId: string): Promise<boolean> => {
   try {
     const { data, error } = await supabase
-      .rpc<boolean, { user_uuid: string; clinic_uuid: string }>(
-        'is_clinic_admin',
-        { user_uuid: userId, clinic_uuid: clinicId }
-      );
+      .rpc('is_clinic_admin', { 
+        user_uuid: userId, 
+        clinic_uuid: clinicId 
+      });
     
     if (error) throw error;
     
@@ -267,15 +267,17 @@ export const registerClinic = async ({
     if (profileError) throw profileError;
 
     // 3. Criar a clínica usando RPC
-    const { data: clinicData, error: clinicError } = await supabase
-      .rpc<CreateClinicResponse, CreateClinicParams>('create_clinic', { 
+    const { data: clinicData, error: clinicError } = await supabase.rpc<CreateClinicResponse>(
+      'create_clinic', 
+      { 
         p_name: clinic.name,
         p_city: clinic.city,
         p_address: clinic.address,
         p_phone: clinic.phone,
         p_email: clinic.email,
         p_created_by: userId
-      });
+      }
+    );
 
     if (clinicError) {
       console.error('Erro ao criar clínica:', clinicError);
@@ -288,7 +290,7 @@ export const registerClinic = async ({
     }
 
     // Precisamos garantir que temos um ID de clínica válido
-    const clinicId = clinicData.id;
+    const clinicId = (clinicData as unknown as CreateClinicResponse).id;
     if (!clinicId) {
       throw new Error('ID da clínica não recebido. Verifique se a função RPC está retornando corretamente.');
     }
@@ -296,20 +298,22 @@ export const registerClinic = async ({
     console.log('Clínica criada com ID:', clinicId);
 
     // 4. Associar o usuário à clínica como administrador
-    const { data: staffData, error: staffError } = await supabase
-      .rpc<boolean, AddClinicStaffParams>('add_clinic_staff', {
+    const { error: staffError } = await supabase.rpc(
+      'add_clinic_staff', 
+      {
         p_user_id: userId,
         p_clinic_id: clinicId,
         p_is_admin: true,
         p_role: 'doctor'
-      });
+      }
+    );
 
     if (staffError) {
       console.error('Erro ao adicionar administrador à clínica:', staffError);
       throw staffError;
     }
 
-    console.log('Clínica e administrador registrados com sucesso', staffData);
+    console.log('Clínica e administrador registrados com sucesso');
   } catch (error) {
     console.error('Erro ao registrar clínica:', error);
     throw error;
