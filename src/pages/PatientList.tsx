@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
+import { PatientFormModal } from '@/components/patients/PatientFormModal';
 
 interface Patient {
   id: string;
@@ -36,6 +37,7 @@ export const PatientList: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { selectedClinic } = useClinic();
   const { toast } = useToast();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const calculateAge = (birthdate: string) => {
     const today = new Date();
@@ -50,48 +52,49 @@ export const PatientList: React.FC = () => {
 
   // Buscar pacientes quando a clínica selecionada mudar
   useEffect(() => {
-    const fetchPatients = async () => {
-      if (!selectedClinic) {
-        setPatients([]);
-        setFilteredPatients([]);
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('patients')
-          .select('*')
-          .eq('clinic_id', selectedClinic.id);
-
-        if (error) throw error;
-
-        if (data) {
-          // Adicionar cálculo de idade para cada paciente
-          const patientsWithAge = data.map(patient => ({
-            ...patient,
-            age: calculateAge(patient.birthdate),
-            anamneses: [] // Placeholder para futuras anameses
-          }));
-
-          setPatients(patientsWithAge);
-          setFilteredPatients(patientsWithAge);
-        }
-      } catch (error) {
-        console.error('Erro ao buscar pacientes:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar os pacientes.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchPatients();
   }, [selectedClinic]);
+
+  // Função para buscar pacientes
+  const fetchPatients = async () => {
+    if (!selectedClinic) {
+      setPatients([]);
+      setFilteredPatients([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('clinic_id', selectedClinic.id);
+
+      if (error) throw error;
+
+      if (data) {
+        // Adicionar cálculo de idade para cada paciente
+        const patientsWithAge = data.map(patient => ({
+          ...patient,
+          age: calculateAge(patient.birthdate),
+          anamneses: [] // Placeholder para futuras anameses
+        }));
+
+        setPatients(patientsWithAge);
+        setFilteredPatients(patientsWithAge);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar pacientes:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os pacientes.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filtrar pacientes com base no termo de pesquisa
   useEffect(() => {
@@ -119,7 +122,7 @@ export const PatientList: React.FC = () => {
       });
       return;
     }
-    navigate('/patients/new');
+    setIsModalOpen(true);
   };
 
   const handleAnamnesisClick = (patientId: string, anamneses: any[]) => {
@@ -137,8 +140,6 @@ export const PatientList: React.FC = () => {
   };
 
   const handleEditPatient = (patientId: string) => {
-    // Por enquanto, redireciona para a página de novo paciente
-    // Em uma implementação completa, passaríamos o ID para editar o paciente existente
     navigate(`/patients/${patientId}/edit`);
   };
 
@@ -275,6 +276,12 @@ export const PatientList: React.FC = () => {
             </Table>
           </div>
         )}
+
+        <PatientFormModal 
+          open={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          onSuccess={fetchPatients}
+        />
       </div>
     </Layout>
   );
