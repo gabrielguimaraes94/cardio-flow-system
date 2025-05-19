@@ -8,14 +8,15 @@ import { PatientListHeader } from '@/components/patients/PatientListHeader';
 import { PatientSearchBar } from '@/components/patients/PatientSearchBar';
 import { PatientTable } from '@/components/patients/PatientTable';
 import { usePatients } from '@/hooks/usePatients';
+import { Loader2 } from 'lucide-react';
 
 export const PatientList: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { selectedClinic } = useClinic();
+  const { selectedClinic, loading: clinicLoading } = useClinic();
   const { toast } = useToast();
   const { 
     patients, 
-    isLoading, 
+    isLoading: patientsLoading, 
     searchTerm, 
     setSearchTerm, 
     fetchPatients 
@@ -33,6 +34,18 @@ export const PatientList: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  // Mostra um indicador de carregamento se estiver carregando dados de clínicas
+  if (clinicLoading) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center h-[50vh]">
+          <Loader2 className="h-12 w-12 animate-spin text-cardio-500 mb-4" />
+          <p className="text-xl font-medium text-gray-600">Carregando configurações da clínica...</p>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -43,9 +56,10 @@ export const PatientList: React.FC = () => {
         />
         <PatientTable 
           patients={patients}
-          isLoading={isLoading}
+          isLoading={patientsLoading}
           onPatientDeleted={fetchPatients}
         />
+        {/* Modal de criação de paciente */}
         <PatientFormModal 
           open={isModalOpen}
           onOpenChange={setIsModalOpen}

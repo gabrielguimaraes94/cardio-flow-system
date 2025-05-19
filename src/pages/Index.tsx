@@ -13,6 +13,7 @@ const Index = () => {
   const navigate = useNavigate();
   const [redirectAttempted, setRedirectAttempted] = useState(false);
   const [checkingAdminStatus, setCheckingAdminStatus] = useState(false);
+  const [loadingState, setLoadingState] = useState<string>("Verificando autenticação...");
 
   useEffect(() => {
     let isMounted = true;
@@ -27,22 +28,27 @@ const Index = () => {
         
         try {
           setCheckingAdminStatus(true);
+          setLoadingState("Verificando permissões...");
           // Check if user is global admin
           const isAdmin = await isGlobalAdmin(user.id);
           
           if (isAdmin && isMounted) {
             console.log("User is global admin, redirecting to admin dashboard");
+            setLoadingState("Redirecionando para o painel administrativo...");
             navigate('/admin/dashboard', { replace: true });
           } else if (userClinics.length === 0 && isMounted) {
             console.log("User has no clinics, showing no access page");
+            setLoadingState("Verificando acesso às clínicas...");
             navigate('/no-access', { replace: true });
           } else if (isMounted) {
             console.log("User has clinics, redirecting to dashboard");
+            setLoadingState("Redirecionando para o dashboard...");
             navigate('/dashboard', { replace: true });
           }
         } catch (error) {
           console.error("Error checking admin status:", error);
           if (isMounted) {
+            setLoadingState("Ocorreu um erro, redirecionando...");
             // In case of error, redirect to default dashboard
             navigate('/dashboard', { replace: true });
           }
@@ -67,9 +73,7 @@ const Index = () => {
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-cardio-500 mb-4" />
         <div className="text-cardio-500 text-xl">
-          {authLoading ? "Verificando autenticação..." : 
-           clinicsLoading ? "Carregando suas clínicas..." : 
-           "Preparando seu ambiente..."}
+          {loadingState}
         </div>
       </div>
     );
