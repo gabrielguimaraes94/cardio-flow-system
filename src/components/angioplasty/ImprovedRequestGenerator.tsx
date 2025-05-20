@@ -258,7 +258,7 @@ export const ImprovedRequestGenerator = () => {
       name: selectedClinic.name,
       address: selectedClinic.address || '',
       phone: selectedClinic.phone || '',
-      logo: selectedClinic.logo_url || '',
+      logo: selectedClinic.logo || '',
       city: selectedClinic.city || '',
       email: selectedClinic.email || '',
       zipCode: '01310-200' // Exemplo
