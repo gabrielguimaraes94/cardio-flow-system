@@ -63,12 +63,21 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // Caso contrário, seleciona a primeira da lista
         if (storedClinicId && clinicsData.find(c => c.id === storedClinicId)) {
           const matchingClinic = clinicsData.find(c => c.id === storedClinicId);
-          handleSetSelectedClinic(matchingClinic || clinicsData[0]);
+          if (matchingClinic) {
+            console.log('Definindo clínica do localStorage:', matchingClinic.name);
+            handleSetSelectedClinic(matchingClinic);
+          } else {
+            console.log('Clínica do localStorage não encontrada, usando primeira da lista');
+            handleSetSelectedClinic(clinicsData[0]);
+          }
         } else {
+          console.log('Nenhuma clínica no localStorage, usando primeira da lista');
           handleSetSelectedClinic(clinicsData[0]);
         }
       } else {
+        console.log('Nenhuma clínica encontrada para o usuário');
         setClinics([]);
+        setSelectedClinic(null);
       }
     } catch (error) {
       console.error("Error fetching clinics:", error);
@@ -90,7 +99,20 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [user, authLoading]);
 
+  // Este efeito garante que a clínica selecionada é mantida durante navegação
+  useEffect(() => {
+    const storedClinicId = localStorage.getItem('selectedClinicId');
+    if (storedClinicId && clinics.length > 0 && !selectedClinic) {
+      const matchingClinic = clinics.find(c => c.id === storedClinicId);
+      if (matchingClinic) {
+        console.log('Restaurando clínica selecionada da localStorage:', matchingClinic.name);
+        handleSetSelectedClinic(matchingClinic);
+      }
+    }
+  }, [clinics, selectedClinic]);
+
   const handleSetSelectedClinic = (clinic: Clinic | null) => {
+    console.log('Alterando clínica selecionada para:', clinic?.name || 'nenhuma');
     setSelectedClinic(clinic);
     
     if (clinic) {

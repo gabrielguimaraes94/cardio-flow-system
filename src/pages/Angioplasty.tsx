@@ -13,8 +13,12 @@ export const Angioplasty = () => {
   
   // Verifica se existe uma clínica selecionada ou disponível
   useEffect(() => {
-    setHasClinic(Boolean(selectedClinic));
-  }, [selectedClinic, clinics]);
+    if (selectedClinic) {
+      setHasClinic(true);
+    } else {
+      setHasClinic(false);
+    }
+  }, [selectedClinic]);
 
   return (
     <Layout>

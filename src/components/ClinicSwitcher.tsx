@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -42,8 +42,17 @@ const ClinicCard: React.FC<ClinicCardProps> = ({ name, city, isSelected, onSelec
 };
 
 export const ClinicSwitcher: React.FC = () => {
-  const { selectedClinic, clinics, setSelectedClinic, loading } = useClinic();
+  const { selectedClinic, clinics, setSelectedClinic, loading, refetchClinics } = useClinic();
   const { toast } = useToast();
+  
+  // Verificar ao montar se há uma clínica selecionada
+  useEffect(() => {
+    if (!selectedClinic && clinics.length > 0) {
+      // Se não tiver clínica selecionada, mas houver clínicas disponíveis
+      console.log('ClinicSwitcher: Nenhuma clínica selecionada, mas existem clínicas disponíveis');
+      refetchClinics();
+    }
+  }, [selectedClinic, clinics]);
 
   const handleSelectClinic = (clinicId: string) => {
     if (selectedClinic?.id === clinicId) return;
@@ -75,7 +84,11 @@ export const ClinicSwitcher: React.FC = () => {
   // Show empty state if no clinics or no selected clinic
   if (!selectedClinic || clinics.length === 0) {
     return (
-      <Button variant="ghost" className="flex items-center gap-2">
+      <Button 
+        variant="ghost" 
+        className="flex items-center gap-2"
+        onClick={() => refetchClinics()}
+      >
         <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
           <span className="text-gray-500 font-medium">?</span>
         </div>
