@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
+import { Json } from '@/integrations/supabase/types';
 
 export interface Doctor {
   id: string;
@@ -69,9 +70,9 @@ export const angioplastyService = {
           request_number: data.requestNumber,
           coronary_angiography: data.coronaryAngiography,
           proposed_treatment: data.proposedTreatment,
-          tuss_procedures: data.tussProcedures,
-          materials: data.materials,
-          surgical_team: data.surgicalTeam,
+          tuss_procedures: data.tussProcedures as unknown as Json,
+          materials: data.materials as unknown as Json,
+          surgical_team: data.surgicalTeam as unknown as Json,
           created_by: data.createdBy
         })
         .select('id')
@@ -102,7 +103,7 @@ export const angioplastyService = {
         throw error;
       }
       
-      // Convert snake_case to camelCase
+      // Convert snake_case to camelCase and ensure proper type casting
       return data ? data.map(item => ({
         id: item.id,
         patientId: item.patient_id,
@@ -113,9 +114,9 @@ export const angioplastyService = {
         requestNumber: item.request_number,
         coronaryAngiography: item.coronary_angiography,
         proposedTreatment: item.proposed_treatment,
-        tussProcedures: item.tuss_procedures,
-        materials: item.materials,
-        surgicalTeam: item.surgical_team,
+        tussProcedures: item.tuss_procedures as unknown as TussCode[],
+        materials: item.materials as unknown as MaterialWithQuantity[],
+        surgicalTeam: item.surgical_team as unknown as SurgicalTeam,
         createdAt: item.created_at,
         createdBy: item.created_by
       })) : [];
