@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -135,6 +134,7 @@ export const RequestGenerator = () => {
     'Paciente com diagnóstico de síndrome coronariana aguda sem supra de ST, apresentando lesão crítica em artéria coronária direita, com indicação de tratamento percutâneo.',
     'Paciente com angina estável, apresentando teste de isquemia positivo, com lesão significativa em tronco de coronária esquerda.'
   ];
+  
   
   const handleToggleProcedure = (tuss: TussCode) => {
     setSelectedProcedures(prev => {
@@ -282,6 +282,7 @@ export const RequestGenerator = () => {
             </div>
           </div>
           
+          
           <div className="space-y-4 mb-6">
             <h3 className="text-lg font-medium">Procedimentos</h3>
             <div className="border rounded-md p-3 space-y-2">
@@ -351,6 +352,8 @@ export const RequestGenerator = () => {
         </div>
         
         <div>
+          
+          
           <div className="space-y-4 mb-6">
             <h3 className="text-lg font-medium">Justificativa Médica</h3>
             <Textarea
@@ -460,6 +463,7 @@ export const RequestGenerator = () => {
               </div>
             </div>
           </div>
+          
           
           <div className="flex flex-col sm:flex-row gap-3 justify-end">
             {selectedInsurance && insuranceCompanies.find(i => i.id === selectedInsurance)?.requiresDigitalSubmission && (
