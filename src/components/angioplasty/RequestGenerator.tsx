@@ -24,15 +24,15 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Input } from '@/components/ui/input';
-import { Plus, ChevronDown, Printer, FileText } from 'lucide-react';
+import { Plus, ChevronDown, Printer, FileText, Search, Trash } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TussCode {
   id: string;
   code: string;
   description: string;
-  justifications: string[];
-  referenceValue: number;
+  justifications?: string[];
 }
 
 interface Material {
@@ -41,7 +41,6 @@ interface Material {
   manufacturer: string;
   code: string;
   compatibleProcedures: string[];
-  referencePrice: number;
 }
 
 interface MaterialWithQuantity extends Material {
@@ -59,8 +58,238 @@ interface Clinic {
 interface InsuranceCompany {
   id: string;
   name: string;
-  requiresDigitalSubmission: boolean;
+  requiresDigitalSubmission?: boolean;
 }
+
+// Component for selecting insurance companies
+const InsuranceSelector = ({ onInsuranceSelect, selectedInsurance }: { 
+  onInsuranceSelect: (insurance: InsuranceCompany) => void;
+  selectedInsurance: InsuranceCompany | null;
+}) => {
+  const [insuranceCompanies, setInsuranceCompanies] = useState<InsuranceCompany[]>([
+    { id: '1', name: 'Bradesco Saúde', requiresDigitalSubmission: true },
+    { id: '2', name: 'Amil', requiresDigitalSubmission: true },
+    { id: '3', name: 'Unimed', requiresDigitalSubmission: false },
+    { id: '4', name: 'SulAmérica', requiresDigitalSubmission: true }
+  ]);
+
+  const handleInsuranceSelect = (insuranceId: string) => {
+    const insurance = insuranceCompanies.find(i => i.id === insuranceId);
+    if (insurance) {
+      onInsuranceSelect(insurance);
+    }
+  };
+
+  return (
+    <Select value={selectedInsurance?.id || ''} onValueChange={handleInsuranceSelect}>
+      <SelectTrigger>
+        <SelectValue placeholder="Selecione um convênio" />
+      </SelectTrigger>
+      <SelectContent>
+        {insuranceCompanies.map(insurance => (
+          <SelectItem key={insurance.id} value={insurance.id}>
+            {insurance.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
+// Component for material selection with improved filtering and search
+const MaterialSelector = ({ 
+  selectedMaterials, 
+  setSelectedMaterials,
+  selectedProcedures
+}: {
+  selectedMaterials: MaterialWithQuantity[];
+  setSelectedMaterials: React.Dispatch<React.SetStateAction<MaterialWithQuantity[]>>;
+  selectedProcedures: TussCode[];
+}) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Mock materials data
+  const materials: Material[] = [
+    {
+      id: '1',
+      description: 'Stent Farmacológico',
+      manufacturer: 'Boston Scientific',
+      code: 'STE-001',
+      compatibleProcedures: ['2'],
+    },
+    {
+      id: '2',
+      description: 'Cateter Balão',
+      manufacturer: 'Medtronic',
+      code: 'CAT-002',
+      compatibleProcedures: ['1', '2'],
+    },
+    {
+      id: '3',
+      description: 'Guia 0.014"',
+      manufacturer: 'Abbott',
+      code: 'GUI-003',
+      compatibleProcedures: ['1', '2', '3'],
+    },
+    {
+      id: '4',
+      description: 'Introdutor Arterial',
+      manufacturer: 'Cordis',
+      code: 'INT-004',
+      compatibleProcedures: ['1', '2', '3', '4'],
+    },
+    {
+      id: '5',
+      description: 'Stent Convencional',
+      manufacturer: 'Medtronic',
+      code: 'STC-005',
+      compatibleProcedures: ['2'],
+    },
+  ];
+
+  const filteredMaterials = materials.filter(material => {
+    const matchesSearch = searchTerm ? (
+      material.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      material.manufacturer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      material.code.toLowerCase().includes(searchTerm.toLowerCase())
+    ) : true;
+    
+    const isCompatible = selectedProcedures.length === 0 || 
+      selectedProcedures.some(proc => 
+        material.compatibleProcedures.includes(proc.id)
+      );
+    
+    return matchesSearch && isCompatible;
+  });
+
+  const handleToggleMaterial = (material: Material) => {
+    setSelectedMaterials(prev => {
+      const isSelected = prev.some(m => m.id === material.id);
+      
+      if (isSelected) {
+        return prev.filter(m => m.id !== material.id);
+      } else {
+        return [...prev, { ...material, quantity: 1 }];
+      }
+    });
+  };
+  
+  const handleMaterialQuantityChange = (materialId: string, quantity: number) => {
+    setSelectedMaterials(prev => 
+      prev.map(m => m.id === materialId ? { ...m, quantity: Math.max(1, quantity) } : m)
+    );
+  };
+
+  const isMaterialSelected = (materialId: string) => {
+    return selectedMaterials.some(m => m.id === materialId);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="relative">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+        <Input
+          placeholder="Buscar materiais"
+          className="pl-9" 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+      
+      <div className="border rounded-md overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted">
+            <tr>
+              <th className="text-left px-4 py-2 font-medium">Material</th>
+              <th className="text-left px-4 py-2 font-medium">Fabricante</th>
+              <th className="text-left px-4 py-2 font-medium">Código</th>
+              <th className="w-16 px-4 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredMaterials.map((material) => (
+              <tr key={material.id} className="border-t hover:bg-muted/50">
+                <td className="px-4 py-2">{material.description}</td>
+                <td className="px-4 py-2">{material.manufacturer}</td>
+                <td className="px-4 py-2">{material.code}</td>
+                <td className="px-4 py-2 text-right">
+                  <Button 
+                    variant={isMaterialSelected(material.id) ? "destructive" : "ghost"}
+                    size="sm" 
+                    onClick={() => handleToggleMaterial(material)}
+                    className="h-7 w-7 p-0"
+                  >
+                    {isMaterialSelected(material.id) ? (
+                      <Trash className="h-4 w-4" />
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
+                  </Button>
+                </td>
+              </tr>
+            ))}
+            
+            {filteredMaterials.length === 0 && (
+              <tr>
+                <td colSpan={4} className="text-center py-4 text-muted-foreground">
+                  Nenhum material encontrado
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      
+      <div className="mt-4">
+        <h4 className="text-sm font-medium mb-2">Materiais selecionados ({selectedMaterials.length})</h4>
+        {selectedMaterials.length > 0 ? (
+          <div className="border rounded-md p-3">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Quantidade</TableHead>
+                  <TableHead className="w-16"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {selectedMaterials.map(material => (
+                  <TableRow key={material.id}>
+                    <TableCell className="font-medium">
+                      {material.description} 
+                      <div className="text-xs text-muted-foreground">{material.manufacturer} - {material.code}</div>
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={material.quantity}
+                        onChange={(e) => handleMaterialQuantityChange(material.id, parseInt(e.target.value) || 1)}
+                        className="w-16 h-8"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleToggleMaterial(material)}
+                        className="h-7 w-7 p-0"
+                      >
+                        <Trash className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Nenhum material selecionado</p>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export const RequestGenerator = () => {
   const [selectedProcedures, setSelectedProcedures] = useState<TussCode[]>([]);
@@ -266,18 +495,10 @@ export const RequestGenerator = () => {
               
               <div className="space-y-2">
                 <Label htmlFor="insurance">Convênio</Label>
-                <Select value={selectedInsurance} onValueChange={setSelectedInsurance}>
-                  <SelectTrigger id="insurance">
-                    <SelectValue placeholder="Selecione um convênio" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {insuranceCompanies.map(insurance => (
-                      <SelectItem key={insurance.id} value={insurance.id}>
-                        {insurance.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <InsuranceSelector 
+                  onInsuranceSelect={setSelectedInsurance} 
+                  selectedInsurance={selectedInsurance}
+                />
               </div>
             </div>
           </div>
@@ -310,43 +531,11 @@ export const RequestGenerator = () => {
           <div className="space-y-4 mb-6">
             <h3 className="text-lg font-medium">Materiais</h3>
             <div className="border rounded-md p-3 space-y-2">
-              {materials.map(material => (
-                <div key={material.id} className="flex items-start space-x-2">
-                  <Checkbox 
-                    id={`mat-${material.id}`}
-                    checked={selectedMaterials.some(m => m.id === material.id)}
-                    onCheckedChange={() => handleToggleMaterial(material)}
-                    disabled={!isMaterialCompatible(material)}
-                  />
-                  <div className="flex-1">
-                    <label 
-                      htmlFor={`mat-${material.id}`} 
-                      className={`text-sm leading-tight ${!isMaterialCompatible(material) ? 'text-muted-foreground' : ''}`}
-                    >
-                      <div className="font-medium">{material.description}</div>
-                      <div className="text-muted-foreground text-xs">
-                        {material.manufacturer} - {material.code} - R$ {material.referencePrice.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-                      </div>
-                    </label>
-                    
-                    {selectedMaterials.some(m => m.id === material.id) && (
-                      <div className="flex items-center mt-1">
-                        <Label htmlFor={`qty-${material.id}`} className="text-xs mr-2">
-                          Quantidade:
-                        </Label>
-                        <Input
-                          id={`qty-${material.id}`}
-                          type="number"
-                          min="1"
-                          value={selectedMaterials.find(m => m.id === material.id)?.quantity || 1}
-                          onChange={(e) => handleMaterialQuantityChange(material.id, parseInt(e.target.value))}
-                          className="h-7 w-16 text-xs"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+              <MaterialSelector 
+                selectedMaterials={selectedMaterials} 
+                setSelectedMaterials={setSelectedMaterials} 
+                selectedProcedures={selectedProcedures}
+              />
             </div>
           </div>
         </div>
@@ -490,3 +679,6 @@ export const RequestGenerator = () => {
     </div>
   );
 };
+
+RequestGenerator.InsuranceSelector = InsuranceSelector;
+RequestGenerator.MaterialSelector = MaterialSelector;

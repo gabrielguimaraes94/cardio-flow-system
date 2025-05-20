@@ -1,14 +1,299 @@
 
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { usePatients } from '@/hooks/usePatients';
 import { RequestGenerator } from './RequestGenerator';
+import { TussCodeList } from './TussCodeList';
+import { toast } from 'sonner';
+import { PDFViewer } from './PDFViewer';
+import { PDFActions } from './PDFActions';
+import { useClinic } from '@/contexts/ClinicContext';
+import { PatientSelector } from './PatientSelector';
+import { SurgicalTeamSelector } from './SurgicalTeamSelector';
+import { format } from 'date-fns';
+
+const requestFormSchema = z.object({
+  patientId: z.string().min(1, { message: 'Selecione um paciente' }),
+  insuranceId: z.string().min(1, { message: 'Selecione um convênio' }),
+  coronaryAngiography: z.string().min(10, { message: 'Descreva os resultados da coronariografia em pelo menos 10 caracteres' }),
+  proposedTreatment: z.string().min(10, { message: 'Descreva o tratamento proposto em pelo menos 10 caracteres' }),
+});
+
+type RequestFormValues = z.infer<typeof requestFormSchema>;
 
 export const ImprovedRequestGenerator: React.FC = () => {
+  const { selectedClinic } = useClinic();
+  const [currentTab, setCurrentTab] = useState<string>('form');
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  const [selectedInsurance, setSelectedInsurance] = useState<any>(null);
+  const [selectedProcedures, setSelectedProcedures] = useState<any[]>([]);
+  const [selectedMaterials, setSelectedMaterials] = useState<any[]>([]);
+  const [surgicalTeam, setSurgicalTeam] = useState<any>({
+    surgeon: null,
+    assistant: null,
+    anesthesiologist: null,
+  });
+  const [requestNumber, setRequestNumber] = useState<string>(
+    `ANG-${format(new Date(), 'yyyyMMdd')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`
+  );
+
+  const pdfContentRef = useRef<HTMLDivElement>(null);
+
+  const form = useForm<RequestFormValues>({
+    resolver: zodResolver(requestFormSchema),
+    defaultValues: {
+      patientId: '',
+      insuranceId: '',
+      coronaryAngiography: '',
+      proposedTreatment: '',
+    },
+  });
+
+  const handlePatientSelect = (patient: any) => {
+    setSelectedPatient(patient);
+    form.setValue('patientId', patient.id);
+  };
+
+  const handleInsuranceSelect = (insurance: any) => {
+    setSelectedInsurance(insurance);
+    form.setValue('insuranceId', insurance.id);
+  };
+
+  const handleGenerateRequest = (values: RequestFormValues) => {
+    if (selectedProcedures.length === 0) {
+      toast.error('Selecione pelo menos um procedimento TUSS');
+      return;
+    }
+
+    if (!surgicalTeam.surgeon) {
+      toast.error('Selecione um cirurgião para a equipe cirúrgica');
+      return;
+    }
+
+    // Switching to the preview tab
+    setCurrentTab('preview');
+    toast.success('Solicitação gerada com sucesso!');
+  };
+
   return (
-    <div>
-      <RequestGenerator />
-    </div>
+    <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
+      <TabsList className="mb-6">
+        <TabsTrigger value="form">Formulário de Solicitação</TabsTrigger>
+        <TabsTrigger value="preview">Visualizar PDF</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="form">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleGenerateRequest)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-6">
+                <Card>
+                  <CardContent className="pt-6">
+                    <h3 className="text-lg font-medium mb-4">Informações Básicas</h3>
+                    
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="patientId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Paciente</FormLabel>
+                            <FormControl>
+                              <PatientSelector 
+                                onPatientSelect={handlePatientSelect} 
+                                selectedValue={field.value}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="insuranceId"
+                        render={() => (
+                          <FormItem>
+                            <FormLabel>Convênio</FormLabel>
+                            <FormControl>
+                              <RequestGenerator.InsuranceSelector 
+                                onInsuranceSelect={handleInsuranceSelect}
+                                selectedInsurance={selectedInsurance}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="space-y-2">
+                        <Label htmlFor="requestNumber">Número da Solicitação</Label>
+                        <Input
+                          id="requestNumber"
+                          value={requestNumber}
+                          onChange={(e) => setRequestNumber(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <h3 className="text-lg font-medium mb-4">Procedimentos TUSS</h3>
+                    <TussCodeList 
+                      selectedProcedures={selectedProcedures}
+                      onAdd={(procedure) => setSelectedProcedures([...selectedProcedures, procedure])}
+                      onRemove={(id) => setSelectedProcedures(selectedProcedures.filter(p => p.id !== id))}
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <h3 className="text-lg font-medium mb-4">Materiais</h3>
+                    <RequestGenerator.MaterialSelector
+                      selectedMaterials={selectedMaterials}
+                      setSelectedMaterials={setSelectedMaterials}
+                      selectedProcedures={selectedProcedures}
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <h3 className="text-lg font-medium mb-4">Equipe Cirúrgica</h3>
+                    <SurgicalTeamSelector
+                      surgicalTeam={surgicalTeam}
+                      setSurgicalTeam={setSurgicalTeam}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="space-y-6">
+                <Card>
+                  <CardContent className="pt-6">
+                    <FormField
+                      control={form.control}
+                      name="coronaryAngiography"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Coronariografia</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Descreva os resultados da coronariografia"
+                              className="min-h-32"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <FormField
+                      control={form.control}
+                      name="proposedTreatment"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tratamento Proposto</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Descreva o tratamento proposto para o paciente"
+                              className="min-h-32"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+
+                <div className="flex justify-end">
+                  <Button type="submit" className="w-full sm:w-auto">
+                    Gerar Solicitação
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </form>
+        </Form>
+      </TabsContent>
+
+      <TabsContent value="preview">
+        <div className="space-y-4">
+          <Card className="bg-white">
+            <CardContent className="p-0">
+              <PDFViewer
+                patient={selectedPatient}
+                insurance={selectedInsurance}
+                clinic={selectedClinic || {
+                  id: '',
+                  name: '',
+                  address: '',
+                  phone: '',
+                }}
+                tussProcedures={selectedProcedures}
+                materials={selectedMaterials}
+                surgicalTeam={surgicalTeam}
+                coronaryAngiography={form.getValues('coronaryAngiography')}
+                proposedTreatment={form.getValues('proposedTreatment')}
+                requestNumber={requestNumber}
+                contentRef={pdfContentRef}
+              />
+            </CardContent>
+          </Card>
+
+          <PDFActions
+            data={{
+              patient: selectedPatient,
+              insurance: selectedInsurance,
+              clinic: selectedClinic || {
+                id: '',
+                name: '',
+                address: '',
+                phone: '',
+              },
+              tussProcedures: selectedProcedures,
+              materials: selectedMaterials,
+              surgicalTeam: surgicalTeam,
+              coronaryAngiography: form.getValues('coronaryAngiography'),
+              proposedTreatment: form.getValues('proposedTreatment'),
+              requestNumber: requestNumber,
+            }}
+            contentRef={pdfContentRef}
+          />
+
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setCurrentTab('form')}>
+              Voltar para o Formulário
+            </Button>
+          </div>
+        </div>
+      </TabsContent>
+    </Tabs>
   );
 };
