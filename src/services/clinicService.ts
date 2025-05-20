@@ -11,7 +11,7 @@ export interface Clinic {
   logo?: string;
   logo_url?: string;
   active?: boolean;
-  zipCode?: string; // Added this field to match usage in PDFViewer
+  zipCode?: string;
 }
 
 /**

@@ -37,9 +37,7 @@ interface Clinic {
   name: string;
   address: string;
   phone: string;
-  logo_url?: string;
   city?: string;
-  zipCode?: string;
   email?: string;
 }
 
@@ -86,22 +84,13 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
       <div ref={contentRef} className="max-w-[800px] mx-auto">
         {/* Header */}
         <div className="flex justify-between items-start mb-8">
-          <div className="max-w-[60%]">
+          <div className="max-w-[100%]">
             <h1 className="text-xl font-bold">{clinic.name}</h1>
             <p className="text-sm">{clinic.address}</p>
-            <p className="text-sm">{clinic.zipCode} {clinic.city}</p>
+            <p className="text-sm">{clinic.city}</p>
             <p className="text-sm">Tel: {clinic.phone}</p>
             {clinic.email && <p className="text-sm">Email: {clinic.email}</p>}
           </div>
-          {clinic.logo_url && (
-            <div className="w-32">
-              <img 
-                src={clinic.logo_url} 
-                alt={`${clinic.name} logo`} 
-                className="max-w-full h-auto"
-              />
-            </div>
-          )}
         </div>
         
         {/* Location and date */}

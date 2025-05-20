@@ -5,8 +5,6 @@ import { Save, Printer, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AngioplastyRequest, angioplastyService } from '@/services/angioplastyService';
 import { useAuth } from '@/contexts/AuthContext';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 
 interface PDFActionsProps {
   data: {
@@ -30,7 +28,6 @@ interface PDFActionsProps {
 export const PDFActions: React.FC<PDFActionsProps> = ({ data, contentRef }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -104,62 +101,6 @@ export const PDFActions: React.FC<PDFActionsProps> = ({ data, contentRef }) => {
     }, 100);
   };
 
-  const handleDownload = async () => {
-    if (!contentRef.current) {
-      toast({
-        title: "Erro ao baixar",
-        description: "Conteúdo não disponível para download",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsDownloading(true);
-    try {
-      // Create a PDF from the content
-      const content = contentRef.current;
-      const canvas = await html2canvas(content, {
-        scale: 2,
-        logging: false,
-        useCORS: true
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      // Calculate image dimensions to fit A4 page
-      const imgWidth = pdf.internal.pageSize.getWidth();
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-
-      // Generate filename with patient name and date
-      const patientName = data.patient ? data.patient.name.replace(/[^a-zA-Z0-9]/g, '_') : 'angioplastia';
-      const date = new Date().toISOString().split('T')[0];
-      const filename = `Solicitacao_Angioplastia_${patientName}_${date}.pdf`;
-
-      pdf.save(filename);
-
-      toast({
-        title: "Download concluído",
-        description: "O PDF foi salvo com sucesso."
-      });
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-      toast({
-        title: "Erro ao baixar PDF",
-        description: "Não foi possível gerar o PDF. Por favor, tente novamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
   const isDataComplete = Boolean(data.patient && data.insurance);
 
   return (
@@ -182,16 +123,6 @@ export const PDFActions: React.FC<PDFActionsProps> = ({ data, contentRef }) => {
       >
         <Printer className="h-4 w-4" />
         {isPrinting ? "Imprimindo..." : "Imprimir"}
-      </Button>
-
-      <Button 
-        variant="default" 
-        className="flex items-center gap-2 print:hidden"
-        disabled={!isDataComplete || isDownloading}
-        onClick={handleDownload}
-      >
-        <Download className="h-4 w-4" />
-        {isDownloading ? "Gerando PDF..." : "Baixar PDF"}
       </Button>
     </div>
   );
