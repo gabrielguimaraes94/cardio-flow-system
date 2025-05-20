@@ -55,26 +55,44 @@ export interface AngioplastyRequest {
   createdBy: string;
 }
 
+// Interface para representar os dados exatos enviados ao Supabase
+interface AngioplastyRequestInsert {
+  patient_id: string;
+  patient_name: string;
+  insurance_id: string;
+  insurance_name: string;
+  clinic_id: string;
+  request_number: string;
+  coronary_angiography: string;
+  proposed_treatment: string;
+  tuss_procedures: Json;
+  materials: Json;
+  surgical_team: Json;
+  created_by: string;
+}
+
 export const angioplastyService = {
   async saveRequest(data: Omit<AngioplastyRequest, 'id' | 'createdAt'>): Promise<{ id: string } | null> {
     try {
-      // Convert data to Supabase's snake_case format
+      // Converter para o formato esperado pelo Supabase
+      const insertData: AngioplastyRequestInsert = {
+        patient_id: data.patientId,
+        patient_name: data.patientName,
+        insurance_id: data.insuranceId,
+        insurance_name: data.insuranceName,
+        clinic_id: data.clinicId,
+        request_number: data.requestNumber,
+        coronary_angiography: data.coronaryAngiography,
+        proposed_treatment: data.proposedTreatment,
+        tuss_procedures: data.tussProcedures as unknown as Json,
+        materials: data.materials as unknown as Json,
+        surgical_team: data.surgicalTeam as unknown as Json,
+        created_by: data.createdBy
+      };
+      
       const { data: result, error } = await supabase
         .from('angioplasty_requests')
-        .insert({
-          patient_id: data.patientId,
-          patient_name: data.patientName,
-          insurance_id: data.insuranceId,
-          insurance_name: data.insuranceName,
-          clinic_id: data.clinicId,
-          request_number: data.requestNumber,
-          coronary_angiography: data.coronaryAngiography,
-          proposed_treatment: data.proposedTreatment,
-          tuss_procedures: data.tussProcedures as unknown as Json,
-          materials: data.materials as unknown as Json,
-          surgical_team: data.surgicalTeam as unknown as Json,
-          created_by: data.createdBy
-        })
+        .insert(insertData)
         .select('id')
         .single();
       
@@ -103,7 +121,7 @@ export const angioplastyService = {
         throw error;
       }
       
-      // Convert snake_case to camelCase and ensure proper type casting
+      // Converter de snake_case para camelCase e fazer os casts de tipo adequados
       return data ? data.map(item => ({
         id: item.id,
         patientId: item.patient_id,
@@ -114,9 +132,9 @@ export const angioplastyService = {
         requestNumber: item.request_number,
         coronaryAngiography: item.coronary_angiography,
         proposedTreatment: item.proposed_treatment,
-        tussProcedures: item.tuss_procedures as unknown as TussCode[],
-        materials: item.materials as unknown as MaterialWithQuantity[],
-        surgicalTeam: item.surgical_team as unknown as SurgicalTeam,
+        tussProcedures: (item.tuss_procedures as unknown) as TussCode[],
+        materials: (item.materials as unknown) as MaterialWithQuantity[],
+        surgicalTeam: (item.surgical_team as unknown) as SurgicalTeam,
         createdAt: item.created_at,
         createdBy: item.created_by
       })) : [];
