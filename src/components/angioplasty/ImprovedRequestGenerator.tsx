@@ -27,7 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Plus, ChevronDown, Printer, FileText, Search, X, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useClinic } from '@/contexts/ClinicContext';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { z } from 'zod';
 import { PDFViewer } from '@/components/angioplasty/PDFViewer';
@@ -35,53 +35,57 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-// Validation schemas
+// Validation schemas - Melhorando os esquemas para garantir validações adequadas
 const patientSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().min(1, "ID do paciente é obrigatório"),
   name: z.string().min(1, "Nome do paciente é obrigatório"),
   birthdate: z.string().refine((value) => !isNaN(Date.parse(value)), {
     message: "Data de nascimento inválida",
   }),
 });
 
+const insuranceSchema = z.object({
+  id: z.string().min(1, "ID do convênio é obrigatório"),
+  name: z.string().min(1, "Nome do convênio é obrigatório"),
+});
+
+const doctorSchema = z.object({
+  id: z.string().min(1, "ID do médico é obrigatório"),
+  name: z.string().min(1, "Nome do médico é obrigatório"),
+  crm: z.string().min(1, "CRM é obrigatório"),
+});
+
 const tussProcedureSchema = z.object({
-  id: z.string(),
+  id: z.string().min(1, "ID do procedimento é obrigatório"),
   code: z.string().min(1, "Código TUSS é obrigatório"),
   description: z.string().min(1, "Descrição é obrigatória"),
 });
 
 const materialSchema = z.object({
-  id: z.string(),
+  id: z.string().min(1, "ID do material é obrigatório"),
   description: z.string().min(1, "Descrição do material é obrigatória"),
   quantity: z.number().min(1, "Quantidade deve ser pelo menos 1"),
 });
 
-const surgicalTeamMemberSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, "Nome do profissional é obrigatório"),
-  crm: z.string().min(1, "CRM é obrigatório"),
-  role: z.string().min(1, "Função é obrigatória"),
-});
-
 const requestFormSchema = z.object({
   patient: patientSchema,
-  insurance: z.object({
-    id: z.string(),
-    name: z.string().min(1, "Convênio é obrigatório"),
-  }),
+  insurance: insuranceSchema,
   coronaryAngiography: z.string().min(1, "Informações de coronariografia são obrigatórias"),
   proposedTreatment: z.string().min(1, "Tratamento proposto é obrigatório"),
   tussProcedures: z.array(tussProcedureSchema).min(1, "Selecione pelo menos um procedimento"),
   materials: z.array(materialSchema),
   surgicalTeam: z.object({
-    surgeon: surgicalTeamMemberSchema,
-    assistant: surgicalTeamMemberSchema.nullable(),
-    anesthesiologist: surgicalTeamMemberSchema.nullable(),
+    surgeon: doctorSchema,
+    assistant: doctorSchema.nullable().optional(),
+    anesthesiologist: doctorSchema.nullable().optional(),
+  }),
+  clinic: z.object({
+    id: z.string().min(1, "ID da clínica é obrigatório"),
+    name: z.string().min(1, "Nome da clínica é obrigatório"),
   }),
 });
 
-type RequestFormData = z.infer<typeof requestFormSchema>;
-
+// Definindo interfaces
 interface Doctor {
   id: string;
   name: string;
@@ -328,41 +332,97 @@ export const ImprovedRequestGenerator = () => {
     setIsDoctorModalOpen(false);
   };
   
-  const handleGenerateRequest = () => {
+  // Função melhorada para validar o formulário
+  const validateForm = () => {
     try {
-      // Primeiro, verificamos se há uma clínica selecionada
+      // Verificar se há uma clínica selecionada
       if (!selectedClinic) {
-        toast({
-          title: "Erro de validação",
-          description: "Nenhuma clínica selecionada. Por favor, selecione uma clínica antes de continuar.",
-          variant: "destructive"
-        });
-        return;
+        throw new z.ZodError([{
+          code: "custom",
+          message: "Nenhuma clínica selecionada",
+          path: ["clinic"]
+        }]);
       }
 
-      // Validate the form data
-      const formData = {
-        patient: selectedPatient,
-        insurance: selectedInsurance,
-        coronaryAngiography,
-        proposedTreatment,
-        tussProcedures: selectedTussProcedures,
-        materials: selectedMaterials,
-        surgicalTeam: {
-          surgeon: surgicalTeam.surgeon,
-          assistant: surgicalTeam.assistant,
-          anesthesiologist: surgicalTeam.anesthesiologist,
-        },
-      };
-      
-      requestFormSchema.parse(formData);
-      
-      // If validation passes, open the PDF preview
-      setIsPdfModalOpen(true);
-      
-      // In a real implementation, we would save the request to the database here
-      
+      // Verificar paciente
+      if (!selectedPatient) {
+        throw new z.ZodError([{
+          code: "custom",
+          message: "Selecione um paciente",
+          path: ["patient"]
+        }]);
+      }
+
+      // Verificar convênio
+      if (!selectedInsurance) {
+        throw new z.ZodError([{
+          code: "custom",
+          message: "Selecione um convênio",
+          path: ["insurance"]
+        }]);
+      }
+
+      // Verificar cirurgião
+      if (!surgicalTeam.surgeon) {
+        throw new z.ZodError([{
+          code: "custom",
+          message: "Selecione um cirurgião",
+          path: ["surgicalTeam", "surgeon"]
+        }]);
+      }
+
+      // Verificar procedimentos
+      if (selectedTussProcedures.length === 0) {
+        throw new z.ZodError([{
+          code: "custom",
+          message: "Selecione pelo menos um procedimento TUSS",
+          path: ["tussProcedures"]
+        }]);
+      }
+
+      // Verificar campos de texto
+      if (!coronaryAngiography.trim()) {
+        throw new z.ZodError([{
+          code: "custom",
+          message: "Preencha as informações de coronariografia",
+          path: ["coronaryAngiography"]
+        }]);
+      }
+
+      if (!proposedTreatment.trim()) {
+        throw new z.ZodError([{
+          code: "custom",
+          message: "Preencha o tratamento proposto",
+          path: ["proposedTreatment"]
+        }]);
+      }
+
+      return true;
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        const errorMessage = error.errors.map(err => err.message).join(", ");
+        toast({
+          title: "Erro de validação",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      }
+      return false;
+    }
+  };
+
+  const handleGenerateRequest = () => {
+    // Primeiro validamos o formulário antes de tentar gerar o PDF
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      // Se a validação passou, abra o PDF preview
+      setIsPdfModalOpen(true);
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      
       if (error instanceof z.ZodError) {
         // Display validation errors
         const errorMessages = error.errors.map(err => err.message).join(", ");
@@ -709,7 +769,7 @@ export const ImprovedRequestGenerator = () => {
             </div>
           </div>
           
-          {/* Generate button */}
+          {/* Generate button - atualizado para mostrar dicas mais claras */}
           <div className="pt-4">
             <Button 
               className="w-full" 
@@ -720,6 +780,11 @@ export const ImprovedRequestGenerator = () => {
               <Printer className="mr-2 h-5 w-5" />
               Gerar Solicitação de Angioplastia
             </Button>
+            {!hasClinic && (
+              <p className="text-sm text-red-500 mt-2">
+                Selecione uma clínica para continuar
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -941,11 +1006,14 @@ export const ImprovedRequestGenerator = () => {
         </DialogContent>
       </Dialog>
       
-      {/* PDF preview dialog */}
+      {/* PDF preview dialog - atualizado com DialogDescription e mensagem mais clara */}
       <Dialog open={isPdfModalOpen} onOpenChange={setIsPdfModalOpen}>
         <DialogContent className="max-w-4xl h-[90vh]">
           <DialogHeader>
             <DialogTitle>Solicitação de Angioplastia - {requestNumber}</DialogTitle>
+            <DialogDescription>
+              Visualização do documento para impressão ou download
+            </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
             {hasClinic ? (
