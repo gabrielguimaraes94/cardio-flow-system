@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,48 +25,89 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Input } from '@/components/ui/input';
-import { 
-  Plus, 
-  ChevronDown, 
-  Printer, 
-  FileText, 
-  Search,
-  Filter 
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { z } from "zod";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { usePatients } from '@/hooks/usePatients';
-import { useClinic } from '@/contexts/ClinicContext';
+import { Plus, ChevronDown, Printer, FileText, Search, X } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { useClinicContext } from '@/contexts/ClinicContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { z } from 'zod';
+import { PDFViewer } from '@/components/angioplasty/PDFViewer';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+// Validation schemas
+const patientSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1, "Nome do paciente é obrigatório"),
+  birthdate: z.string().refine((value) => !isNaN(Date.parse(value)), {
+    message: "Data de nascimento inválida",
+  }),
+});
+
+const tussProcedureSchema = z.object({
+  id: z.string(),
+  code: z.string().min(1, "Código TUSS é obrigatório"),
+  description: z.string().min(1, "Descrição é obrigatória"),
+});
+
+const materialSchema = z.object({
+  id: z.string(),
+  description: z.string().min(1, "Descrição do material é obrigatória"),
+  quantity: z.number().min(1, "Quantidade deve ser pelo menos 1"),
+});
+
+const surgicalTeamMemberSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Nome do profissional é obrigatório"),
+  crm: z.string().min(1, "CRM é obrigatório"),
+  role: z.string().min(1, "Função é obrigatória"),
+});
+
+const requestFormSchema = z.object({
+  patient: patientSchema,
+  insurance: z.object({
+    id: z.string(),
+    name: z.string().min(1, "Convênio é obrigatório"),
+  }),
+  coronaryAngiography: z.string().min(1, "Informações de coronariografia são obrigatórias"),
+  proposedTreatment: z.string().min(1, "Tratamento proposto é obrigatório"),
+  tussProcedures: z.array(tussProcedureSchema).min(1, "Selecione pelo menos um procedimento"),
+  materials: z.array(materialSchema),
+  surgicalTeam: z.object({
+    surgeon: surgicalTeamMemberSchema,
+    assistant: surgicalTeamMemberSchema.nullable(),
+    anesthesiologist: surgicalTeamMemberSchema.nullable(),
+  }),
+});
+
+type RequestFormData = z.infer<typeof requestFormSchema>;
+
+interface Doctor {
+  id: string;
+  name: string;
+  crm: string;
+}
+
+interface Patient {
+  id: string;
+  name: string;
+  birthdate: string;
+  gender?: string;
+  email?: string;
+  phone?: string;
+}
+
+interface InsuranceCompany {
+  id: string;
+  name: string;
+  requiresDigitalSubmission: boolean;
+}
 
 interface TussCode {
   id: string;
   code: string;
   description: string;
-  justifications: string[];
-  referenceValue: number;
+  justifications?: string[];
 }
 
 interface Material {
@@ -73,8 +115,7 @@ interface Material {
   description: string;
   manufacturer: string;
   code: string;
-  compatibleProcedures: string[];
-  referencePrice: number;
+  compatibleProcedures?: string[];
 }
 
 interface MaterialWithQuantity extends Material {
@@ -87,136 +128,123 @@ interface Clinic {
   address: string;
   phone: string;
   logo?: string;
-}
-
-interface InsuranceCompany {
-  id: string;
-  name: string;
-  requiresDigitalSubmission: boolean;
-}
-
-interface Patient {
-  id: string;
-  name: string;
-  birthdate: string;
-  cpf: string;
-  phone: string | null;
-  email: string | null;
-  age?: number;
+  city?: string;
+  zipCode?: string;
+  email?: string;
 }
 
 export const ImprovedRequestGenerator = () => {
-  const [selectedProcedures, setSelectedProcedures] = useState<TussCode[]>([]);
+  const { clinic: contextClinic } = useClinicContext();
+  
+  // Form state
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedInsurance, setSelectedInsurance] = useState<InsuranceCompany | null>(null);
+  const [selectedTussProcedures, setSelectedTussProcedures] = useState<TussCode[]>([]);
   const [selectedMaterials, setSelectedMaterials] = useState<MaterialWithQuantity[]>([]);
-  const [justification, setJustification] = useState('');
-  const [selectedClinic, setSelectedClinic] = useState<string | undefined>();
-  const [selectedInsurance, setSelectedInsurance] = useState<string | undefined>();
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [procedureSearchTerm, setProcedureSearchTerm] = useState('');
-  const [materialSearchTerm, setMaterialSearchTerm] = useState('');
-  const [selectedPatient, setSelectedPatient] = useState<string | undefined>();
-  const [patientSearchTerm, setPatientSearchTerm] = useState('');
+  const [coronaryAngiography, setCoronaryAngiography] = useState('');
+  const [proposedTreatment, setProposedTreatment] = useState('');
+  const [requestNumber, setRequestNumber] = useState('');
   
-  const { selectedClinic: contextClinic } = useClinic();
-  const { patients, isLoading: patientsLoading, setSearchTerm: setPatientListSearchTerm } = usePatients();
-  
-  // Quando o componente é montado, define a clínica selecionada do contexto
-  useEffect(() => {
-    if (contextClinic) {
-      setSelectedClinic(contextClinic.id);
-    }
-  }, [contextClinic]);
-  
-  // Atualiza a busca de pacientes quando o termo de pesquisa muda
-  useEffect(() => {
-    setPatientListSearchTerm(patientSearchTerm);
-  }, [patientSearchTerm, setPatientListSearchTerm]);
+  // Team members
+  const [surgicalTeam, setSurgicalTeam] = useState({
+    surgeon: null as Doctor | null,
+    assistant: null as Doctor | null,
+    anesthesiologist: null as Doctor | null
+  });
 
+  // UI state
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [searchPatient, setSearchPatient] = useState('');
+  const [searchTuss, setSearchTuss] = useState('');
+  const [searchMaterial, setSearchMaterial] = useState('');
+  const [searchDoctor, setSearchDoctor] = useState('');
+  const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
+  const [isTussModalOpen, setIsTussModalOpen] = useState(false);
+  const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false);
+  const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
+  const [selectedDoctorRole, setSelectedDoctorRole] = useState<'surgeon' | 'assistant' | 'anesthesiologist'>('surgeon');
+  
+  // Generate a request number when the component mounts
+  useEffect(() => {
+    // Format: ANP-YYYYMMDD-XXXX (where XXXX is a random number)
+    const today = new Date();
+    const dateStr = format(today, 'yyyyMMdd');
+    const randomNum = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
+    setRequestNumber(`ANP-${dateStr}-${randomNum}`);
+  }, []);
+  
   // Mock data - would come from a database in a real implementation
+  // Doctors data
+  const doctors: Doctor[] = [
+    { id: '1', name: 'Dr. Carlos Silva', crm: '12345-SP' },
+    { id: '2', name: 'Dra. Maria Santos', crm: '23456-SP' },
+    { id: '3', name: 'Dr. João Oliveira', crm: '34567-SP' },
+    { id: '4', name: 'Dra. Ana Sousa', crm: '45678-SP' }
+  ];
+  
+  // Patients data
+  const patients: Patient[] = [
+    { id: '1', name: 'João Silva', birthdate: '1955-05-15', gender: 'Masculino', phone: '(11) 98765-4321' },
+    { id: '2', name: 'Maria Oliveira', birthdate: '1960-10-20', gender: 'Feminino', phone: '(11) 91234-5678' },
+    { id: '3', name: 'Pedro Santos', birthdate: '1948-03-25', gender: 'Masculino', phone: '(11) 99876-5432' },
+    { id: '4', name: 'Ana Souza', birthdate: '1970-12-08', gender: 'Feminino', phone: '(11) 92345-6789' }
+  ];
+  
+  // Tuss codes
   const tussCodes: TussCode[] = [
     {
       id: '1',
       code: '30912016',
       description: 'Angioplastia transluminal percutânea',
-      justifications: ['Estenose crítica', 'Obstrução parcial', 'Reserva fracionada de fluxo alterada'],
-      referenceValue: 4500.00
+      justifications: ['Estenose crítica', 'Obstrução parcial', 'Reserva fracionada de fluxo alterada']
     },
     {
       id: '2',
       code: '30912083',
       description: 'Implante de stent coronário',
-      justifications: ['Estenose crítica', 'Oclusão total', 'Dissecção coronária'],
-      referenceValue: 6800.00
+      justifications: ['Estenose crítica', 'Oclusão total', 'Dissecção coronária']
     },
     {
       id: '3',
       code: '30912091',
-      description: 'Valvoplastia mitral percutânea',
-      justifications: ['Estenose mitral severa', 'Sintomas classe II-IV NYHA'],
-      referenceValue: 7200.00
-    },
-    {
-      id: '4',
-      code: '30912105',
-      description: 'Oclusão de comunicação interatrial',
-      justifications: ['CIA tipo ostium secundum', 'Shunt significativo'],
-      referenceValue: 8500.00
+      description: 'Angioplastia de tronco de coronária esquerda',
+      justifications: ['Estenose crítica de tronco', 'Lesão de tronco não protegido']
     }
   ];
   
+  // Materials
   const materials: Material[] = [
     {
       id: '1',
       description: 'Stent Farmacológico',
       manufacturer: 'Boston Scientific',
       code: 'STE-001',
-      compatibleProcedures: ['2'],
-      referencePrice: 5200.00
+      compatibleProcedures: ['2']
     },
     {
       id: '2',
       description: 'Cateter Balão',
       manufacturer: 'Medtronic',
       code: 'CAT-002',
-      compatibleProcedures: ['1', '2'],
-      referencePrice: 1800.00
+      compatibleProcedures: ['1', '2', '3']
     },
     {
       id: '3',
-      description: 'Introdutor Arterial',
-      manufacturer: 'Cordis',
-      code: 'INT-003',
-      compatibleProcedures: ['1', '2', '3', '4'],
-      referencePrice: 350.00
+      description: 'Fio Guia Hidrofílico',
+      manufacturer: 'Terumo',
+      code: 'FG-003',
+      compatibleProcedures: ['1', '2', '3']
     },
     {
       id: '4',
-      description: 'Guia Hidrofílica',
-      manufacturer: 'Terumo',
-      code: 'GUI-004',
-      compatibleProcedures: ['1', '2', '3'],
-      referencePrice: 450.00
-    },
-    {
-      id: '5',
-      description: 'Dispositivo de Oclusão Amplatzer',
-      manufacturer: 'Abbott',
-      code: 'AMP-005',
-      compatibleProcedures: ['4'],
-      referencePrice: 12000.00
+      description: 'Introdutor Arterial',
+      manufacturer: 'Cordis',
+      code: 'INT-004',
+      compatibleProcedures: ['1', '2', '3']
     }
   ];
   
-  const clinics: Clinic[] = contextClinic ? [
-    {
-      id: contextClinic.id,
-      name: contextClinic.name,
-      address: contextClinic.address || '',
-      phone: contextClinic.phone || '',
-      logo: contextClinic.logo || '',
-    }
-  ] : [];
-  
+  // Insurance companies
   const insuranceCompanies: InsuranceCompany[] = [
     { id: '1', name: 'Bradesco Saúde', requiresDigitalSubmission: true },
     { id: '2', name: 'Amil', requiresDigitalSubmission: true },
@@ -224,550 +252,683 @@ export const ImprovedRequestGenerator = () => {
     { id: '4', name: 'SulAmérica', requiresDigitalSubmission: true }
   ];
   
-  const justificationTemplates = [
-    'Paciente com quadro de dor torácica em repouso, apresentando lesão coronariana crítica na artéria descendente anterior, com indicação de revascularização percutânea.',
-    'Paciente com diagnóstico de síndrome coronariana aguda sem supra de ST, apresentando lesão crítica em artéria coronária direita, com indicação de tratamento percutâneo.',
-    'Paciente com angina estável, apresentando teste de isquemia positivo, com lesão significativa em tronco de coronária esquerda.'
-  ];
+  // Clinic info based on context
+  const clinics: Clinic[] = contextClinic ? [
+    {
+      id: contextClinic.id,
+      name: contextClinic.name,
+      address: contextClinic.address || '',
+      phone: contextClinic.phone || '',
+      logo: contextClinic.logo_url || '',
+      city: contextClinic.city || '',
+      email: contextClinic.email || '',
+      zipCode: '01310-200' // Exemplo
+    }
+  ] : [];
   
-  const handleToggleProcedure = (tuss: TussCode) => {
-    setSelectedProcedures(prev => {
-      const isSelected = prev.some(p => p.id === tuss.id);
-      
-      if (isSelected) {
-        const newProcedures = prev.filter(p => p.id !== tuss.id);
-        // Remove materials that are only compatible with this procedure
-        setSelectedMaterials(prevMaterials => 
-          prevMaterials.filter(m => 
-            m.compatibleProcedures.some(procId => 
-              newProcedures.some(p => p.id === procId)
-            )
-          )
-        );
-        return newProcedures;
-      } else {
-        return [...prev, tuss];
-      }
-    });
-  };
-  
-  const handleToggleMaterial = (material: Material) => {
-    setSelectedMaterials(prev => {
-      const isSelected = prev.some(m => m.id === material.id);
-      
-      if (isSelected) {
-        return prev.filter(m => m.id !== material.id);
-      } else {
-        return [...prev, { ...material, quantity: 1 }];
-      }
-    });
-  };
+  const filteredPatients = searchPatient
+    ? patients.filter(p => 
+        p.name.toLowerCase().includes(searchPatient.toLowerCase())
+      )
+    : patients;
+    
+  const filteredTussCodes = searchTuss
+    ? tussCodes.filter(t => 
+        t.code.includes(searchTuss) || 
+        t.description.toLowerCase().includes(searchTuss.toLowerCase())
+      )
+    : tussCodes;
+    
+  const filteredMaterials = searchMaterial
+    ? materials.filter(m => 
+        m.description.toLowerCase().includes(searchMaterial.toLowerCase()) ||
+        m.manufacturer.toLowerCase().includes(searchMaterial.toLowerCase())
+      )
+    : materials;
+    
+  const filteredDoctors = searchDoctor
+    ? doctors.filter(d => 
+        d.name.toLowerCase().includes(searchDoctor.toLowerCase()) ||
+        d.crm.toLowerCase().includes(searchDoctor.toLowerCase())
+      )
+    : doctors;
   
   const handleMaterialQuantityChange = (materialId: string, quantity: number) => {
-    if (quantity < 1) return; // Não permite quantidade menor que 1
-    
     setSelectedMaterials(prev => 
       prev.map(m => m.id === materialId ? { ...m, quantity } : m)
     );
   };
   
-  const handleApplyTemplate = (template: string) => {
-    setJustification(template);
+  const handleAddMaterial = (material: Material) => {
+    if (!selectedMaterials.some(m => m.id === material.id)) {
+      setSelectedMaterials([...selectedMaterials, { ...material, quantity: 1 }]);
+    }
   };
   
-  const calculateTotal = () => {
-    const proceduresTotal = selectedProcedures.reduce((sum, proc) => sum + proc.referenceValue, 0);
-    const materialsTotal = selectedMaterials.reduce((sum, mat) => sum + (mat.referencePrice * mat.quantity), 0);
-    return proceduresTotal + materialsTotal;
+  const handleRemoveMaterial = (materialId: string) => {
+    setSelectedMaterials(selectedMaterials.filter(m => m.id !== materialId));
+  };
+  
+  const handleAddTussProcedure = (tuss: TussCode) => {
+    if (!selectedTussProcedures.some(t => t.id === tuss.id)) {
+      setSelectedTussProcedures([...selectedTussProcedures, tuss]);
+    }
+  };
+  
+  const handleRemoveTussProcedure = (tussId: string) => {
+    setSelectedTussProcedures(selectedTussProcedures.filter(t => t.id !== tussId));
+  };
+  
+  const handleSelectDoctor = (doctor: Doctor) => {
+    setSurgicalTeam({
+      ...surgicalTeam,
+      [selectedDoctorRole]: doctor
+    });
+    setIsDoctorModalOpen(false);
   };
   
   const handleGenerateRequest = () => {
-    if (!selectedClinic) {
-      toast.error('Selecione uma clínica');
-      return;
+    try {
+      // Validate the form data
+      const formData: RequestFormData = {
+        patient: selectedPatient as any,
+        insurance: selectedInsurance as any,
+        coronaryAngiography,
+        proposedTreatment,
+        tussProcedures: selectedTussProcedures,
+        materials: selectedMaterials,
+        surgicalTeam: {
+          surgeon: surgicalTeam.surgeon as any,
+          assistant: surgicalTeam.assistant as any,
+          anesthesiologist: surgicalTeam.anesthesiologist as any,
+        },
+      };
+      
+      requestFormSchema.parse(formData);
+      
+      // If validation passes, open the PDF preview
+      setIsPdfModalOpen(true);
+      
+      // In a real implementation, we would save the request to the database here
+      
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        // Display validation errors
+        const errorMessages = error.errors.map(err => err.message).join(", ");
+        toast({
+          title: "Erro de validação",
+          description: errorMessages,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Erro ao gerar solicitação",
+          description: "Ocorreu um erro inesperado. Tente novamente.",
+          variant: "destructive"
+        });
+      }
     }
-    
-    if (!selectedInsurance) {
-      toast.error('Selecione um convênio');
-      return;
-    }
-    
-    if (!selectedPatient) {
-      toast.error('Selecione um paciente');
-      return;
-    }
-    
-    if (selectedProcedures.length === 0) {
-      toast.error('Selecione pelo menos um procedimento');
-      return;
-    }
-    
-    if (!justification) {
-      toast.error('Adicione uma justificativa médica');
-      return;
-    }
-    
-    setIsGenerating(true);
-    
-    // Simulate PDF generation
-    setTimeout(() => {
-      setIsGenerating(false);
-      toast.success('Solicitação de angioplastia gerada com sucesso!');
-    }, 1500);
   };
   
-  const handleDigitalSubmission = () => {
-    const insurance = insuranceCompanies.find(i => i.id === selectedInsurance);
+  const calculatePatientAge = (birthdate: string) => {
+    const today = new Date();
+    const birthDate = new Date(birthdate);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDifference = today.getMonth() - birthDate.getMonth();
     
-    if (!insurance) {
-      toast.error('Selecione um convênio');
-      return;
+    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
     }
     
-    if (!insurance.requiresDigitalSubmission) {
-      toast.error('Este convênio não suporta envio eletrônico');
-      return;
-    }
-    
-    toast.success('Solicitação enviada eletronicamente para ' + insurance.name);
+    return age;
   };
   
-  const isMaterialCompatible = (material: Material) => {
-    if (selectedProcedures.length === 0) return true;
-    
-    return selectedProcedures.some(proc => 
-      material.compatibleProcedures.includes(proc.id)
-    );
-  };
-  
-  const filteredProcedures = tussCodes.filter(proc => 
-    proc.description.toLowerCase().includes(procedureSearchTerm.toLowerCase()) || 
-    proc.code.includes(procedureSearchTerm)
-  );
-  
-  const filteredMaterials = materials.filter(mat => 
-    (mat.description.toLowerCase().includes(materialSearchTerm.toLowerCase()) || 
-    mat.manufacturer.toLowerCase().includes(materialSearchTerm.toLowerCase()) ||
-    mat.code.toLowerCase().includes(materialSearchTerm.toLowerCase()))
-  );
-  
-  const getSelectedPatientName = () => {
-    if (!selectedPatient) return '';
-    const patient = patients.find(p => p.id === selectedPatient);
-    return patient ? patient.name : '';
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Coluna da esquerda com seleção de paciente/clínica/convênio */}
-        <div className="md:col-span-1 space-y-6">
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="patient-select" className="font-medium">Paciente</Label>
-                <div className="relative w-full">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between">
-                        {selectedPatient ? getSelectedPatientName() : "Selecionar Paciente"}
-                        <Search className="h-4 w-4 opacity-50" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[500px]">
-                      <DialogHeader>
-                        <DialogTitle>Selecionar Paciente</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input 
-                            placeholder="Buscar pacientes por nome, CPF..." 
-                            className="pl-9"
-                            value={patientSearchTerm}
-                            onChange={(e) => setPatientSearchTerm(e.target.value)}
-                          />
-                        </div>
-                        
-                        <div className="border rounded-md overflow-hidden min-h-[250px] max-h-[350px] overflow-y-auto">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Nome</TableHead>
-                                <TableHead>CPF</TableHead>
-                                <TableHead>Idade</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {patientsLoading ? (
-                                <TableRow>
-                                  <TableCell colSpan={3} className="text-center py-4 text-gray-500">
-                                    Carregando pacientes...
-                                  </TableCell>
-                                </TableRow>
-                              ) : patients.length === 0 ? (
-                                <TableRow>
-                                  <TableCell colSpan={3} className="text-center py-4 text-gray-500">
-                                    Nenhum paciente encontrado
-                                  </TableCell>
-                                </TableRow>
-                              ) : (
-                                patients.map((patient) => (
-                                  <TableRow 
-                                    key={patient.id} 
-                                    className="cursor-pointer hover:bg-gray-100"
-                                    onClick={() => {
-                                      setSelectedPatient(patient.id);
-                                      setPatientSearchTerm('');
-                                    }}
-                                  >
-                                    <TableCell>{patient.name}</TableCell>
-                                    <TableCell>{patient.cpf}</TableCell>
-                                    <TableCell>{patient.age || '-'}</TableCell>
-                                  </TableRow>
-                                ))
-                              )}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left column */}
+        <div className="space-y-6">
+          {/* Patient selection */}
+          <div className="space-y-2">
+            <Label className="text-base font-semibold">Paciente</Label>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-grow">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-between"
+                  onClick={() => setIsPatientModalOpen(true)}
+                >
+                  {selectedPatient ? selectedPatient.name : "Selecionar paciente"}
+                  <Search size={18} className="ml-2 text-gray-500" />
+                </Button>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="clinic">Clínica/Consultório</Label>
-                <Select value={selectedClinic} onValueChange={setSelectedClinic}>
-                  <SelectTrigger id="clinic">
-                    <SelectValue placeholder="Selecione uma clínica" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clinics.map(clinic => (
-                      <SelectItem key={clinic.id} value={clinic.id}>
-                        {clinic.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            </div>
+            {selectedPatient && (
+              <div className="text-sm text-gray-500">
+                Data de nascimento: {format(new Date(selectedPatient.birthdate), 'dd/MM/yyyy')} 
+                ({calculatePatientAge(selectedPatient.birthdate)} anos)
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="insurance">Convênio</Label>
-                <Select value={selectedInsurance} onValueChange={setSelectedInsurance}>
-                  <SelectTrigger id="insurance">
-                    <SelectValue placeholder="Selecione um convênio" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {insuranceCompanies.map(insurance => (
-                      <SelectItem key={insurance.id} value={insurance.id}>
-                        {insurance.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
           
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                <Label className="font-medium">Justificativa Médica</Label>
-                <Textarea
-                  value={justification}
-                  onChange={(e) => setJustification(e.target.value)}
-                  placeholder="Adicione aqui a justificativa médica para os procedimentos..."
-                  rows={6}
-                  className="resize-none"
-                />
-                
-                <Collapsible>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="outline" className="w-full flex justify-between">
-                      <span>Templates de justificativas</span>
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2">
-                    <div className="border rounded-md p-3 space-y-2">
-                      {justificationTemplates.map((template, index) => (
-                        <div key={index} className="text-sm">
-                          <div className="flex items-start">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleApplyTemplate(template)}
-                              className="h-6 p-0 mr-2"
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                            <div className="text-xs">{template}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
+          {/* Insurance selection */}
+          <div className="space-y-2">
+            <Label className="text-base font-semibold">Convênio</Label>
+            <Select 
+              value={selectedInsurance?.id} 
+              onValueChange={(value) => {
+                const insurance = insuranceCompanies.find(ins => ins.id === value);
+                if (insurance) setSelectedInsurance(insurance);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um convênio" />
+              </SelectTrigger>
+              <SelectContent>
+                {insuranceCompanies.map((insurance) => (
+                  <SelectItem key={insurance.id} value={insurance.id}>
+                    {insurance.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* Clinical information */}
+          <div className="space-y-4">
+            <Label className="text-base font-semibold">Informações Clínicas</Label>
+            
+            <div className="space-y-2">
+              <Label>Coronariografia</Label>
+              <Textarea 
+                value={coronaryAngiography}
+                onChange={(e) => setCoronaryAngiography(e.target.value)}
+                placeholder="Descreva os achados da coronariografia..."
+                className="min-h-[100px]"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Tratamento Proposto</Label>
+              <Textarea 
+                value={proposedTreatment}
+                onChange={(e) => setProposedTreatment(e.target.value)}
+                placeholder="Descreva o tratamento proposto..."
+                className="min-h-[100px]"
+              />
+            </div>
+          </div>
+          
+          {/* Tuss procedures selection */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <Label className="text-base font-semibold">Procedimentos TUSS</Label>
+              <Button 
+                size="sm" 
+                onClick={() => setIsTussModalOpen(true)}
+                variant="outline"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar
+              </Button>
+            </div>
+            
+            {selectedTussProcedures.length === 0 ? (
+              <div className="bg-gray-50 border border-dashed border-gray-200 rounded-md p-4 text-center text-gray-500">
+                Nenhum procedimento selecionado
               </div>
-            </CardContent>
-          </Card>
+            ) : (
+              <div className="border rounded-md overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Código</TableHead>
+                      <TableHead className="w-full">Descrição</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedTussProcedures.map((procedure) => (
+                      <TableRow key={procedure.id}>
+                        <TableCell className="font-medium">{procedure.code}</TableCell>
+                        <TableCell>{procedure.description}</TableCell>
+                        <TableCell>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleRemoveTussProcedure(procedure.id)}
+                          >
+                            <X className="h-4 w-4 text-gray-500" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
         </div>
         
-        {/* Coluna da direita com tabs para procedimentos e materiais */}
-        <div className="md:col-span-2 space-y-6">
-          <Tabs defaultValue="procedures" className="w-full">
-            <TabsList className="grid grid-cols-2">
-              <TabsTrigger value="procedures">Procedimentos</TabsTrigger>
-              <TabsTrigger value="materials">Materiais</TabsTrigger>
-            </TabsList>
+        {/* Right column */}
+        <div className="space-y-6">
+          {/* Materials selection */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <Label className="text-base font-semibold">Materiais</Label>
+              <Button 
+                size="sm" 
+                onClick={() => setIsMaterialModalOpen(true)}
+                variant="outline"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar
+              </Button>
+            </div>
             
-            {/* Tab de Procedimentos */}
-            <TabsContent value="procedures" className="space-y-4 mt-4">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                  <Input
-                    placeholder="Buscar procedimentos..."
-                    className="pl-9"
-                    value={procedureSearchTerm}
-                    onChange={(e) => setProcedureSearchTerm(e.target.value)}
-                  />
-                </div>
-                <Button variant="outline" size="icon">
-                  <Filter className="h-4 w-4" />
-                </Button>
+            {selectedMaterials.length === 0 ? (
+              <div className="bg-gray-50 border border-dashed border-gray-200 rounded-md p-4 text-center text-gray-500">
+                Nenhum material selecionado
               </div>
-              
+            ) : (
               <div className="border rounded-md overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[50px]"></TableHead>
-                      <TableHead>Código</TableHead>
-                      <TableHead>Descrição</TableHead>
+                      <TableHead className="w-full">Descrição</TableHead>
+                      <TableHead>Qtd.</TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredProcedures.length > 0 ? (
-                      filteredProcedures.map((proc) => (
-                        <TableRow key={proc.id}>
-                          <TableCell className="text-center">
-                            <Checkbox 
-                              checked={selectedProcedures.some(p => p.id === proc.id)}
-                              onCheckedChange={() => handleToggleProcedure(proc)}
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium">{proc.code}</TableCell>
-                          <TableCell>{proc.description}</TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center py-4 text-gray-500">
-                          Nenhum procedimento encontrado
+                    {selectedMaterials.map((material) => (
+                      <TableRow key={material.id}>
+                        <TableCell>{material.description}</TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min="1"
+                            className="w-16 h-8"
+                            value={material.quantity}
+                            onChange={(e) => handleMaterialQuantityChange(material.id, parseInt(e.target.value) || 1)}
+                          />
                         </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-            
-            {/* Tab de Materiais */}
-            <TabsContent value="materials" className="space-y-4 mt-4">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                  <Input
-                    placeholder="Buscar materiais..."
-                    className="pl-9"
-                    value={materialSearchTerm}
-                    onChange={(e) => setMaterialSearchTerm(e.target.value)}
-                  />
-                </div>
-                <Button variant="outline" size="icon">
-                  <Filter className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="border rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]"></TableHead>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead>Fabricante</TableHead>
-                      <TableHead>Qtd</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredMaterials.length > 0 ? (
-                      filteredMaterials.map((mat) => {
-                        const isCompatible = isMaterialCompatible(mat);
-                        const isSelected = selectedMaterials.some(m => m.id === mat.id);
-                        const selectedMat = selectedMaterials.find(m => m.id === mat.id);
-                        
-                        return (
-                          <TableRow 
-                            key={mat.id} 
-                            className={!isCompatible ? "opacity-50" : ""}
+                        <TableCell>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleRemoveMaterial(material.id)}
                           >
-                            <TableCell className="text-center">
-                              <Checkbox 
-                                checked={isSelected}
-                                onCheckedChange={() => handleToggleMaterial(mat)}
-                                disabled={!isCompatible}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <p>{mat.description}</p>
-                                <p className="text-xs text-gray-500">{mat.code}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell>{mat.manufacturer}</TableCell>
-                            <TableCell>
-                              {isSelected && (
-                                <div className="flex items-center gap-2">
-                                  <Button 
-                                    variant="outline" 
-                                    size="icon" 
-                                    className="h-7 w-7"
-                                    onClick={() => handleMaterialQuantityChange(
-                                      mat.id, 
-                                      Math.max(1, (selectedMat?.quantity || 1) - 1)
-                                    )}
-                                  >
-                                    -
-                                  </Button>
-                                  <span className="w-6 text-center">
-                                    {selectedMat?.quantity || 1}
-                                  </span>
-                                  <Button 
-                                    variant="outline" 
-                                    size="icon" 
-                                    className="h-7 w-7"
-                                    onClick={() => handleMaterialQuantityChange(
-                                      mat.id, 
-                                      (selectedMat?.quantity || 1) + 1
-                                    )}
-                                  >
-                                    +
-                                  </Button>
-                                </div>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center py-4 text-gray-500">
-                          Nenhum material encontrado
+                            <X className="h-4 w-4 text-gray-500" />
+                          </Button>
                         </TableCell>
                       </TableRow>
-                    )}
+                    ))}
                   </TableBody>
                 </Table>
               </div>
-            </TabsContent>
-          </Tabs>
-
-          {/* Sumário da Solicitação */}
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              <h3 className="text-lg font-medium">Resumo da Solicitação</h3>
-              
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="procedures">
-                  <AccordionTrigger className="py-2">
-                    Procedimentos Selecionados ({selectedProcedures.length})
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    {selectedProcedures.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-2">Nenhum procedimento selecionado</p>
-                    ) : (
-                      <div className="border rounded-md overflow-hidden">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Código</TableHead>
-                              <TableHead>Descrição</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {selectedProcedures.map(proc => (
-                              <TableRow key={proc.id}>
-                                <TableCell className="text-xs">{proc.code}</TableCell>
-                                <TableCell className="text-xs">{proc.description}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-                
-                <AccordionItem value="materials">
-                  <AccordionTrigger className="py-2">
-                    Materiais Selecionados ({selectedMaterials.length})
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    {selectedMaterials.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-2">Nenhum material selecionado</p>
-                    ) : (
-                      <div className="border rounded-md overflow-hidden">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Descrição</TableHead>
-                              <TableHead className="text-center">Qtd.</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {selectedMaterials.map(mat => (
-                              <TableRow key={mat.id}>
-                                <TableCell className="text-xs">
-                                  {mat.description} ({mat.manufacturer})
-                                </TableCell>
-                                <TableCell className="text-xs text-center">{mat.quantity}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-              
-              <div className="flex justify-end mt-6 space-x-3">
-                {selectedInsurance && insuranceCompanies.find(i => i.id === selectedInsurance)?.requiresDigitalSubmission && (
+            )}
+          </div>
+          
+          {/* Surgical team selection */}
+          <div className="space-y-4">
+            <Label className="text-base font-semibold">Equipe Cirúrgica</Label>
+            
+            <div className="space-y-2">
+              <Label>Cirurgião</Label>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1 justify-start text-left"
+                  onClick={() => {
+                    setSelectedDoctorRole('surgeon');
+                    setIsDoctorModalOpen(true);
+                  }}
+                >
+                  {surgicalTeam.surgeon ? (
+                    <span>{surgicalTeam.surgeon.name} - {surgicalTeam.surgeon.crm}</span>
+                  ) : (
+                    "Selecionar cirurgião"
+                  )}
+                </Button>
+                {surgicalTeam.surgeon && (
                   <Button 
-                    variant="outline" 
-                    onClick={handleDigitalSubmission}
-                    disabled={isGenerating}
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => setSurgicalTeam({...surgicalTeam, surgeon: null})}
                   >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Envio Eletrônico
+                    <X className="h-4 w-4" />
                   </Button>
                 )}
-                
-                <Button 
-                  onClick={handleGenerateRequest}
-                  disabled={isGenerating}
-                  className="bg-cardio-500 hover:bg-cardio-600"
-                >
-                  <Printer className="mr-2 h-4 w-4" />
-                  {isGenerating ? 'Gerando...' : 'Gerar PDF'}
-                </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Auxiliar</Label>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1 justify-start text-left"
+                  onClick={() => {
+                    setSelectedDoctorRole('assistant');
+                    setIsDoctorModalOpen(true);
+                  }}
+                >
+                  {surgicalTeam.assistant ? (
+                    <span>{surgicalTeam.assistant.name} - {surgicalTeam.assistant.crm}</span>
+                  ) : (
+                    "Selecionar auxiliar"
+                  )}
+                </Button>
+                {surgicalTeam.assistant && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => setSurgicalTeam({...surgicalTeam, assistant: null})}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Anestesista</Label>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1 justify-start text-left"
+                  onClick={() => {
+                    setSelectedDoctorRole('anesthesiologist');
+                    setIsDoctorModalOpen(true);
+                  }}
+                >
+                  {surgicalTeam.anesthesiologist ? (
+                    <span>{surgicalTeam.anesthesiologist.name} - {surgicalTeam.anesthesiologist.crm}</span>
+                  ) : (
+                    "Selecionar anestesista"
+                  )}
+                </Button>
+                {surgicalTeam.anesthesiologist && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => setSurgicalTeam({...surgicalTeam, anesthesiologist: null})}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Request information */}
+          <div className="border rounded-md p-4 bg-gray-50">
+            <div className="space-y-3">
+              <div>
+                <Label className="text-sm text-gray-500">Número da Solicitação</Label>
+                <p className="font-medium">{requestNumber}</p>
+              </div>
+              
+              <div>
+                <Label className="text-sm text-gray-500">Data</Label>
+                <p className="font-medium">{format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Generate button */}
+          <div className="pt-4">
+            <Button 
+              className="w-full" 
+              size="lg"
+              onClick={handleGenerateRequest}
+            >
+              <Printer className="mr-2 h-5 w-5" />
+              Gerar Solicitação de Angioplastia
+            </Button>
+          </div>
         </div>
       </div>
+      
+      {/* Patient selection dialog */}
+      <Dialog open={isPatientModalOpen} onOpenChange={setIsPatientModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Selecionar Paciente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="relative">
+              <Input
+                placeholder="Buscar paciente..."
+                value={searchPatient}
+                onChange={(e) => setSearchPatient(e.target.value)}
+                className="pr-10"
+              />
+              <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+            </div>
+            
+            <ScrollArea className="h-72">
+              <div className="space-y-2">
+                {filteredPatients.length > 0 ? (
+                  filteredPatients.map(patient => (
+                    <Button
+                      key={patient.id}
+                      variant="outline"
+                      className="w-full justify-start text-left h-auto py-3"
+                      onClick={() => {
+                        setSelectedPatient(patient);
+                        setIsPatientModalOpen(false);
+                      }}
+                    >
+                      <div>
+                        <div className="font-medium">{patient.name}</div>
+                        <div className="text-sm text-gray-500">
+                          {format(new Date(patient.birthdate), 'dd/MM/yyyy')} 
+                          ({calculatePatientAge(patient.birthdate)} anos) • {patient.gender}
+                          {patient.phone && ` • ${patient.phone}`}
+                        </div>
+                      </div>
+                    </Button>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    Nenhum paciente encontrado
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* TUSS procedure selection dialog */}
+      <Dialog open={isTussModalOpen} onOpenChange={setIsTussModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Selecionar Procedimento TUSS</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="relative">
+              <Input
+                placeholder="Buscar código ou descrição..."
+                value={searchTuss}
+                onChange={(e) => setSearchTuss(e.target.value)}
+                className="pr-10"
+              />
+              <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+            </div>
+            
+            <ScrollArea className="h-72">
+              <div className="space-y-2">
+                {filteredTussCodes.length > 0 ? (
+                  filteredTussCodes.map(tuss => (
+                    <div
+                      key={tuss.id}
+                      className={`border rounded-md p-3 ${
+                        selectedTussProcedures.some(t => t.id === tuss.id) ? 'bg-primary/10 border-primary/20' : 'bg-white'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-medium">{tuss.code} - {tuss.description}</div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={selectedTussProcedures.some(t => t.id === tuss.id) ? "outline" : "default"}
+                          onClick={() => {
+                            if (selectedTussProcedures.some(t => t.id === tuss.id)) {
+                              handleRemoveTussProcedure(tuss.id);
+                            } else {
+                              handleAddTussProcedure(tuss);
+                            }
+                          }}
+                        >
+                          {selectedTussProcedures.some(t => t.id === tuss.id) ? 'Selecionado' : 'Selecionar'}
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    Nenhum procedimento encontrado
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Material selection dialog */}
+      <Dialog open={isMaterialModalOpen} onOpenChange={setIsMaterialModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Selecionar Material</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="relative">
+              <Input
+                placeholder="Buscar material..."
+                value={searchMaterial}
+                onChange={(e) => setSearchMaterial(e.target.value)}
+                className="pr-10"
+              />
+              <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+            </div>
+            
+            <ScrollArea className="h-72">
+              <div className="space-y-2">
+                {filteredMaterials.length > 0 ? (
+                  filteredMaterials.map(material => (
+                    <div
+                      key={material.id}
+                      className={`border rounded-md p-3 ${
+                        selectedMaterials.some(m => m.id === material.id) ? 'bg-primary/10 border-primary/20' : 'bg-white'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-medium">{material.description}</div>
+                          <div className="text-sm text-gray-500">{material.manufacturer} • {material.code}</div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={selectedMaterials.some(m => m.id === material.id) ? "outline" : "default"}
+                          onClick={() => {
+                            if (selectedMaterials.some(m => m.id === material.id)) {
+                              handleRemoveMaterial(material.id);
+                            } else {
+                              handleAddMaterial(material);
+                            }
+                          }}
+                        >
+                          {selectedMaterials.some(m => m.id === material.id) ? 'Selecionado' : 'Selecionar'}
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    Nenhum material encontrado
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Doctor selection dialog */}
+      <Dialog open={isDoctorModalOpen} onOpenChange={setIsDoctorModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Selecionar {
+                selectedDoctorRole === 'surgeon' ? 'Cirurgião' :
+                selectedDoctorRole === 'assistant' ? 'Auxiliar' : 'Anestesista'
+              }
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="relative">
+              <Input
+                placeholder="Buscar médico..."
+                value={searchDoctor}
+                onChange={(e) => setSearchDoctor(e.target.value)}
+                className="pr-10"
+              />
+              <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+            </div>
+            
+            <ScrollArea className="h-72">
+              <div className="space-y-2">
+                {filteredDoctors.length > 0 ? (
+                  filteredDoctors.map(doctor => (
+                    <Button
+                      key={doctor.id}
+                      variant="outline"
+                      className="w-full justify-start text-left h-auto py-3"
+                      onClick={() => handleSelectDoctor(doctor)}
+                    >
+                      <div>
+                        <div className="font-medium">{doctor.name}</div>
+                        <div className="text-sm text-gray-500">{doctor.crm}</div>
+                      </div>
+                    </Button>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    Nenhum médico encontrado
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* PDF preview dialog */}
+      <Dialog open={isPdfModalOpen} onOpenChange={setIsPdfModalOpen}>
+        <DialogContent className="max-w-4xl h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Solicitação de Angioplastia - {requestNumber}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            <PDFViewer
+              patient={selectedPatient}
+              insurance={selectedInsurance}
+              clinic={clinics[0]}
+              tussProcedures={selectedTussProcedures}
+              materials={selectedMaterials}
+              surgicalTeam={surgicalTeam}
+              coronaryAngiography={coronaryAngiography}
+              proposedTreatment={proposedTreatment}
+              requestNumber={requestNumber}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
