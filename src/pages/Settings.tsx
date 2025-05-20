@@ -9,16 +9,20 @@ import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMe
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { InsuranceSettings } from '@/components/settings/InsuranceSettings';
+import { TussCodeSettings } from '@/components/settings/TussCodeSettings';
+import { MaterialsSettings } from '@/components/settings/MaterialsSettings';
 
 const Settings = () => {
   const location = useLocation();
   const path = location.pathname;
   
   // Define which tab to show based on URL path
-  const getActiveTab = (): 'users' | 'clinics' | 'insurance' | 'profile' => {
+  const getActiveTab = (): 'users' | 'clinics' | 'insurance' | 'profile' | 'tuss' | 'materials' => {
     if (path.includes('/insurance')) return 'insurance';
     if (path.includes('/clinics')) return 'clinics';
     if (path.includes('/profile')) return 'profile';
+    if (path.includes('/tuss')) return 'tuss';
+    if (path.includes('/materials')) return 'materials';
     return 'users';
   };
 
@@ -28,7 +32,7 @@ const Settings = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
           <p className="text-muted-foreground">
-            Gerencie usuários, clínicas, convênios e preferências do sistema.
+            Gerencie usuários, clínicas, convênios, procedimentos e preferências do sistema.
           </p>
         </div>
         
@@ -62,6 +66,24 @@ const Settings = () => {
               </Link>
             </NavigationMenuItem>
             <NavigationMenuItem>
+              <Link to="/settings/tuss" className={cn(
+                navigationMenuTriggerStyle(),
+                'rounded-b-none border-b-2 border-transparent',
+                getActiveTab() === 'tuss' ? 'border-cardio-500 text-cardio-500' : 'hover:border-gray-300'
+              )}>
+                Códigos TUSS
+              </Link>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <Link to="/settings/materials" className={cn(
+                navigationMenuTriggerStyle(),
+                'rounded-b-none border-b-2 border-transparent',
+                getActiveTab() === 'materials' ? 'border-cardio-500 text-cardio-500' : 'hover:border-gray-300'
+              )}>
+                Materiais
+              </Link>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
               <Link to="/settings/profile" className={cn(
                 navigationMenuTriggerStyle(),
                 'rounded-b-none border-b-2 border-transparent',
@@ -77,6 +99,8 @@ const Settings = () => {
           {path === '/settings' && <UserManagement />}
           {path === '/settings/clinics' && <ClinicManagement />}
           {path === '/settings/insurance' && <InsuranceSettings />}
+          {path === '/settings/tuss' && <TussCodeSettings />}
+          {path === '/settings/materials' && <MaterialsSettings />}
           {path === '/settings/profile' && <ProfileSettings />}
           <Outlet />
         </div>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   createBrowserRouter,
@@ -24,97 +23,48 @@ import { CatheterizationReportList } from "./pages/CatheterizationReportList";
 import { Angioplasty } from "./pages/Angioplasty";
 import { Reports } from "./pages/Reports";
 import { Schedule } from "./pages/Schedule";
+import { InsuranceList } from "./pages/InsuranceList";
+import { InsuranceForm } from "./pages/InsuranceForm";
+import { InsuranceFormConfig } from "./pages/InsuranceFormConfig";
+import { InsuranceAuditRules } from "./pages/InsuranceAuditRules";
+import { InsuranceContractList } from "./pages/InsuranceContractList";
+import { InsuranceContractForm } from "./pages/InsuranceContractForm";
 
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <Index />,
-  },
-  {
-    path: "/dashboard",
-    element: <Dashboard />,
-  },
-  {
-    path: "/patients",
-    element: <PatientList />,
-  },
-  {
-    path: "/patients/:patientId/edit",
-    element: <PatientForm />,
-  },
-  {
-    path: "/patients/:patientId/anamnesis",
-    element: <PatientAnamnesisHistory />,
-  },
-  {
-    path: "/patients/:patientId/anamnesis/new",
-    element: <AnamnesisForm />,
-  },
-  {
-    path: "/patients/:patientId/anamnesis/:anamnesisId",
-    element: <AnamnesisForm />,
-  },
-  {
-    path: "/catheterization",
-    element: <CatheterizationReportList />,
-  },
-  {
-    path: "/catheterization/report",
-    element: <CatheterizationReport />,
-  },
-  {
-    path: "/catheterization/report/:reportId",
-    element: <CatheterizationReport />,
-  },
-  {
-    path: "/catheterization/templates",
-    element: <CatheterizationTemplateEditor />,
-  },
-  {
-    path: "/angioplasty",
-    element: <Angioplasty />,
-  },
-  {
-    path: "/reports",
-    element: <Reports />,
-  },
-  {
-    path: "/schedule",
-    element: <Schedule />,
-  },
-  {
-    path: "/settings",
-    element: <Settings />,
-  },
-  {
-    path: "/settings/clinics",
-    element: <Settings />,
-  },
-  {
-    path: "/settings/insurance",
-    element: <Settings />,
-  },
-  {
-    path: "/settings/profile",
-    element: <Settings />,
-  },
-  {
-    path: "/admin/login",
-    element: <AdminLogin />,
-  },
-  {
-    path: "/admin/dashboard",
-    element: <AdminDashboard />,
-  },
-  {
-    path: "/no-access",
-    element: <NoAccess />
-  },
-  {
-    path: "*",
-    element: <NotFound />
-  },
-]);
+const routes = [
+  { path: "/", element: <Index /> },
+  { path: "/dashboard", element: <Dashboard /> },
+  { path: "/no-access", element: <NoAccess /> },
+  { path: "/patients", element: <PatientList /> },
+  { path: "/patient/new", element: <PatientForm /> },
+  { path: "/patient/:id/edit", element: <PatientForm /> },
+  { path: "/patient/:id/anamnesis", element: <AnamnesisForm /> },
+  { path: "/patient/:id/history", element: <PatientAnamnesisHistory /> },
+  { path: "/angioplasty", element: <Angioplasty /> },
+  { path: "/reports", element: <Reports /> },
+  { path: "/schedule", element: <Schedule /> },
+  { path: "/catheterization/create", element: <CatheterizationReport /> },
+  { path: "/catheterization/list", element: <CatheterizationReportList /> },
+  { path: "/catheterization/template-editor", element: <CatheterizationTemplateEditor /> },
+  { path: "/admin/dashboard", element: <AdminDashboard /> },
+  { path: "/insurance/list", element: <InsuranceList /> },
+  { path: "/insurance/new", element: <InsuranceForm /> },
+  { path: "/insurance/:id/edit", element: <InsuranceForm /> },
+  { path: "/insurance/form-config", element: <InsuranceFormConfig /> },
+  { path: "/insurance/audit-rules", element: <InsuranceAuditRules /> },
+  { path: "/insurance/contracts", element: <InsuranceContractList /> },
+  { path: "/insurance/contracts/new", element: <InsuranceContractForm /> },
+  { path: "/insurance/contracts/:id/edit", element: <InsuranceContractForm /> },
+  { path: "/admin/login", element: <AdminLogin /> },
+  { path: "/settings", element: <Settings /> },
+  { path: "/settings/clinics", element: <Settings /> },
+  { path: "/settings/insurance", element: <Settings /> },
+  { path: "/settings/profile", element: <Settings /> },
+  { path: "/settings/tuss", element: <Settings /> },
+  { path: "/settings/materials", element: <Settings /> },
+  { path: "*", element: <NotFound /> }
+];
+
+const router = createBrowserRouter(routes);
 
 function App() {
   return (
