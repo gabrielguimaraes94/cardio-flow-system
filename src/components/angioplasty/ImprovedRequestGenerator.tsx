@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,7 +26,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Plus, ChevronDown, Printer, FileText, Search, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useClinicContext } from '@/contexts/ClinicContext';
+import { useClinic } from '@/contexts/ClinicContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { z } from 'zod';
@@ -134,7 +133,7 @@ interface Clinic {
 }
 
 export const ImprovedRequestGenerator = () => {
-  const { clinic: contextClinic } = useClinicContext();
+  const { selectedClinic } = useClinic();
   
   // Form state
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -253,15 +252,15 @@ export const ImprovedRequestGenerator = () => {
   ];
   
   // Clinic info based on context
-  const clinics: Clinic[] = contextClinic ? [
+  const clinics = selectedClinic ? [
     {
-      id: contextClinic.id,
-      name: contextClinic.name,
-      address: contextClinic.address || '',
-      phone: contextClinic.phone || '',
-      logo: contextClinic.logo_url || '',
-      city: contextClinic.city || '',
-      email: contextClinic.email || '',
+      id: selectedClinic.id,
+      name: selectedClinic.name,
+      address: selectedClinic.address || '',
+      phone: selectedClinic.phone || '',
+      logo: selectedClinic.logo_url || '',
+      city: selectedClinic.city || '',
+      email: selectedClinic.email || '',
       zipCode: '01310-200' // Exemplo
     }
   ] : [];
