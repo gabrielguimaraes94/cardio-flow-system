@@ -12,7 +12,7 @@ interface PDFActionsProps {
   data: {
     patient: { id: string; name: string; birthdate: string; } | null;
     insurance: { id: string; name: string; } | null;
-    clinic: { id: string; name: string; address: string; phone: string; logo?: string; city?: string; };
+    clinic: { id: string; name: string; address: string; phone: string; logo_url?: string; city?: string; };
     tussProcedures: Array<{ id: string; code: string; description: string; }>;
     materials: Array<{ id: string; description: string; quantity: number; }>;
     surgicalTeam: {

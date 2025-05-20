@@ -37,7 +37,7 @@ interface Clinic {
   name: string;
   address: string;
   phone: string;
-  logo?: string;
+  logo_url?: string;
   city?: string;
   zipCode?: string;
   email?: string;
@@ -93,10 +93,10 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
             <p className="text-sm">Tel: {clinic.phone}</p>
             {clinic.email && <p className="text-sm">Email: {clinic.email}</p>}
           </div>
-          {clinic.logo && (
+          {clinic.logo_url && (
             <div className="w-32">
               <img 
-                src={clinic.logo} 
+                src={clinic.logo_url} 
                 alt={`${clinic.name} logo`} 
                 className="max-w-full h-auto"
               />

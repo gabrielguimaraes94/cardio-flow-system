@@ -102,7 +102,7 @@ export const angioplastyService = {
         throw error;
       }
       
-      // Convert snake_case to camelCase
+      // Convert snake_case to camelCase and properly type the JSON columns
       return data ? data.map(item => ({
         id: item.id,
         patientId: item.patient_id,
@@ -113,9 +113,9 @@ export const angioplastyService = {
         requestNumber: item.request_number,
         coronaryAngiography: item.coronary_angiography,
         proposedTreatment: item.proposed_treatment,
-        tussProcedures: item.tuss_procedures,
-        materials: item.materials,
-        surgicalTeam: item.surgical_team,
+        tussProcedures: item.tuss_procedures as TussCode[],
+        materials: item.materials as MaterialWithQuantity[],
+        surgicalTeam: item.surgical_team as SurgicalTeam,
         createdAt: item.created_at,
         createdBy: item.created_by
       })) : [];
