@@ -6,7 +6,7 @@ import { PDFViewer } from './PDFViewer';
 import { PDFActions } from './PDFActions';
 import { supabase } from '@/integrations/supabase/client';
 import { useClinic } from '@/contexts/ClinicContext';
-import { angioplastyService } from '@/services/angioplastyService';
+import { angioplastyService, TussCode, MaterialWithQuantity, Doctor } from '@/services/angioplastyService';
 
 import {
   Tabs,
@@ -37,6 +37,33 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
+// Define interfaces for component data
+interface Patient {
+  id: string;
+  name: string;
+  birthdate: string;
+}
+
+interface Insurance {
+  id: string;
+  name: string;
+}
+
+interface ClinicData {
+  id: string;
+  name: string;
+  address: string;
+  phone: string;
+  city?: string;
+  logo?: string;
+}
+
+interface SurgicalTeam {
+  surgeon: Doctor | null;
+  assistant: Doctor | null;
+  anesthesiologist: Doctor | null;
+}
+
 export const ImprovedRequestGenerator = () => {
   // PDF content ref
   const pdfContentRef = useRef<HTMLDivElement>(null);
@@ -45,29 +72,29 @@ export const ImprovedRequestGenerator = () => {
   const { toast } = useToast();
   
   // States for patient
-  const [patients, setPatients] = useState([]);
-  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [loadingPatients, setLoadingPatients] = useState(false);
   
   // States for insurance
-  const [insuranceCompanies, setInsuranceCompanies] = useState([]);
-  const [selectedInsurance, setSelectedInsurance] = useState(null);
+  const [insuranceCompanies, setInsuranceCompanies] = useState<Insurance[]>([]);
+  const [selectedInsurance, setSelectedInsurance] = useState<Insurance | null>(null);
   const [loadingInsurance, setLoadingInsurance] = useState(false);
   
   // States for doctors
-  const [doctors, setDoctors] = useState([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
   
   // Surgical team states
-  const [surgicalTeam, setSurgicalTeam] = useState({
+  const [surgicalTeam, setSurgicalTeam] = useState<SurgicalTeam>({
     surgeon: null,
     assistant: null,
     anesthesiologist: null
   });
   
   // TUSS codes and materials states
-  const [tussProcedures, setTussProcedures] = useState([]);
-  const [materials, setMaterials] = useState([]);
+  const [tussProcedures, setTussProcedures] = useState<TussCode[]>([]);
+  const [materials, setMaterials] = useState<MaterialWithQuantity[]>([]);
   
   // Treatment and angiography states
   const [coronaryAngiography, setCoronaryAngiography] = useState('');
@@ -77,8 +104,29 @@ export const ImprovedRequestGenerator = () => {
   const [requestNumber, setRequestNumber] = useState('');
   
   // PDF generation state
-  const [generatingPDF, setGeneratingPDF] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  
+  // Format clinic data for the PDF viewer
+  const formatClinicData = (): ClinicData => {
+    if (!selectedClinic) {
+      return {
+        id: '',
+        name: '',
+        address: '',
+        phone: '',
+        city: '',
+      };
+    }
+    
+    return {
+      id: selectedClinic.id,
+      name: selectedClinic.name,
+      address: selectedClinic.address || '',
+      phone: selectedClinic.phone || '',
+      city: selectedClinic.city || '',
+      logo: selectedClinic.logo || selectedClinic.logo_url
+    };
+  };
   
   // Generate request number on component mount
   useEffect(() => {
@@ -203,7 +251,7 @@ export const ImprovedRequestGenerator = () => {
     }
   };
   
-  const handleSelectDoctor = (role, doctorId) => {
+  const handleSelectDoctor = (role: keyof SurgicalTeam, doctorId: string) => {
     if (!doctorId) {
       setSurgicalTeam(prev => ({
         ...prev,
@@ -297,7 +345,7 @@ export const ImprovedRequestGenerator = () => {
   };
   
   // Function to add TUSS procedure to list
-  const handleAddTussProcedure = (procedure) => {
+  const handleAddTussProcedure = (procedure: TussCode) => {
     setTussProcedures(prev => {
       if (prev.some(item => item.id === procedure.id)) {
         return prev;
@@ -307,12 +355,12 @@ export const ImprovedRequestGenerator = () => {
   };
   
   // Function to remove TUSS procedure from list
-  const handleRemoveTussProcedure = (procedureId) => {
+  const handleRemoveTussProcedure = (procedureId: string) => {
     setTussProcedures(prev => prev.filter(item => item.id !== procedureId));
   };
   
   // Function to add material to list
-  const handleAddMaterial = (material) => {
+  const handleAddMaterial = (material: MaterialWithQuantity) => {
     setMaterials(prev => {
       if (prev.some(item => item.id === material.id)) {
         return prev.map(item => 
@@ -324,12 +372,12 @@ export const ImprovedRequestGenerator = () => {
   };
   
   // Function to remove material from list
-  const handleRemoveMaterial = (materialId) => {
+  const handleRemoveMaterial = (materialId: string) => {
     setMaterials(prev => prev.filter(item => item.id !== materialId));
   };
   
   // Function to update material quantity
-  const handleUpdateMaterialQuantity = (materialId, quantity) => {
+  const handleUpdateMaterialQuantity = (materialId: string, quantity: number) => {
     setMaterials(prev => 
       prev.map(item => item.id === materialId ? { ...item, quantity } : item)
     );
@@ -550,7 +598,7 @@ export const ImprovedRequestGenerator = () => {
               data={{
                 patient: selectedPatient,
                 insurance: selectedInsurance,
-                clinic: selectedClinic,
+                clinic: formatClinicData(),
                 tussProcedures,
                 materials,
                 surgicalTeam,
@@ -565,7 +613,7 @@ export const ImprovedRequestGenerator = () => {
               <PDFViewer 
                 patient={selectedPatient}
                 insurance={selectedInsurance}
-                clinic={selectedClinic}
+                clinic={formatClinicData()}
                 tussProcedures={tussProcedures}
                 materials={materials}
                 surgicalTeam={surgicalTeam}

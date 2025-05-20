@@ -1,247 +1,145 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetDescription, 
-  SheetFooter, 
-  SheetHeader, 
-  SheetTitle 
-} from '@/components/ui/sheet';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { Search, Plus, Trash } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { TussCode } from '@/services/angioplastyService';
 
-interface TussCode {
-  id: string;
-  code: string;
-  description: string;
-  justifications: string[];
-  referenceValue: number;
+interface TussCodeListProps {
+  selectedProcedures: TussCode[];
+  onAdd: (procedure: TussCode) => void;
+  onRemove: (procedureId: string) => void;
 }
 
-export const TussCodeList = () => {
-  const [isAddingNew, setIsAddingNew] = useState(false);
-  const [isEditing, setIsEditing] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+export const TussCodeList: React.FC<TussCodeListProps> = ({ selectedProcedures, onAdd, onRemove }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [procedures, setProcedures] = useState<TussCode[]>([]);
+  const [filteredProcedures, setFilteredProcedures] = useState<TussCode[]>([]);
   
-  // This would come from a database in a real implementation
-  const [tussCodes, setTussCodes] = useState<TussCode[]>([
-    {
-      id: '1',
-      code: '30912016',
-      description: 'Angioplastia transluminal percutânea',
-      justifications: ['Estenose crítica', 'Obstrução parcial', 'Reserva fracionada de fluxo alterada'],
-      referenceValue: 4500.00
-    },
-    {
-      id: '2',
-      code: '30912083',
-      description: 'Implante de stent coronário',
-      justifications: ['Estenose crítica', 'Oclusão total', 'Dissecção coronária'],
-      referenceValue: 6800.00
-    }
-  ]);
+  // Default TUSS codes for angioplasty
+  const defaultTussCodes = [
+    { id: '1', code: '30911052', description: 'Angioplastia Coronária' },
+    { id: '2', code: '30911060', description: 'Angioplastia Coronária com Implante de Stent' },
+    { id: '3', code: '30911079', description: 'Angioplastia Coronária com Implante de Dois ou mais Stents' },
+    { id: '4', code: '30911087', description: 'Angioplastia Coronária Primária' },
+    { id: '5', code: '30911095', description: 'Angioplastia Coronária com Implante de Stent Farmacológico' },
+    { id: '6', code: '30911109', description: 'Angioplastia Coronária em Enxerto Coronário' },
+    { id: '7', code: '30911117', description: 'Angioplastia com Implante de Stent em Tronco de Coronária Esquerda' },
+  ];
   
-  const [currentCode, setCurrentCode] = useState<TussCode>({
-    id: '',
-    code: '',
-    description: '',
-    justifications: [],
-    referenceValue: 0
-  });
+  useEffect(() => {
+    // Initialize with default TUSS codes
+    setProcedures(defaultTussCodes);
+    setFilteredProcedures(defaultTussCodes);
+  }, []);
   
-  const handleSave = () => {
-    if (!currentCode.code || !currentCode.description) {
-      toast.error('Preencha todos os campos obrigatórios');
-      return;
-    }
-    
-    if (isEditing) {
-      setTussCodes(prev => 
-        prev.map(item => item.id === isEditing ? currentCode : item)
-      );
-      toast.success('Código TUSS atualizado com sucesso');
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredProcedures(procedures);
     } else {
-      setTussCodes(prev => [...prev, { ...currentCode, id: Date.now().toString() }]);
-      toast.success('Código TUSS adicionado com sucesso');
+      const filtered = procedures.filter(procedure => 
+        procedure.code.includes(searchTerm) || 
+        procedure.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredProcedures(filtered);
     }
-    
-    handleCloseSheet();
-  };
-  
-  const handleCloseSheet = () => {
-    setIsAddingNew(false);
-    setIsEditing(null);
-    setCurrentCode({
-      id: '',
-      code: '',
-      description: '',
-      justifications: [],
-      referenceValue: 0
-    });
-  };
-  
-  const handleEdit = (code: TussCode) => {
-    setCurrentCode(code);
-    setIsEditing(code.id);
-    setIsAddingNew(true);
-  };
-  
-  const handleDelete = (id: string) => {
-    setTussCodes(prev => prev.filter(item => item.id !== id));
-    toast.success('Código TUSS removido com sucesso');
+  }, [searchTerm, procedures]);
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
   };
 
-  const handleJustificationsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const justifications = e.target.value
-      .split('\n')
-      .filter(j => j.trim() !== '');
-    
-    setCurrentCode(prev => ({...prev, justifications}));
+  const isProcedureSelected = (procedureId: string) => {
+    return selectedProcedures.some(p => p.id === procedureId);
   };
-  
-  const filteredCodes = tussCodes.filter(code => 
-    code.code.includes(searchQuery) || 
-    code.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold">Cadastro de Códigos TUSS</h2>
-        <Button onClick={() => setIsAddingNew(true)}>
-          <Plus className="mr-2 h-4 w-4" /> Adicionar
-        </Button>
-      </div>
-      
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-        <Input
-          placeholder="Buscar código ou descrição..."
-          className="pl-10"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+    <div className="space-y-4">
+      <div className="relative">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+        <Input 
+          placeholder="Buscar código TUSS" 
+          className="pl-9" 
+          value={searchTerm} 
+          onChange={handleSearch}
         />
       </div>
       
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[100px]">Código</TableHead>
-            <TableHead>Descrição</TableHead>
-            <TableHead className="w-[150px]">Valor Ref.</TableHead>
-            <TableHead className="w-[120px]">Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredCodes.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                Nenhum código TUSS encontrado
-              </TableCell>
-            </TableRow>
-          ) : (
-            filteredCodes.map((code) => (
-              <TableRow key={code.id}>
-                <TableCell className="font-medium">{code.code}</TableCell>
-                <TableCell>{code.description}</TableCell>
-                <TableCell>R$ {code.referenceValue.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(code)}>
-                      <Pencil className="h-4 w-4" />
+      <div className="border rounded-md overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted">
+            <tr>
+              <th className="text-left font-medium px-4 py-2">Código</th>
+              <th className="text-left font-medium px-4 py-2">Descrição</th>
+              <th className="w-16 px-4 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredProcedures.map((procedure) => (
+              <tr key={procedure.id} className="border-t hover:bg-muted/50">
+                <td className="px-4 py-2">{procedure.code}</td>
+                <td className="px-4 py-2">{procedure.description}</td>
+                <td className="px-4 py-2 text-right">
+                  {isProcedureSelected(procedure.id) ? (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => onRemove(procedure.id)}
+                      className="h-7 w-7 p-0"
+                    >
+                      <Trash className="h-4 w-4 text-red-500" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(code.id)}>
-                      <Trash2 className="h-4 w-4" />
+                  ) : (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => onAdd(procedure)}
+                      className="h-7 w-7 p-0"
+                    >
+                      <Plus className="h-4 w-4" />
                     </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+                  )}
+                </td>
+              </tr>
+            ))}
+            
+            {filteredProcedures.length === 0 && (
+              <tr>
+                <td colSpan={3} className="text-center py-4 text-muted-foreground">
+                  Nenhum código TUSS encontrado
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
       
-      {/* Add/Edit Sheet */}
-      <Sheet open={isAddingNew} onOpenChange={setIsAddingNew}>
-        <SheetContent className="w-full sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle>{isEditing ? 'Editar' : 'Adicionar'} Código TUSS</SheetTitle>
-            <SheetDescription>
-              Preencha os detalhes do código TUSS para procedimentos de angioplastia.
-            </SheetDescription>
-          </SheetHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <label htmlFor="code" className="text-sm font-medium">
-                Código TUSS *
-              </label>
-              <Input
-                id="code"
-                value={currentCode.code}
-                onChange={(e) => setCurrentCode(prev => ({...prev, code: e.target.value}))}
-                placeholder="Ex: 30912016"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="description" className="text-sm font-medium">
-                Descrição do Procedimento *
-              </label>
-              <Input
-                id="description"
-                value={currentCode.description}
-                onChange={(e) => setCurrentCode(prev => ({...prev, description: e.target.value}))}
-                placeholder="Ex: Angioplastia transluminal percutânea"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="justifications" className="text-sm font-medium">
-                Justificativas Padrão
-              </label>
-              <Textarea
-                id="justifications"
-                value={currentCode.justifications.join('\n')}
-                onChange={handleJustificationsChange}
-                placeholder="Digite cada justificativa em uma linha separada"
-                rows={4}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="referenceValue" className="text-sm font-medium">
-                Valor de Referência (R$)
-              </label>
-              <Input
-                id="referenceValue"
-                type="number"
-                step="0.01"
-                value={currentCode.referenceValue}
-                onChange={(e) => setCurrentCode(prev => ({...prev, referenceValue: parseFloat(e.target.value)}))}
-                placeholder="Ex: 4500.00"
-              />
-            </div>
-          </div>
-          
-          <SheetFooter>
-            <Button variant="outline" onClick={handleCloseSheet}>Cancelar</Button>
-            <Button onClick={handleSave}>Salvar</Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+      <div className="mt-4">
+        <h4 className="text-sm font-medium mb-2">Selecionados ({selectedProcedures.length})</h4>
+        {selectedProcedures.length > 0 ? (
+          <ul className="space-y-1">
+            {selectedProcedures.map(procedure => (
+              <li key={procedure.id} className="flex justify-between items-center bg-muted/50 px-3 py-1 rounded-md text-sm">
+                <span>
+                  <strong>{procedure.code}</strong> - {procedure.description}
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => onRemove(procedure.id)}
+                  className="h-6 w-6 p-0"
+                >
+                  <Trash className="h-3.5 w-3.5 text-red-500" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">Nenhum código TUSS selecionado</p>
+        )}
+      </div>
     </div>
   );
 };

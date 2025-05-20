@@ -9,6 +9,100 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      angioplasty_requests: {
+        Row: {
+          clinic_id: string
+          coronary_angiography: string
+          created_at: string
+          created_by: string
+          id: string
+          insurance_id: string
+          insurance_name: string
+          materials: Json
+          patient_id: string
+          patient_name: string
+          proposed_treatment: string
+          request_number: string
+          surgical_team: Json
+          tuss_procedures: Json
+        }
+        Insert: {
+          clinic_id: string
+          coronary_angiography: string
+          created_at?: string
+          created_by: string
+          id?: string
+          insurance_id: string
+          insurance_name: string
+          materials?: Json
+          patient_id: string
+          patient_name: string
+          proposed_treatment: string
+          request_number: string
+          surgical_team: Json
+          tuss_procedures?: Json
+        }
+        Update: {
+          clinic_id?: string
+          coronary_angiography?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          insurance_id?: string
+          insurance_name?: string
+          materials?: Json
+          patient_id?: string
+          patient_name?: string
+          proposed_treatment?: string
+          request_number?: string
+          surgical_team?: Json
+          tuss_procedures?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "angioplasty_requests_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "angioplasty_requests_insurance_id_fkey"
+            columns: ["insurance_id"]
+            isOneToOne: false
+            referencedRelation: "insurance_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "angioplasty_requests_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_clinic_id"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_insurance_id"
+            columns: ["insurance_id"]
+            isOneToOne: false
+            referencedRelation: "insurance_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_patient_id"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_staff: {
         Row: {
           active: boolean

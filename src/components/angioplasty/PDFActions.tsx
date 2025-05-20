@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Save, Printer, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { angioplastyService, AngioplastyRequest } from '@/services/angioplastyService';
+import { AngioplastyRequest, angioplastyService } from '@/services/angioplastyService';
 import { useAuth } from '@/contexts/AuthContext';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
