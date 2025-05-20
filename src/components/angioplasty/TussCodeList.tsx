@@ -1,133 +1,145 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search, Plus, Trash, Check } from 'lucide-react';
-import { Badge } from "@/components/ui/badge";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from '@/components/ui/badge';
+import { Plus, X } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
 
 export interface TussCode {
   id: string;
   code: string;
   description: string;
   justifications?: string[];
-  referenceValue?: number;
+  referenceValue?: number; // Added to fix the type errors
 }
 
 interface TussCodeListProps {
   selectedProcedures: TussCode[];
-  onAdd: (procedure: TussCode) => void;
-  onRemove: (procedureId: string) => void;
+  onAdd: (tuss: TussCode) => void;
+  onRemove: (tussId: string) => void;
 }
 
-export const TussCodeList: React.FC<TussCodeListProps> = ({ selectedProcedures, onAdd, onRemove }) => {
-  const [open, setOpen] = useState(false);
-  
-  // Default TUSS codes for angioplasty
-  const defaultTussCodes: TussCode[] = [
-    { id: '1', code: '30911052', description: 'Angioplastia Coronária', referenceValue: 4500.00 },
-    { id: '2', code: '30911060', description: 'Angioplastia Coronária com Implante de Stent', referenceValue: 6800.00 },
-    { id: '3', code: '30911079', description: 'Angioplastia Coronária com Implante de Dois ou mais Stents', referenceValue: 7500.00 },
-    { id: '4', code: '30911087', description: 'Angioplastia Coronária Primária', referenceValue: 5200.00 },
-    { id: '5', code: '30911095', description: 'Angioplastia Coronária com Implante de Stent Farmacológico', referenceValue: 8500.00 },
-    { id: '6', code: '30911109', description: 'Angioplastia Coronária em Enxerto Coronário', referenceValue: 7800.00 },
-    { id: '7', code: '30911117', description: 'Angioplastia com Implante de Stent em Tronco de Coronária Esquerda', referenceValue: 9000.00 },
-  ];
+export const TussCodeList: React.FC<TussCodeListProps> = ({
+  selectedProcedures,
+  onAdd,
+  onRemove,
+}) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [availableTussCodes, setAvailableTussCodes] = useState<TussCode[]>([
+    {
+      id: '1',
+      code: '30912016',
+      description: 'Angioplastia transluminal percutânea',
+      justifications: ['Estenose crítica', 'Obstrução parcial', 'Reserva fracionada de fluxo alterada'],
+      referenceValue: 4500.00
+    },
+    {
+      id: '2',
+      code: '30912083',
+      description: 'Implante de stent coronário',
+      justifications: ['Estenose crítica', 'Oclusão total', 'Dissecção coronária'],
+      referenceValue: 6800.00
+    }
+  ]);
 
-  const isProcedureSelected = (procedureId: string) => {
-    return selectedProcedures.some(p => p.id === procedureId);
+  const filteredTussCodes = availableTussCodes.filter(tuss =>
+    tuss.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    tuss.code.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleAddProcedure = (tuss: TussCode) => {
+    onAdd(tuss);
   };
 
-  const toggleProcedure = (procedure: TussCode) => {
-    if (isProcedureSelected(procedure.id)) {
-      onRemove(procedure.id);
-    } else {
-      onAdd(procedure);
-    }
+  const handleRemoveProcedure = (tussId: string) => {
+    onRemove(tussId);
+  };
+
+  const isProcedureSelected = (tussId: string) => {
+    return selectedProcedures.some(proc => proc.id === tussId);
   };
 
   return (
     <div className="space-y-4">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" className="w-full justify-between">
-            {selectedProcedures.length > 0 ? (
-              <span>
-                {selectedProcedures.length} procedimento(s) selecionado(s)
-              </span>
-            ) : (
-              <span>Selecionar procedimentos TUSS</span>
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Buscar procedimento TUSS..."
+          className="w-full pl-9 pr-3 py-2 border rounded-md focus:outline-none focus:ring focus:ring-primary focus:ring-opacity-50"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="absolute left-3 top-1/2 -mt-2.5 h-5 w-5 text-gray-400"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path
+            fillRule="evenodd"
+            d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </div>
+
+      <ScrollArea className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[100px]">Código</TableHead>
+              <TableHead>Descrição</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredTussCodes.map(tuss => (
+              <TableRow key={tuss.id}>
+                <TableCell className="font-medium">{tuss.code}</TableCell>
+                <TableCell>{tuss.description}</TableCell>
+                <TableCell className="text-right">
+                  {isProcedureSelected(tuss.id) ? (
+                    <Button variant="destructive" size="icon" onClick={() => handleRemoveProcedure(tuss.id)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button variant="ghost" size="icon" onClick={() => handleAddProcedure(tuss)}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            {filteredTussCodes.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={3} className="text-center">
+                  Nenhum procedimento encontrado.
+                </TableCell>
+              </TableRow>
             )}
-            <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start">
-          <Command>
-            <CommandInput placeholder="Buscar código TUSS ou descrição..." />
-            <CommandList>
-              <CommandEmpty>Nenhum procedimento encontrado.</CommandEmpty>
-              <CommandGroup>
-                <ScrollArea className="h-[200px]">
-                  {defaultTussCodes.map((procedure) => (
-                    <CommandItem
-                      key={procedure.id}
-                      value={`${procedure.code}-${procedure.description}`}
-                      onSelect={() => toggleProcedure(procedure)}
-                      className="flex items-center justify-between p-2"
-                    >
-                      <div>
-                        <div className="font-medium">{procedure.code}</div>
-                        <div className="text-sm text-muted-foreground">{procedure.description}</div>
-                      </div>
-                      {isProcedureSelected(procedure.id) && (
-                        <Check className="h-4 w-4 text-primary" />
-                      )}
-                    </CommandItem>
-                  ))}
-                </ScrollArea>
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-      
-      <div className="mt-4">
-        <h4 className="text-sm font-medium mb-2">Procedimentos selecionados ({selectedProcedures.length})</h4>
-        {selectedProcedures.length > 0 ? (
+          </TableBody>
+        </Table>
+      </ScrollArea>
+
+      {selectedProcedures.length > 0 && (
+        <div className="mt-4">
+          <h4 className="mb-2 text-sm font-medium">Procedimentos Selecionados:</h4>
           <div className="flex flex-wrap gap-2">
-            {selectedProcedures.map(procedure => (
-              <Badge key={procedure.id} variant="secondary" className="flex items-center gap-1 py-1.5">
-                <span>
-                  <span className="font-medium">{procedure.code}</span> - {procedure.description}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onRemove(procedure.id)}
-                  className="h-4 w-4 p-0 ml-1"
-                >
-                  <Trash className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                </Button>
+            {selectedProcedures.map(proc => (
+              <Badge key={proc.id} variant="secondary">
+                {proc.description}
               </Badge>
             ))}
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Nenhum procedimento TUSS selecionado</p>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

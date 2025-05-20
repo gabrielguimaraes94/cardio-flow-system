@@ -3,8 +3,8 @@
 export interface Clinic {
   id: string;
   name: string;
-  address?: string; // Made optional to match clinicService
-  phone?: string;   // Made optional to match clinicService
+  address: string;  // Made required to match PDFViewer usage
+  phone: string;    // Made required to match PDFViewer usage
   city?: string;
   email?: string;
   logo_url?: string;

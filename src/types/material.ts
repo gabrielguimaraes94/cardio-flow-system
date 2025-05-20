@@ -12,6 +12,7 @@ export interface Material {
 
 export interface MaterialWithQuantity extends Material {
   quantity: number;
+  referencePrice?: number;
 }
 
 export interface MaterialsListProps {

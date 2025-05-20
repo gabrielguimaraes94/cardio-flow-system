@@ -1,18 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-
-export interface Clinic {
-  id: string;
-  name: string;
-  city: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  logo?: string;
-  logo_url?: string;
-  active?: boolean;
-  zipCode?: string;
-}
+import { Clinic } from '@/types/clinic';
 
 /**
  * Service for handling clinic operations
@@ -42,6 +30,8 @@ export const clinicService = {
         id: item.clinic_id,
         name: item.clinic_name,
         city: item.clinic_city,
+        address: item.clinic_address || 'Endereço não informado',
+        phone: item.clinic_phone || 'Telefone não informado',
         logo_url: item.clinic_logo_url,
         active: true
       })) : [];
@@ -66,7 +56,13 @@ export const clinicService = {
         .single();
 
       if (error) throw error;
-      return data;
+      
+      // Ensure required fields are present
+      return data ? {
+        ...data,
+        address: data.address || 'Endereço não informado',
+        phone: data.phone || 'Telefone não informado'
+      } : null;
     } catch (error) {
       console.error('Error fetching clinic by ID:', error);
       return null;

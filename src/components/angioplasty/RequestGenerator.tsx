@@ -27,42 +27,19 @@ import { Input } from '@/components/ui/input';
 import { Plus, ChevronDown, Printer, FileText, Search, Trash } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { TussCode } from './TussCodeList';
+import { Material, MaterialWithQuantity } from '@/types/material';
+import { Clinic } from '@/types/clinic';
+import { SimpleInsuranceCompany } from '@/types/insurance-selector';
 
-interface TussCode {
-  id: string;
-  code: string;
-  description: string;
-  justifications?: string[];
-}
-
-interface Material {
-  id: string;
-  description: string;
-  manufacturer: string;
-  code: string;
-  compatibleProcedures: string[];
-}
-
-interface MaterialWithQuantity extends Material {
-  quantity: number;
-}
-
-interface Clinic {
-  id: string;
-  name: string;
-  address: string;
-  phone: string;
-  logo?: string;
-}
-
-interface InsuranceCompany {
-  id: string;
-  name: string;
-  requiresDigitalSubmission?: boolean;
-}
+// We'll just update the interface definition here and fix the use elsewhere
+interface InsuranceCompany extends SimpleInsuranceCompany {}
 
 // Component for selecting insurance companies
-const InsuranceSelector = ({ onInsuranceSelect, selectedInsurance }: { 
+const InsuranceSelector = ({ 
+  onInsuranceSelect, 
+  selectedInsurance 
+}: { 
   onInsuranceSelect: (insurance: InsuranceCompany) => void;
   selectedInsurance: InsuranceCompany | null;
 }) => {
@@ -409,8 +386,8 @@ export const RequestGenerator = () => {
   };
   
   const calculateTotal = () => {
-    const proceduresTotal = selectedProcedures.reduce((sum, proc) => sum + proc.referenceValue, 0);
-    const materialsTotal = selectedMaterials.reduce((sum, mat) => sum + (mat.referencePrice * mat.quantity), 0);
+    const proceduresTotal = selectedProcedures.reduce((sum, proc) => sum + (proc.referenceValue || 0), 0);
+    const materialsTotal = selectedMaterials.reduce((sum, mat) => sum + ((mat.referencePrice || 0) * mat.quantity), 0);
     return proceduresTotal + materialsTotal;
   };
   

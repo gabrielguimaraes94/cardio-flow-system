@@ -6,6 +6,7 @@ import { ClinicalInfo } from './pdf/ClinicalInfo';
 import { ProceduresTable } from './pdf/ProceduresTable';
 import { MaterialsTable } from './pdf/MaterialsTable';
 import { SurgicalTeam } from './pdf/SurgicalTeam';
+import { Clinic } from '@/types/clinic';
 
 interface Doctor {
   id: string;
@@ -34,15 +35,6 @@ interface MaterialWithQuantity {
   id: string;
   description: string;
   quantity: number;
-}
-
-interface Clinic {
-  id: string;
-  name: string;
-  address: string;
-  phone: string;
-  city?: string;
-  email?: string;
 }
 
 interface SurgicalTeam {
