@@ -9,8 +9,9 @@ export interface Clinic {
   phone?: string;
   email?: string;
   logo?: string;
-  logo_url?: string; // Added this field
+  logo_url?: string;
   active?: boolean;
+  zipCode?: string; // Added this field to match usage in PDFViewer
 }
 
 /**
@@ -41,7 +42,7 @@ export const clinicService = {
         id: item.clinic_id,
         name: item.clinic_name,
         city: item.clinic_city,
-        logo: item.clinic_logo_url,
+        logo_url: item.clinic_logo_url,
         active: true
       })) : [];
       
