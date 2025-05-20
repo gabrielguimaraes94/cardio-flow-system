@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -214,7 +213,7 @@ export const ImprovedRequestGenerator = () => {
       name: contextClinic.name,
       address: contextClinic.address || '',
       phone: contextClinic.phone || '',
-      logo: contextClinic.logo_url || '',
+      logo: contextClinic.logo || '',
     }
   ] : [];
   
