@@ -48,7 +48,3 @@ WITH CHECK (
     WHERE user_id = auth.uid() AND active = true
   )
 );
-
--- Add package dependencies
-<lov-add-dependency>html2canvas@1.4.1</lov-add-dependency>
-<lov-add-dependency>jspdf@2.5.1</lov-add-dependency>

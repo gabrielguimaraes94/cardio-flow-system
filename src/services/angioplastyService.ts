@@ -57,6 +57,7 @@ export interface AngioplastyRequest {
 export const angioplastyService = {
   async saveRequest(data: Omit<AngioplastyRequest, 'id' | 'createdAt'>): Promise<{ id: string } | null> {
     try {
+      // Convert data to Supabase's snake_case format
       const { data: result, error } = await supabase
         .from('angioplasty_requests')
         .insert({
@@ -76,7 +77,11 @@ export const angioplastyService = {
         .select('id')
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error saving request:', error);
+        throw error;
+      }
+      
       return result;
     } catch (error) {
       console.error('Error saving angioplasty request:', error);
@@ -92,9 +97,13 @@ export const angioplastyService = {
         .eq('patient_id', patientId)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error fetching requests:', error);
+        throw error;
+      }
       
-      return (data || []).map(item => ({
+      // Convert snake_case to camelCase
+      return data ? data.map(item => ({
         id: item.id,
         patientId: item.patient_id,
         patientName: item.patient_name,
@@ -109,7 +118,7 @@ export const angioplastyService = {
         surgicalTeam: item.surgical_team,
         createdAt: item.created_at,
         createdBy: item.created_by
-      }));
+      })) : [];
     } catch (error) {
       console.error('Error fetching angioplasty requests:', error);
       return [];
