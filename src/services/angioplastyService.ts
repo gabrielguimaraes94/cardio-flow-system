@@ -113,9 +113,9 @@ export const angioplastyService = {
         requestNumber: item.request_number,
         coronaryAngiography: item.coronary_angiography,
         proposedTreatment: item.proposed_treatment,
-        tussProcedures: item.tuss_procedures as TussCode[],
-        materials: item.materials as MaterialWithQuantity[],
-        surgicalTeam: item.surgical_team as SurgicalTeam,
+        tussProcedures: item.tuss_procedures as unknown as TussCode[],
+        materials: item.materials as unknown as MaterialWithQuantity[],
+        surgicalTeam: item.surgical_team as unknown as SurgicalTeam,
         createdAt: item.created_at,
         createdBy: item.created_by
       })) : [];
