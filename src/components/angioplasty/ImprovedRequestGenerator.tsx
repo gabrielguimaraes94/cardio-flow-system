@@ -214,7 +214,7 @@ export const ImprovedRequestGenerator = () => {
       name: contextClinic.name,
       address: contextClinic.address || '',
       phone: contextClinic.phone || '',
-      logo: contextClinic.logo_url,
+      logo: contextClinic.logo_url || '',
     }
   ] : [];
   

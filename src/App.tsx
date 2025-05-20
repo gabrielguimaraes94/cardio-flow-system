@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   createBrowserRouter,
@@ -23,12 +24,12 @@ import { CatheterizationReportList } from "./pages/CatheterizationReportList";
 import { Angioplasty } from "./pages/Angioplasty";
 import { Reports } from "./pages/Reports";
 import { Schedule } from "./pages/Schedule";
-import { InsuranceList } from "./pages/InsuranceList";
-import { InsuranceForm } from "./pages/InsuranceForm";
-import { InsuranceFormConfig } from "./pages/InsuranceFormConfig";
-import { InsuranceAuditRules } from "./pages/InsuranceAuditRules";
-import { InsuranceContractList } from "./pages/InsuranceContractList";
-import { InsuranceContractForm } from "./pages/InsuranceContractForm";
+import { InsuranceList } from "./pages/insurance/InsuranceList";
+import { InsuranceForm } from "./pages/insurance/InsuranceForm";
+import { InsuranceFormConfig } from "./pages/insurance/InsuranceFormConfig";
+import { InsuranceAuditRules } from "./pages/insurance/InsuranceAuditRules";
+import { InsuranceContractList } from "./pages/insurance/InsuranceContractList";
+import { InsuranceContractForm } from "./pages/insurance/InsuranceContractForm";
 
 const routes = [
   { path: "/", element: <Index /> },
