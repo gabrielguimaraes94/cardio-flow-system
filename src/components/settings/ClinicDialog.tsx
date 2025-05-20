@@ -1,12 +1,12 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useForm } from 'react-hook-form';
-import * as yup from 'yup';
-import { yupResolver } from '@hookform/resolvers/yup';
+import * as z from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Form,
   FormControl,
@@ -15,6 +15,9 @@ import {
   FormLabel,
   FormMessage
 } from '@/components/ui/form';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Printer, Download, Save } from 'lucide-react';
 
 export interface Clinic {
   id: string;
@@ -24,6 +27,7 @@ export interface Clinic {
   phone: string;
   email: string;
   active: boolean;
+  logo_url?: string;
 }
 
 interface ClinicDialogProps {
@@ -33,29 +37,36 @@ interface ClinicDialogProps {
   clinic: Clinic | null;
 }
 
-// Define o schema de validação com yup
-const clinicSchema = yup.object({
-  name: yup.string().required('Nome é obrigatório'),
-  address: yup.string().required('Endereço é obrigatório'),
-  city: yup.string().required('Cidade é obrigatória'),
-  phone: yup.string().required('Telefone é obrigatório'),
-  email: yup.string().email('Email inválido').required('Email é obrigatório'),
-  active: yup.boolean().required().default(true)
+// Define o schema de validação com zod
+const clinicSchema = z.object({
+  name: z.string().min(1, 'Nome é obrigatório'),
+  address: z.string().min(1, 'Endereço é obrigatório'),
+  city: z.string().min(1, 'Cidade é obrigatória'),
+  phone: z.string().min(1, 'Telefone é obrigatório'),
+  email: z.string().email('Email inválido').min(1, 'Email é obrigatório'),
+  active: z.boolean().default(true),
+  logo_url: z.string().optional()
 });
 
 // Define o tipo de dados para o formulário usando InferType
-type ClinicFormData = yup.InferType<typeof clinicSchema>;
+type ClinicFormData = z.infer<typeof clinicSchema>;
 
 export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onSave, clinic }) => {
+  const [logo, setLogo] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
+  
   const form = useForm<ClinicFormData>({
-    resolver: yupResolver(clinicSchema),
+    resolver: zodResolver(clinicSchema),
     defaultValues: {
       name: '',
       address: '',
       city: '',
       phone: '',
       email: '',
-      active: true
+      active: true,
+      logo_url: ''
     }
   });
 
@@ -69,8 +80,10 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
           city: clinic.city,
           phone: clinic.phone,
           email: clinic.email,
-          active: clinic.active
+          active: clinic.active,
+          logo_url: clinic.logo_url || ''
         });
+        setPreviewUrl(clinic.logo_url || null);
       } else {
         form.reset({
           name: '',
@@ -78,22 +91,112 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
           city: '',
           phone: '',
           email: '',
-          active: true
+          active: true,
+          logo_url: ''
         });
+        setPreviewUrl(null);
       }
+      setLogo(null);
     }
   }, [isOpen, clinic, form]);
 
-  const onSubmit = (data: ClinicFormData) => {
-    onSave({
-      id: clinic?.id || '',
-      name: data.name,
-      address: data.address,
-      city: data.city,
-      phone: data.phone,
-      email: data.email,
-      active: data.active
-    });
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    
+    if (file) {
+      setLogo(file);
+      
+      // Create preview URL for the image
+      const fileReader = new FileReader();
+      fileReader.onload = () => {
+        setPreviewUrl(fileReader.result as string);
+      };
+      fileReader.readAsDataURL(file);
+    }
+  };
+
+  const uploadLogo = async (): Promise<string | null> => {
+    if (!logo) return form.getValues('logo_url') || null;
+    
+    setIsUploading(true);
+    try {
+      // Create a unique filename for the logo
+      const fileExt = logo.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `clinic-logos/${fileName}`;
+      
+      // Check if storage bucket exists, create if not (would normally be handled by SQL migration)
+      try {
+        const { data: bucketExists } = await supabase.storage.getBucket('clinic-assets');
+        if (!bucketExists) {
+          await supabase.storage.createBucket('clinic-assets', { public: true });
+        }
+      } catch (error) {
+        // Bucket doesn't exist, create it
+        await supabase.storage.createBucket('clinic-assets', { public: true });
+      }
+      
+      // Upload the file
+      const { data, error } = await supabase.storage
+        .from('clinic-assets')
+        .upload(filePath, logo, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Get the public URL for the uploaded file
+      const { data: { publicUrl } } = supabase.storage
+        .from('clinic-assets')
+        .getPublicUrl(filePath);
+      
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      toast({
+        title: "Erro ao fazer upload do logo",
+        description: "Não foi possível fazer o upload da imagem. Por favor, tente novamente.",
+        variant: "destructive"
+      });
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const onSubmit = async (data: ClinicFormData) => {
+    try {
+      // If there's a new logo, upload it
+      let logoUrl = data.logo_url;
+      
+      if (logo) {
+        const uploadedUrl = await uploadLogo();
+        if (uploadedUrl) {
+          logoUrl = uploadedUrl;
+        }
+      }
+      
+      onSave({
+        id: clinic?.id || '',
+        name: data.name,
+        address: data.address,
+        city: data.city,
+        phone: data.phone,
+        email: data.email,
+        active: data.active,
+        logo_url: logoUrl
+      });
+    } catch (error) {
+      console.error('Error saving clinic:', error);
+      toast({
+        title: "Erro ao salvar a clínica",
+        description: "Ocorreu um erro ao salvar os dados da clínica.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -174,6 +277,33 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
               )}
             />
             
+            {/* Logo Upload Field */}
+            <div className="space-y-2">
+              <FormLabel>Logo da Clínica</FormLabel>
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
+                {previewUrl && (
+                  <div className="w-24 h-24 rounded border overflow-hidden bg-gray-50">
+                    <img 
+                      src={previewUrl} 
+                      alt="Logo preview" 
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <Input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={handleLogoChange}
+                    className="cursor-pointer"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Formatos recomendados: PNG, JPG. Tamanho máximo: 2MB.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
             <FormField
               control={form.control}
               name="active"
@@ -194,7 +324,9 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
             
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-              <Button type="submit">Salvar</Button>
+              <Button type="submit" disabled={isUploading}>
+                {isUploading ? 'Enviando...' : 'Salvar'}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

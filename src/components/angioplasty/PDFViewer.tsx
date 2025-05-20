@@ -59,6 +59,7 @@ interface PDFViewerProps {
   coronaryAngiography: string;
   proposedTreatment: string;
   requestNumber: string;
+  contentRef: React.RefObject<HTMLDivElement>;
 }
 
 export const PDFViewer: React.FC<PDFViewerProps> = ({
@@ -70,7 +71,8 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
   surgicalTeam,
   coronaryAngiography,
   proposedTreatment,
-  requestNumber
+  requestNumber,
+  contentRef
 }) => {
   if (!patient || !insurance) {
     return <div className="text-center p-8">Dados insuficientes para gerar o PDF</div>;
@@ -81,7 +83,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
   
   return (
     <div className="w-full h-full bg-white overflow-auto p-8">
-      <div className="max-w-[800px] mx-auto">
+      <div ref={contentRef} className="max-w-[800px] mx-auto">
         {/* Header */}
         <div className="flex justify-between items-start mb-8">
           <div className="max-w-[60%]">
