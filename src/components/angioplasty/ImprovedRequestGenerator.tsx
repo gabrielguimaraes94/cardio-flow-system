@@ -24,8 +24,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Input } from '@/components/ui/input';
-import { Plus, ChevronDown, Printer, FileText, Search, X } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { Plus, ChevronDown, Printer, FileText, Search, X, AlertTriangle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { useClinic } from '@/contexts/ClinicContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -33,6 +33,7 @@ import { z } from 'zod';
 import { PDFViewer } from '@/components/angioplasty/PDFViewer';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Validation schemas
 const patientSchema = z.object({
@@ -134,6 +135,7 @@ interface Clinic {
 
 export const ImprovedRequestGenerator = () => {
   const { selectedClinic } = useClinic();
+  const { toast } = useToast();
   
   // Form state
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -328,18 +330,28 @@ export const ImprovedRequestGenerator = () => {
   
   const handleGenerateRequest = () => {
     try {
+      // Primeiro, verificamos se há uma clínica selecionada
+      if (!selectedClinic) {
+        toast({
+          title: "Erro de validação",
+          description: "Nenhuma clínica selecionada. Por favor, selecione uma clínica antes de continuar.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       // Validate the form data
-      const formData: RequestFormData = {
-        patient: selectedPatient as any,
-        insurance: selectedInsurance as any,
+      const formData = {
+        patient: selectedPatient,
+        insurance: selectedInsurance,
         coronaryAngiography,
         proposedTreatment,
         tussProcedures: selectedTussProcedures,
         materials: selectedMaterials,
         surgicalTeam: {
-          surgeon: surgicalTeam.surgeon as any,
-          assistant: surgicalTeam.assistant as any,
-          anesthesiologist: surgicalTeam.anesthesiologist as any,
+          surgeon: surgicalTeam.surgeon,
+          assistant: surgicalTeam.assistant,
+          anesthesiologist: surgicalTeam.anesthesiologist,
         },
       };
       
@@ -382,8 +394,22 @@ export const ImprovedRequestGenerator = () => {
     return age;
   };
   
+  // Clínica disponível?
+  const hasClinic = Boolean(selectedClinic);
+  
   return (
     <div className="space-y-8">
+      {!hasClinic && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Nenhuma clínica selecionada</AlertTitle>
+          <AlertDescription>
+            Você precisa selecionar uma clínica antes de gerar uma solicitação de angioplastia.
+            Por favor, selecione uma clínica no seletor na parte superior da página.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left column */}
         <div className="space-y-6">
@@ -673,6 +699,13 @@ export const ImprovedRequestGenerator = () => {
                 <Label className="text-sm text-gray-500">Data</Label>
                 <p className="font-medium">{format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}</p>
               </div>
+              
+              {hasClinic && (
+                <div>
+                  <Label className="text-sm text-gray-500">Clínica</Label>
+                  <p className="font-medium">{selectedClinic.name}</p>
+                </div>
+              )}
             </div>
           </div>
           
@@ -682,6 +715,7 @@ export const ImprovedRequestGenerator = () => {
               className="w-full" 
               size="lg"
               onClick={handleGenerateRequest}
+              disabled={!hasClinic}
             >
               <Printer className="mr-2 h-5 w-5" />
               Gerar Solicitação de Angioplastia
@@ -914,17 +948,36 @@ export const ImprovedRequestGenerator = () => {
             <DialogTitle>Solicitação de Angioplastia - {requestNumber}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
-            <PDFViewer
-              patient={selectedPatient}
-              insurance={selectedInsurance}
-              clinic={clinics[0]}
-              tussProcedures={selectedTussProcedures}
-              materials={selectedMaterials}
-              surgicalTeam={surgicalTeam}
-              coronaryAngiography={coronaryAngiography}
-              proposedTreatment={proposedTreatment}
-              requestNumber={requestNumber}
-            />
+            {hasClinic ? (
+              <PDFViewer
+                patient={selectedPatient}
+                insurance={selectedInsurance}
+                clinic={{
+                  id: selectedClinic.id,
+                  name: selectedClinic.name,
+                  address: selectedClinic.address || '',
+                  phone: selectedClinic.phone || '',
+                  logo: selectedClinic.logo || '',
+                  city: selectedClinic.city || '',
+                  email: selectedClinic.email || '',
+                  zipCode: '01310-200' // Exemplo
+                }}
+                tussProcedures={selectedTussProcedures}
+                materials={selectedMaterials}
+                surgicalTeam={surgicalTeam}
+                coronaryAngiography={coronaryAngiography}
+                proposedTreatment={proposedTreatment}
+                requestNumber={requestNumber}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full">
+                <AlertTriangle className="h-12 w-12 text-yellow-500 mb-4" />
+                <h3 className="text-xl font-bold mb-2">Nenhuma clínica selecionada</h3>
+                <p className="text-gray-500 text-center max-w-md">
+                  Você precisa selecionar uma clínica antes de visualizar o PDF.
+                </p>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
