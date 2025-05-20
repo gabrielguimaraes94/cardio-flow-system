@@ -9,6 +9,7 @@ export interface Clinic {
   phone?: string;
   email?: string;
   logo?: string;
+  logo_url?: string; // Added this field
   active?: boolean;
 }
 
