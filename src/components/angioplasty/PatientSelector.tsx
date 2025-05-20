@@ -12,8 +12,14 @@ import { usePatients } from '@/hooks/usePatients';
 import { format } from 'date-fns';
 import { z } from 'zod';
 
+export interface Patient {
+  id: string;
+  name: string;
+  birthdate: string;
+}
+
 interface PatientSelectorProps {
-  onPatientSelect: (patient: any) => void;
+  onPatientSelect: (patient: Patient) => void;
   selectedValue?: string;
 }
 

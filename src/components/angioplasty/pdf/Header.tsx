@@ -1,15 +1,6 @@
 
 import React from 'react';
-
-interface Clinic {
-  id: string;
-  name: string;
-  address: string;
-  phone: string;
-  city?: string;
-  email?: string;
-  logo_url?: string;
-}
+import { Clinic } from '@/types/clinic';
 
 interface HeaderProps {
   clinic: Clinic;
@@ -20,9 +11,9 @@ export const Header: React.FC<HeaderProps> = ({ clinic }) => {
     <div className="flex justify-between items-start mb-8">
       <div className="max-w-[70%]">
         <h1 className="text-xl font-bold">{clinic.name}</h1>
-        <p className="text-sm">{clinic.address}</p>
+        <p className="text-sm">{clinic.address || 'Endereço não informado'}</p>
         <p className="text-sm">{clinic.city || localStorage.getItem('clinicCity') || 'São Paulo'}</p>
-        <p className="text-sm">Tel: {clinic.phone}</p>
+        <p className="text-sm">Tel: {clinic.phone || 'Não informado'}</p>
         {clinic.email && <p className="text-sm">Email: {clinic.email}</p>}
       </div>
       {clinic.logo_url && (

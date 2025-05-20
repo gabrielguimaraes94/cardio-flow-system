@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Plus, Trash, Check } from 'lucide-react';
@@ -24,6 +24,7 @@ export interface TussCode {
   code: string;
   description: string;
   justifications?: string[];
+  referenceValue?: number;
 }
 
 interface TussCodeListProps {
@@ -37,13 +38,13 @@ export const TussCodeList: React.FC<TussCodeListProps> = ({ selectedProcedures, 
   
   // Default TUSS codes for angioplasty
   const defaultTussCodes: TussCode[] = [
-    { id: '1', code: '30911052', description: 'Angioplastia Coronária' },
-    { id: '2', code: '30911060', description: 'Angioplastia Coronária com Implante de Stent' },
-    { id: '3', code: '30911079', description: 'Angioplastia Coronária com Implante de Dois ou mais Stents' },
-    { id: '4', code: '30911087', description: 'Angioplastia Coronária Primária' },
-    { id: '5', code: '30911095', description: 'Angioplastia Coronária com Implante de Stent Farmacológico' },
-    { id: '6', code: '30911109', description: 'Angioplastia Coronária em Enxerto Coronário' },
-    { id: '7', code: '30911117', description: 'Angioplastia com Implante de Stent em Tronco de Coronária Esquerda' },
+    { id: '1', code: '30911052', description: 'Angioplastia Coronária', referenceValue: 4500.00 },
+    { id: '2', code: '30911060', description: 'Angioplastia Coronária com Implante de Stent', referenceValue: 6800.00 },
+    { id: '3', code: '30911079', description: 'Angioplastia Coronária com Implante de Dois ou mais Stents', referenceValue: 7500.00 },
+    { id: '4', code: '30911087', description: 'Angioplastia Coronária Primária', referenceValue: 5200.00 },
+    { id: '5', code: '30911095', description: 'Angioplastia Coronária com Implante de Stent Farmacológico', referenceValue: 8500.00 },
+    { id: '6', code: '30911109', description: 'Angioplastia Coronária em Enxerto Coronário', referenceValue: 7800.00 },
+    { id: '7', code: '30911117', description: 'Angioplastia com Implante de Stent em Tronco de Coronária Esquerda', referenceValue: 9000.00 },
   ];
 
   const isProcedureSelected = (procedureId: string) => {

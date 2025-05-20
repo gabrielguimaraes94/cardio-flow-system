@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -17,16 +16,19 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RequestGenerator } from './RequestGenerator';
 import { TussCodeList, TussCode } from './TussCodeList';
-import { MaterialsList, MaterialWithQuantity } from './MaterialsList';
+import { MaterialsList } from './MaterialsList';
+import { MaterialWithQuantity } from '@/types/material';
 import { toast } from 'sonner';
 import { PDFViewer } from './PDFViewer';
 import { PDFActions } from './PDFActions';
 import { useClinic } from '@/contexts/ClinicContext';
-import { PatientSelector } from './PatientSelector';
+import { PatientSelector, Patient } from './PatientSelector';
 import { SurgicalTeamSelector } from './SurgicalTeamSelector';
 import { format } from 'date-fns';
+import { InsuranceSelector } from './InsuranceSelector';
+import { SimpleInsuranceCompany } from '@/types/insurance-selector';
+import { Clinic } from '@/types/clinic';
 
 const requestFormSchema = z.object({
   patientId: z.string().min(1, { message: 'Selecione um paciente' }),
@@ -40,8 +42,8 @@ type RequestFormValues = z.infer<typeof requestFormSchema>;
 export const ImprovedRequestGenerator: React.FC = () => {
   const { selectedClinic } = useClinic();
   const [currentTab, setCurrentTab] = useState<string>('form');
-  const [selectedPatient, setSelectedPatient] = useState<any>(null);
-  const [selectedInsurance, setSelectedInsurance] = useState<any>(null);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedInsurance, setSelectedInsurance] = useState<SimpleInsuranceCompany | null>(null);
   const [selectedProcedures, setSelectedProcedures] = useState<TussCode[]>([]);
   const [selectedMaterials, setSelectedMaterials] = useState<MaterialWithQuantity[]>([]);
   const [surgicalTeam, setSurgicalTeam] = useState<any>({
@@ -65,12 +67,12 @@ export const ImprovedRequestGenerator: React.FC = () => {
     },
   });
 
-  const handlePatientSelect = (patient: any) => {
+  const handlePatientSelect = (patient: Patient) => {
     setSelectedPatient(patient);
     form.setValue('patientId', patient.id);
   };
 
-  const handleInsuranceSelect = (insurance: any) => {
+  const handleInsuranceSelect = (insurance: SimpleInsuranceCompany) => {
     setSelectedInsurance(insurance);
     form.setValue('insuranceId', insurance.id);
   };
@@ -113,12 +115,16 @@ export const ImprovedRequestGenerator: React.FC = () => {
     toast.success('Solicitação gerada com sucesso!');
   };
 
-  // Ensure we have a valid clinic for the PDF
-  const clinicForPDF = selectedClinic || {
+  // Ensure we have a valid clinic for the PDF, providing default values for required fields
+  const clinicForPDF: Clinic = selectedClinic ? {
+    ...selectedClinic,
+    address: selectedClinic.address || 'Endereço não informado',
+    phone: selectedClinic.phone || 'Telefone não informado',
+  } : {
     id: '',
     name: '',
-    address: '',
-    phone: '',
+    address: 'Endereço não informado',
+    phone: 'Telefone não informado',
     city: '',
     email: '',
   };
@@ -164,7 +170,7 @@ export const ImprovedRequestGenerator: React.FC = () => {
                           <FormItem>
                             <FormLabel>Convênio</FormLabel>
                             <FormControl>
-                              <RequestGenerator.InsuranceSelector 
+                              <InsuranceSelector 
                                 onInsuranceSelect={handleInsuranceSelect}
                                 selectedInsurance={selectedInsurance}
                               />
