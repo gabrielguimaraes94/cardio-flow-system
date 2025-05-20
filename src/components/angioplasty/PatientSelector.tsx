@@ -10,11 +10,18 @@ import {
 import { Input } from '@/components/ui/input';
 import { usePatients } from '@/hooks/usePatients';
 import { format } from 'date-fns';
+import { z } from 'zod';
 
 interface PatientSelectorProps {
   onPatientSelect: (patient: any) => void;
   selectedValue?: string;
 }
+
+const patientSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  birthdate: z.string().min(1),
+});
 
 export const PatientSelector: React.FC<PatientSelectorProps> = ({ 
   onPatientSelect,
@@ -33,6 +40,8 @@ export const PatientSelector: React.FC<PatientSelectorProps> = ({
   }, [searchInput, setSearchTerm]);
 
   const handlePatientChange = (patientId: string) => {
+    if (!patientId) return;
+    
     const selectedPatient = patients.find(p => p.id === patientId);
     if (selectedPatient) {
       onPatientSelect(selectedPatient);
@@ -52,7 +61,7 @@ export const PatientSelector: React.FC<PatientSelectorProps> = ({
         <SelectTrigger>
           <SelectValue placeholder="Selecione um paciente" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="max-h-[300px]">
           {isLoading ? (
             <div className="p-2 text-center text-sm text-muted-foreground">
               Carregando pacientes...
@@ -63,7 +72,7 @@ export const PatientSelector: React.FC<PatientSelectorProps> = ({
             </div>
           ) : (
             patients.map((patient) => (
-              <SelectItem key={patient.id} value={patient.id}>
+              <SelectItem key={patient.id} value={patient.id || "unknown-id"}>
                 {patient.name} - {format(new Date(patient.birthdate), 'dd/MM/yyyy')}
               </SelectItem>
             ))

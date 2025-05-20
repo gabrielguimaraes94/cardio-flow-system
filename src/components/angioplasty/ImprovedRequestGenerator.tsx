@@ -17,9 +17,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { usePatients } from '@/hooks/usePatients';
 import { RequestGenerator } from './RequestGenerator';
-import { TussCodeList } from './TussCodeList';
+import { TussCodeList, TussCode } from './TussCodeList';
+import { MaterialsList, MaterialWithQuantity } from './MaterialsList';
 import { toast } from 'sonner';
 import { PDFViewer } from './PDFViewer';
 import { PDFActions } from './PDFActions';
@@ -42,8 +42,8 @@ export const ImprovedRequestGenerator: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<string>('form');
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [selectedInsurance, setSelectedInsurance] = useState<any>(null);
-  const [selectedProcedures, setSelectedProcedures] = useState<any[]>([]);
-  const [selectedMaterials, setSelectedMaterials] = useState<any[]>([]);
+  const [selectedProcedures, setSelectedProcedures] = useState<TussCode[]>([]);
+  const [selectedMaterials, setSelectedMaterials] = useState<MaterialWithQuantity[]>([]);
   const [surgicalTeam, setSurgicalTeam] = useState<any>({
     surgeon: null,
     assistant: null,
@@ -75,6 +75,28 @@ export const ImprovedRequestGenerator: React.FC = () => {
     form.setValue('insuranceId', insurance.id);
   };
 
+  const handleAddMaterial = (material: MaterialWithQuantity) => {
+    setSelectedMaterials(prev => [...prev, material]);
+  };
+
+  const handleRemoveMaterial = (materialId: string) => {
+    setSelectedMaterials(prev => prev.filter(m => m.id !== materialId));
+  };
+
+  const handleUpdateMaterialQuantity = (materialId: string, quantity: number) => {
+    setSelectedMaterials(prev => 
+      prev.map(m => m.id === materialId ? { ...m, quantity } : m)
+    );
+  };
+
+  const handleAddProcedure = (procedure: TussCode) => {
+    setSelectedProcedures(prev => [...prev, procedure]);
+  };
+
+  const handleRemoveProcedure = (procedureId: string) => {
+    setSelectedProcedures(prev => prev.filter(p => p.id !== procedureId));
+  };
+
   const handleGenerateRequest = (values: RequestFormValues) => {
     if (selectedProcedures.length === 0) {
       toast.error('Selecione pelo menos um procedimento TUSS');
@@ -89,6 +111,16 @@ export const ImprovedRequestGenerator: React.FC = () => {
     // Switching to the preview tab
     setCurrentTab('preview');
     toast.success('Solicitação gerada com sucesso!');
+  };
+
+  // Ensure we have a valid clinic for the PDF
+  const clinicForPDF = selectedClinic || {
+    id: '',
+    name: '',
+    address: '',
+    phone: '',
+    city: '',
+    email: '',
   };
 
   return (
@@ -159,8 +191,8 @@ export const ImprovedRequestGenerator: React.FC = () => {
                     <h3 className="text-lg font-medium mb-4">Procedimentos TUSS</h3>
                     <TussCodeList 
                       selectedProcedures={selectedProcedures}
-                      onAdd={(procedure) => setSelectedProcedures([...selectedProcedures, procedure])}
-                      onRemove={(id) => setSelectedProcedures(selectedProcedures.filter(p => p.id !== id))}
+                      onAdd={handleAddProcedure}
+                      onRemove={handleRemoveProcedure}
                     />
                   </CardContent>
                 </Card>
@@ -168,9 +200,11 @@ export const ImprovedRequestGenerator: React.FC = () => {
                 <Card>
                   <CardContent className="pt-6">
                     <h3 className="text-lg font-medium mb-4">Materiais</h3>
-                    <RequestGenerator.MaterialSelector
+                    <MaterialsList
                       selectedMaterials={selectedMaterials}
-                      setSelectedMaterials={setSelectedMaterials}
+                      onAdd={handleAddMaterial}
+                      onRemove={handleRemoveMaterial}
+                      onUpdateQuantity={handleUpdateMaterialQuantity}
                       selectedProcedures={selectedProcedures}
                     />
                   </CardContent>
@@ -250,12 +284,7 @@ export const ImprovedRequestGenerator: React.FC = () => {
               <PDFViewer
                 patient={selectedPatient}
                 insurance={selectedInsurance}
-                clinic={selectedClinic || {
-                  id: '',
-                  name: '',
-                  address: '',
-                  phone: '',
-                }}
+                clinic={clinicForPDF}
                 tussProcedures={selectedProcedures}
                 materials={selectedMaterials}
                 surgicalTeam={surgicalTeam}
@@ -271,12 +300,7 @@ export const ImprovedRequestGenerator: React.FC = () => {
             data={{
               patient: selectedPatient,
               insurance: selectedInsurance,
-              clinic: selectedClinic || {
-                id: '',
-                name: '',
-                address: '',
-                phone: '',
-              },
+              clinic: clinicForPDF,
               tussProcedures: selectedProcedures,
               materials: selectedMaterials,
               surgicalTeam: surgicalTeam,

@@ -1,63 +1,66 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Trash, MinusCircle, PlusCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { MaterialWithQuantity } from '@/services/angioplastyService';
+import { Search, Plus, Trash, MinusCircle, PlusCircle, Check } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+export interface Material {
+  id: string;
+  description: string;
+  manufacturer?: string;
+  code?: string;
+  compatibleProcedures?: string[];
+}
+
+export interface MaterialWithQuantity extends Material {
+  quantity: number;
+}
 
 interface MaterialsListProps {
   selectedMaterials: MaterialWithQuantity[];
   onAdd: (material: MaterialWithQuantity) => void;
   onRemove: (materialId: string) => void;
   onUpdateQuantity: (materialId: string, quantity: number) => void;
+  selectedProcedures?: {id: string}[];
 }
 
 export const MaterialsList: React.FC<MaterialsListProps> = ({ 
   selectedMaterials, 
   onAdd, 
   onRemove,
-  onUpdateQuantity
+  onUpdateQuantity,
+  selectedProcedures = []
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [quantity, setQuantity] = useState(1);
+  const [open, setOpen] = useState(false);
   const [customMaterial, setCustomMaterial] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [materials, setMaterials] = useState<{id: string, description: string}[]>([]);
-  const [filteredMaterials, setFilteredMaterials] = useState<{id: string, description: string}[]>([]);
+  const [quantity, setQuantity] = useState(1);
   
   // Default materials for angioplasty
-  const defaultMaterials = [
-    { id: '1', description: 'Cateter Balão' },
-    { id: '2', description: 'Stent Convencional' },
-    { id: '3', description: 'Stent Farmacológico' },
-    { id: '4', description: 'Fio Guia 0.014"' },
-    { id: '5', description: 'Cateter Guia' },
-    { id: '6', description: 'Introdutor Femoral' },
-    { id: '7', description: 'Sistema de Compressão Radial' },
-    { id: '8', description: 'Contraste' },
+  const defaultMaterials: Material[] = [
+    { id: '1', description: 'Cateter Balão', manufacturer: 'Boston Scientific', code: 'CB-001' },
+    { id: '2', description: 'Stent Convencional', manufacturer: 'Medtronic', code: 'SC-002' },
+    { id: '3', description: 'Stent Farmacológico', manufacturer: 'Abbott', code: 'SF-003' },
+    { id: '4', description: 'Fio Guia 0.014"', manufacturer: 'Terumo', code: 'FG-004' },
+    { id: '5', description: 'Cateter Guia', manufacturer: 'Cordis', code: 'CG-005' },
+    { id: '6', description: 'Introdutor Femoral', manufacturer: 'B.Braun', code: 'IF-006' },
+    { id: '7', description: 'Sistema de Compressão Radial', manufacturer: 'Terumo', code: 'TR-007' },
+    { id: '8', description: 'Contraste', manufacturer: 'GE Healthcare', code: 'CO-008' },
   ];
-  
-  useEffect(() => {
-    // Initialize with default materials
-    setMaterials(defaultMaterials);
-    setFilteredMaterials(defaultMaterials);
-  }, []);
-  
-  useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredMaterials(materials);
-    } else {
-      const filtered = materials.filter(material => 
-        material.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredMaterials(filtered);
-    }
-  }, [searchTerm, materials]);
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
 
   const handleAddCustomMaterial = () => {
     if (customMaterial.trim().length === 0) return;
@@ -65,23 +68,22 @@ export const MaterialsList: React.FC<MaterialsListProps> = ({
     const newMaterial: MaterialWithQuantity = {
       id: `custom-${Date.now()}`,
       description: customMaterial,
-      quantity
+      quantity: quantity
     };
     
     onAdd(newMaterial);
     setCustomMaterial('');
     setQuantity(1);
+    setOpen(false);
   };
 
-  const handleAddMaterial = (materialId: string, description: string) => {
-    const material: MaterialWithQuantity = {
-      id: materialId,
-      description,
-      quantity
+  const handleAddMaterial = (material: Material) => {
+    const materialWithQuantity: MaterialWithQuantity = {
+      ...material,
+      quantity: 1
     };
-    
-    onAdd(material);
-    setQuantity(1);
+    onAdd(materialWithQuantity);
+    setOpen(false);
   };
 
   const handleUpdateQuantity = (materialId: string, currentQuantity: number, increment: boolean) => {
@@ -93,113 +95,117 @@ export const MaterialsList: React.FC<MaterialsListProps> = ({
     return selectedMaterials.some(m => m.id === materialId);
   };
 
+  const filteredMaterials = defaultMaterials.filter(material => {
+    if (!material.compatibleProcedures || material.compatibleProcedures.length === 0) {
+      return true;
+    }
+    
+    if (selectedProcedures.length === 0) {
+      return true;
+    }
+    
+    return selectedProcedures.some(proc => 
+      material.compatibleProcedures?.includes(proc.id)
+    );
+  });
+
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-        <Input 
-          placeholder="Buscar material" 
-          className="pl-9" 
-          value={searchTerm} 
-          onChange={handleSearch}
-        />
-      </div>
-      
-      <div className="border rounded-md overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted">
-            <tr>
-              <th className="text-left font-medium px-4 py-2">Material</th>
-              <th className="text-center font-medium px-4 py-2 w-24">Qtd.</th>
-              <th className="w-16 px-4 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredMaterials.map((material) => (
-              <tr key={material.id} className="border-t hover:bg-muted/50">
-                <td className="px-4 py-2">{material.description}</td>
-                <td className="px-4 py-2 text-center">
-                  <Input 
-                    type="number" 
-                    min="1" 
-                    value={quantity}
-                    onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                    className="h-7 w-16 text-center"
-                  />
-                </td>
-                <td className="px-4 py-2 text-right">
-                  {isMaterialSelected(material.id) ? (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => onRemove(material.id)}
-                      className="h-7 w-7 p-0"
-                    >
-                      <Trash className="h-4 w-4 text-red-500" />
-                    </Button>
-                  ) : (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleAddMaterial(material.id, material.description)}
-                      className="h-7 w-7 p-0"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            ))}
-            
-            <tr className="border-t">
-              <td className="px-4 py-2">
-                <Input 
-                  placeholder="Adicionar outro material..." 
-                  value={customMaterial}
-                  onChange={(e) => setCustomMaterial(e.target.value)}
-                  className="h-7"
-                />
-              </td>
-              <td className="px-4 py-2 text-center">
-                <Input 
-                  type="number" 
-                  min="1" 
-                  value={quantity}
-                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                  className="h-7 w-16 text-center"
-                />
-              </td>
-              <td className="px-4 py-2 text-right">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={handleAddCustomMaterial}
-                  className="h-7 w-7 p-0"
-                  disabled={customMaterial.trim().length === 0}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </td>
-            </tr>
-            
-            {filteredMaterials.length === 0 && searchTerm.trim() !== '' && (
-              <tr>
-                <td colSpan={3} className="text-center py-4 text-muted-foreground">
-                  Nenhum material encontrado
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="flex gap-2">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="flex-1 justify-between">
+              Selecionar materiais
+              <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[300px] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Buscar material..." />
+              <CommandList>
+                <CommandEmpty>
+                  <div className="p-2">
+                    <p className="mb-2 text-sm">Nenhum material encontrado. Adicionar novo:</p>
+                    <div className="flex gap-2">
+                      <Input 
+                        value={customMaterial}
+                        onChange={(e) => setCustomMaterial(e.target.value)}
+                        placeholder="Nome do material"
+                        className="flex-1"
+                      />
+                      <Button 
+                        size="sm" 
+                        onClick={handleAddCustomMaterial}
+                        disabled={customMaterial.trim().length === 0}
+                      >
+                        <Plus className="h-4 w-4 mr-1" /> Adicionar
+                      </Button>
+                    </div>
+                  </div>
+                </CommandEmpty>
+                <CommandGroup heading="Materiais">
+                  <ScrollArea className="h-[200px]">
+                    {filteredMaterials.map((material) => (
+                      <CommandItem
+                        key={material.id}
+                        value={`${material.description}-${material.manufacturer || ''}`}
+                        onSelect={() => !isMaterialSelected(material.id) && handleAddMaterial(material)}
+                        className="flex items-center justify-between p-2"
+                        disabled={isMaterialSelected(material.id)}
+                      >
+                        <div>
+                          <div className="font-medium">{material.description}</div>
+                          {material.manufacturer && (
+                            <div className="text-xs text-muted-foreground">{material.manufacturer}</div>
+                          )}
+                        </div>
+                        {isMaterialSelected(material.id) ? (
+                          <Check className="h-4 w-4 text-primary" />
+                        ) : (
+                          <Plus className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </CommandItem>
+                    ))}
+                    <CommandItem className="p-2">
+                      <div className="w-full">
+                        <p className="mb-2 text-sm">Adicionar material personalizado:</p>
+                        <div className="flex gap-2">
+                          <Input 
+                            value={customMaterial}
+                            onChange={(e) => setCustomMaterial(e.target.value)}
+                            placeholder="Nome do material"
+                            className="flex-1"
+                          />
+                          <Button 
+                            size="sm" 
+                            onClick={handleAddCustomMaterial}
+                            disabled={customMaterial.trim().length === 0}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CommandItem>
+                  </ScrollArea>
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </div>
       
       <div className="mt-4">
-        <h4 className="text-sm font-medium mb-2">Materiais Selecionados ({selectedMaterials.length})</h4>
+        <h4 className="text-sm font-medium mb-2">Materiais selecionados ({selectedMaterials.length})</h4>
         {selectedMaterials.length > 0 ? (
-          <ul className="space-y-1">
+          <ul className="space-y-2">
             {selectedMaterials.map(material => (
-              <li key={material.id} className="flex justify-between items-center bg-muted/50 px-3 py-2 rounded-md text-sm">
-                <span>{material.description}</span>
+              <li key={material.id} className="flex justify-between items-center bg-muted/50 px-3 py-2 rounded-md">
+                <div>
+                  <span className="font-medium">{material.description}</span>
+                  {material.manufacturer && (
+                    <div className="text-xs text-muted-foreground">{material.manufacturer} {material.code && `- ${material.code}`}</div>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center">
                     <Button 
@@ -224,9 +230,9 @@ export const MaterialsList: React.FC<MaterialsListProps> = ({
                     variant="ghost" 
                     size="sm" 
                     onClick={() => onRemove(material.id)}
-                    className="h-6 w-6 p-0"
+                    className="h-7 w-7 p-0"
                   >
-                    <Trash className="h-3.5 w-3.5 text-red-500" />
+                    <Trash className="h-4 w-4 text-red-500" />
                   </Button>
                 </div>
               </li>
