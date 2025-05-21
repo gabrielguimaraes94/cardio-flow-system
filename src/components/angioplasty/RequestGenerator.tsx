@@ -423,7 +423,7 @@ export const RequestGenerator = () => {
   };
   
   const handleDigitalSubmission = () => {
-    const insurance = insuranceCompanies.find(i => i.id === selectedInsurance);
+    const insurance = insuranceCompanies.find(i => i.id === selectedInsurance?.id);
     
     if (!insurance) {
       toast.error('Selecione um convênio');
@@ -632,7 +632,8 @@ export const RequestGenerator = () => {
           
           
           <div className="flex flex-col sm:flex-row gap-3 justify-end">
-            {selectedInsurance && insuranceCompanies.find(i => i.id === selectedInsurance)?.requiresDigitalSubmission && (
+            {/* Fix for error #2: Access the id property when comparing */}
+            {selectedInsurance && insuranceCompanies.find(i => i.id === selectedInsurance.id)?.requiresDigitalSubmission && (
               <Button 
                 variant="outline" 
                 onClick={handleDigitalSubmission}
