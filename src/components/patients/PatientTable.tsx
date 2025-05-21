@@ -48,7 +48,7 @@ export const PatientTable: React.FC<PatientTableProps> = ({
   const { toast } = useToast();
 
   const handleAnamnesisClick = (patientId: string, anamneses: any[]) => {
-    if (anamneses.length > 0) {
+    if (anamneses && anamneses.length > 0) {
       // Open the most recent anamnesis
       const mostRecentAnamnesis = anamneses.sort((a, b) => 
         new Date(b.date).getTime() - new Date(a.date).getTime()

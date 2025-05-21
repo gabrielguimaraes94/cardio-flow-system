@@ -39,6 +39,8 @@ const routes = [
   { path: "/patients/new", element: <PatientForm /> },
   { path: "/patients/:id/edit", element: <PatientForm /> },
   { path: "/patients/:id/anamnesis", element: <AnamnesisForm /> },
+  { path: "/patients/:id/anamnesis/new", element: <AnamnesisForm /> },
+  { path: "/patients/:id/anamnesis/:anamnesisId", element: <AnamnesisForm /> },
   { path: "/patients/:id/history", element: <PatientAnamnesisHistory /> },
   { path: "/angioplasty", element: <Angioplasty /> },
   { path: "/reports", element: <Reports /> },
