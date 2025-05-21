@@ -12,7 +12,12 @@ export const ClinicSelector: React.FC = () => {
 
   const handleSelectClinic = (clinic: ClinicSummary) => {
     // Ao selecionar uma clínica do resumo, ela é convertida para o tipo completo
-    setSelectedClinic(clinic as Clinic);
+    setSelectedClinic({
+      ...clinic,
+      address: 'Endereço não informado',
+      phone: 'Telefone não informado',
+      email: 'Email não informado'
+    } as Clinic);
   };
 
   {/* Show loading state */}

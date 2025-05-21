@@ -29,9 +29,10 @@ export const clinicService = {
       const clinics: Clinic[] = data ? data.map((item: any) => ({
         id: item.clinic_id,
         name: item.clinic_name,
-        city: item.clinic_city,
+        city: item.clinic_city || 'Cidade não informada',
         address: item.clinic_address || 'Endereço não informado',
         phone: item.clinic_phone || 'Telefone não informado',
+        email: item.clinic_email || 'Email não informado',
         logo_url: item.clinic_logo_url,
         active: true
       })) : [];
@@ -61,7 +62,9 @@ export const clinicService = {
       return data ? {
         ...data,
         address: data.address || 'Endereço não informado',
-        phone: data.phone || 'Telefone não informado'
+        phone: data.phone || 'Telefone não informado',
+        city: data.city || 'Cidade não informada',
+        email: data.email || 'Email não informado'
       } : null;
     } catch (error) {
       console.error('Error fetching clinic by ID:', error);

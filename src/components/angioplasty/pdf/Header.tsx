@@ -12,7 +12,7 @@ export const Header: React.FC<HeaderProps> = ({ clinic }) => {
       <div className="max-w-[70%]">
         <h1 className="text-xl font-bold">{clinic.name}</h1>
         <p className="text-sm">{clinic.address}</p>
-        <p className="text-sm">{clinic.city || localStorage.getItem('clinicCity') || 'São Paulo'}</p>
+        <p className="text-sm">{clinic.city || 'São Paulo'}</p>
         <p className="text-sm">Tel: {clinic.phone}</p>
         {clinic.email && <p className="text-sm">Email: {clinic.email}</p>}
       </div>

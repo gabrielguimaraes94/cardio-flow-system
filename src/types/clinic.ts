@@ -5,8 +5,8 @@ export interface Clinic {
   name: string;
   address: string;  // Required
   phone: string;    // Required
-  city?: string;
-  email?: string;
+  city: string;     // Changed to required as it's required in the database
+  email: string;    // Changed to required as it's required in the database
   logo_url?: string;
   active?: boolean;
   zipCode?: string;
@@ -17,6 +17,6 @@ export interface Clinic {
 export interface ClinicSummary {
   id: string;
   name: string;
-  city?: string;
+  city: string;     // Changed to required
   logo?: string;
 }

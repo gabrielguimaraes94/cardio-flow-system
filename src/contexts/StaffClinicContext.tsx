@@ -1,10 +1,10 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
 import { useClinic } from './ClinicContext';
 import { z } from 'zod';
+import { Clinic } from '@/types/clinic';
 
 interface ClinicStaff {
   id: string;
@@ -149,8 +149,11 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
           id: onlyClinic.id,
           name: onlyClinic.name,
           city: onlyClinic.city,
-          logo: onlyClinic.logo
-        });
+          logo: onlyClinic.logo,
+          address: 'Endereço não informado',
+          phone: 'Telefone não informado',
+          email: 'Email não informado'
+        } as Clinic);
         
         localStorage.setItem('selectedClinicId', onlyClinic.id);
         
@@ -166,8 +169,11 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
           id: defaultClinic.id,
           name: defaultClinic.name,
           city: defaultClinic.city,
-          logo: defaultClinic.logo
-        });
+          logo: defaultClinic.logo,
+          address: 'Endereço não informado',
+          phone: 'Telefone não informado',
+          email: 'Email não informado'
+        } as Clinic);
       } else {
         setSelectedClinic(null);
         localStorage.removeItem('selectedClinicId');
