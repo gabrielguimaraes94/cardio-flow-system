@@ -676,6 +676,9 @@ export type Database = {
           clinic_id: string
           clinic_name: string
           clinic_city: string
+          clinic_address: string
+          clinic_phone: string
+          clinic_email: string
           clinic_logo_url: string
           is_admin: boolean
           staff_id: string

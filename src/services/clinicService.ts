@@ -18,7 +18,7 @@ export const clinicService = {
 
       const userId = session.session.user.id;
 
-      // Use our new RPC function to get user clinics
+      // Use our updated RPC function to get user clinics with all fields
       const { data, error } = await supabase.rpc('get_user_clinics', {
         user_uuid: userId
       });
@@ -29,10 +29,10 @@ export const clinicService = {
       const clinics: Clinic[] = data ? data.map((item: any) => ({
         id: item.clinic_id,
         name: item.clinic_name,
-        city: item.clinic_city || 'Cidade não informada',
-        address: item.clinic_address || 'Endereço não informado',
-        phone: item.clinic_phone || 'Telefone não informado',
-        email: item.clinic_email || 'Email não informado',
+        city: item.clinic_city,
+        address: item.clinic_address,
+        phone: item.clinic_phone,
+        email: item.clinic_email,
         logo_url: item.clinic_logo_url,
         active: true
       })) : [];
@@ -58,13 +58,12 @@ export const clinicService = {
 
       if (error) throw error;
       
-      // Ensure required fields are present
       return data ? {
         ...data,
-        address: data.address || 'Endereço não informado',
-        phone: data.phone || 'Telefone não informado',
-        city: data.city || 'Cidade não informada',
-        email: data.email || 'Email não informado'
+        address: data.address,
+        phone: data.phone,
+        city: data.city,
+        email: data.email
       } : null;
     } catch (error) {
       console.error('Error fetching clinic by ID:', error);
