@@ -12,3 +12,11 @@ export interface Clinic {
   zipCode?: string;
   logo?: string;
 }
+
+// Define a lighter version of Clinic for dropdown selectors and lists
+export interface ClinicSummary {
+  id: string;
+  name: string;
+  city?: string;
+  logo?: string;
+}

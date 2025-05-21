@@ -1,20 +1,18 @@
+
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ClinicCard } from './ClinicCard';
 import { useClinic } from '@/contexts/ClinicContext';
+import { Clinic, ClinicSummary } from '@/types/clinic';
 
 export const ClinicSelector: React.FC = () => {
   const { selectedClinic, setSelectedClinic, clinics, loading } = useClinic();
 
-  const handleSelectClinic = (clinic: {
-    id: string;
-    name: string;
-    city: string;
-    logo?: string;
-  }) => {
-    setSelectedClinic(clinic);
+  const handleSelectClinic = (clinic: ClinicSummary) => {
+    // Ao selecionar uma clínica do resumo, ela é convertida para o tipo completo
+    setSelectedClinic(clinic as Clinic);
   };
 
   {/* Show loading state */}
@@ -82,7 +80,12 @@ export const ClinicSelector: React.FC = () => {
                   key={clinic.id} 
                   clinic={clinic} 
                   isSelected={clinic.id === selectedClinic?.id} 
-                  onSelect={() => handleSelectClinic(clinic)}
+                  onSelect={() => handleSelectClinic({
+                    id: clinic.id,
+                    name: clinic.name,
+                    city: clinic.city,
+                    logo: clinic.logo
+                  } as ClinicSummary)}
                 />
               ))
             )}
