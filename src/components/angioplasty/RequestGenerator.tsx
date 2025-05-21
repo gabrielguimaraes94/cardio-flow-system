@@ -320,12 +320,16 @@ export const RequestGenerator = () => {
       name: 'Cardio Center',
       address: 'Av. Paulista, 1000, São Paulo, SP',
       phone: '(11) 3333-4444',
+      city: 'São Paulo',
+      email: 'contato@cardiocenter.com.br'
     },
     {
       id: '2',
       name: 'Instituto Cardiovascular',
       address: 'Rua da Consolação, 500, São Paulo, SP',
       phone: '(11) 5555-6666',
+      city: 'São Paulo',
+      email: 'contato@institutocardio.com.br'
     }
   ];
   
