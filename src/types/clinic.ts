@@ -3,8 +3,8 @@
 export interface Clinic {
   id: string;
   name: string;
-  address: string;  // Made required to match PDFViewer usage
-  phone: string;    // Made required to match PDFViewer usage
+  address: string;  // Required
+  phone: string;    // Required
   city?: string;
   email?: string;
   logo_url?: string;

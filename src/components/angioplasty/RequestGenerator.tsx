@@ -40,10 +40,10 @@ const InsuranceSelector = ({
   onInsuranceSelect, 
   selectedInsurance 
 }: { 
-  onInsuranceSelect: (insurance: InsuranceCompany) => void;
-  selectedInsurance: InsuranceCompany | null;
+  onInsuranceSelect: (insurance: SimpleInsuranceCompany) => void;
+  selectedInsurance: SimpleInsuranceCompany | null;
 }) => {
-  const [insuranceCompanies, setInsuranceCompanies] = useState<InsuranceCompany[]>([
+  const [insuranceCompanies] = useState<SimpleInsuranceCompany[]>([
     { id: '1', name: 'Bradesco Saúde', requiresDigitalSubmission: true },
     { id: '2', name: 'Amil', requiresDigitalSubmission: true },
     { id: '3', name: 'Unimed', requiresDigitalSubmission: false },
@@ -273,7 +273,8 @@ export const RequestGenerator = () => {
   const [selectedMaterials, setSelectedMaterials] = useState<MaterialWithQuantity[]>([]);
   const [justification, setJustification] = useState('');
   const [selectedClinic, setSelectedClinic] = useState<string | undefined>();
-  const [selectedInsurance, setSelectedInsurance] = useState<string | undefined>();
+  // Updated type for selectedInsurance - fix for error #1
+  const [selectedInsurance, setSelectedInsurance] = useState<SimpleInsuranceCompany | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   
   // Mock data - would come from a database in a real implementation
@@ -473,13 +474,12 @@ export const RequestGenerator = () => {
               <div className="space-y-2">
                 <Label htmlFor="insurance">Convênio</Label>
                 <InsuranceSelector 
-                  onInsuranceSelect={setSelectedInsurance} 
+                  onInsuranceSelect={(insurance) => setSelectedInsurance(insurance)}
                   selectedInsurance={selectedInsurance}
                 />
               </div>
             </div>
           </div>
-          
           
           <div className="space-y-4 mb-6">
             <h3 className="text-lg font-medium">Procedimentos</h3>
