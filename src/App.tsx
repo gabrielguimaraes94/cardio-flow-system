@@ -12,6 +12,7 @@ import Settings from "./pages/Settings";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ClinicProvider } from "@/contexts/ClinicContext";
 import { StaffClinicProvider } from "@/contexts/StaffClinicContext";
+import { PatientProvider } from "@/contexts/PatientContext";
 import NoAccess from "./pages/NoAccess";
 import NotFound from "./pages/NotFound";
 import { PatientList } from "./pages/PatientList";
@@ -74,7 +75,9 @@ function App() {
     <AuthProvider>
       <ClinicProvider>
         <StaffClinicProvider>
-          <RouterProvider router={router} />
+          <PatientProvider>
+            <RouterProvider router={router} />
+          </PatientProvider>
         </StaffClinicProvider>
       </ClinicProvider>
     </AuthProvider>

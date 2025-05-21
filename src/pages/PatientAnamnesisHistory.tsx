@@ -1,38 +1,52 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { AnamnesisHistory } from '@/components/patients/AnamnesisHistory';
 import { usePatientAnamnesis } from '@/hooks/usePatientAnamnesis';
 import { Skeleton } from '@/components/ui/skeleton';
+import { usePatient } from '@/contexts/PatientContext';
+import { patientService } from '@/services/patientService';
+import { useToast } from '@/hooks/use-toast';
 
 export const PatientAnamnesisHistory: React.FC = () => {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
-  const [patientName, setPatientName] = useState<string>('');
+  const { selectedPatient, setSelectedPatient } = usePatient();
   const { loading, anamnesisRecords } = usePatientAnamnesis(patientId);
+  const { toast } = useToast();
 
+  // Carrega dados do paciente se não estiver já selecionado
   useEffect(() => {
-    // In a real app, you'd fetch the patient details from an API
-    // For now, we'll use mock data
-    if (patientId) {
-      const mockPatients = {
-        '1': 'João Silva',
-        '2': 'Maria Oliveira',
-        '3': 'José Pereira',
-        '4': 'Antônia Souza',
-        '5': 'Carlos Santos',
-      };
-      
-      setPatientName(mockPatients[patientId as keyof typeof mockPatients] || 'Paciente');
-    }
-  }, [patientId]);
+    const fetchPatientData = async () => {
+      if (patientId && (!selectedPatient || selectedPatient.id !== patientId)) {
+        try {
+          const { patient } = await patientService.getPatientById(patientId);
+          if (patient) {
+            setSelectedPatient({
+              ...patient,
+              age: patient.birthdate ? new Date().getFullYear() - new Date(patient.birthdate).getFullYear() : undefined
+            });
+          }
+        } catch (error) {
+          console.error('Erro ao buscar dados do paciente:', error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os dados do paciente.",
+            variant: "destructive"
+          });
+        }
+      }
+    };
+
+    fetchPatientData();
+  }, [patientId, selectedPatient, setSelectedPatient, toast]);
 
   const handleBack = () => {
     navigate('/patients');
   };
 
-  if (loading) {
+  if (loading || !selectedPatient) {
     return (
       <Layout>
         <div className="space-y-6">
@@ -47,7 +61,7 @@ export const PatientAnamnesisHistory: React.FC = () => {
     <Layout>
       <div className="space-y-6">
         <AnamnesisHistory 
-          patientName={patientName}
+          patientName={selectedPatient.name}
           patientId={patientId || ''}
           anamnesisRecords={anamnesisRecords}
           onBackClick={handleBack}

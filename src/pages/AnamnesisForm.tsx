@@ -15,54 +15,65 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription, For
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { usePatient } from '@/contexts/PatientContext';
+import { PatientSelector } from '@/components/angioplasty/PatientSelector';
+import { patientService } from '@/services/patientService';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useForm } from 'react-hook-form';
 
 export const AnamnesisForm: React.FC = () => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const { id, anamnesisId } = useParams<{ id: string; anamnesisId: string }>();
   const { toast } = useToast();
+  const { selectedPatient, setSelectedPatient } = usePatient();
   
   // Estado para verificar se a anamnese já está salva (somente leitura)
-  const [isSaved, setIsSaved] = useState(false);
+  const [isSaved, setIsSaved] = useState(Boolean(anamnesisId));
   
   // Estado para pesquisa e seleção de pacientes
-  const [isPatientDialogOpen, setIsPatientDialogOpen] = useState(!id);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPatient, setSelectedPatient] = useState<{id: string; name: string; age: number} | null>(null);
+  const [isPatientDialogOpen, setIsPatientDialogOpen] = useState(!selectedPatient && !id);
   
   // Estado para medicações
   const [medications, setMedications] = useState<{ name: string; dose: string; posology: string }[]>([]);
   const [newMedication, setNewMedication] = useState({ name: '', dose: '', posology: '' });
 
-  // Mock de pacientes (substituir por dados reais)
-  const patients = [
-    { id: '1', name: 'João Silva', age: 65, cpf: '123.456.789-10', phone: '(11) 98765-4321', insurance: 'Unimed' },
-    { id: '2', name: 'Maria Oliveira', age: 72, cpf: '234.567.890-12', phone: '(11) 91234-5678', insurance: 'Bradesco Saúde' },
-    { id: '3', name: 'José Pereira', age: 58, cpf: '345.678.901-23', phone: '(11) 99876-5432', insurance: 'SulAmérica' },
-    { id: '4', name: 'Antônia Souza', age: 69, cpf: '456.789.012-34', phone: '(11) 94321-8765', insurance: 'Amil' },
-    { id: '5', name: 'Carlos Santos', age: 55, cpf: '567.890.123-45', phone: '(11) 95678-1234', insurance: 'Unimed' },
-  ];
-
-  // Simula carregar dados de uma anamnese existente quando temos um ID
+  // Carrega dados do paciente quando ID é fornecido via URL
   useEffect(() => {
-    if (id) {
+    const fetchPatientData = async () => {
+      if (id && !selectedPatient) {
+        try {
+          const { patient } = await patientService.getPatientById(id);
+          if (patient) {
+            setSelectedPatient({
+              ...patient,
+              age: patient.birthdate ? new Date().getFullYear() - new Date(patient.birthdate).getFullYear() : undefined
+            });
+          }
+        } catch (error) {
+          console.error('Erro ao buscar dados do paciente:', error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os dados do paciente.",
+            variant: "destructive"
+          });
+        }
+      }
+    };
+
+    fetchPatientData();
+  }, [id, selectedPatient, setSelectedPatient, toast]);
+
+  // Simula carregar dados de uma anamnese existente quando temos um anamnesisId
+  useEffect(() => {
+    if (anamnesisId && id) {
       // Aqui seria feita uma chamada à API para buscar os dados da anamnese
       // Para este exemplo, vamos simular uma anamnese salva
-      
-      // Buscar o paciente correspondente
-      const patient = patients.find(p => p.id === id);
-      if (patient) {
-        setSelectedPatient(patient);
-      }
-      
-      // Simulando que a anamnese já foi salva se temos um ID
       setIsSaved(true);
       
       // Aqui preencheríamos o formulário com os dados carregados da anamnese
     }
-  }, [id]);
+  }, [anamnesisId, id]);
 
   // Função para adicionar nova medicação
   const addMedication = () => {
@@ -80,7 +91,7 @@ export const AnamnesisForm: React.FC = () => {
   };
   
   // Função para selecionar um paciente
-  const handleSelectPatient = (patient: {id: string; name: string; age: number}) => {
+  const handleSelectPatient = (patient: any) => {
     setSelectedPatient(patient);
     setIsPatientDialogOpen(false);
     toast({
@@ -114,12 +125,6 @@ export const AnamnesisForm: React.FC = () => {
     
     setIsSaved(true);
   };
-
-  // Filtrar pacientes com base no termo de pesquisa
-  const filteredPatients = patients.filter(patient => 
-    patient.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    patient.cpf.includes(searchTerm)
-  );
 
   return (
     <Layout>
@@ -960,58 +965,11 @@ export const AnamnesisForm: React.FC = () => {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="relative mb-4 w-full">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-              <Input 
-                type="search" 
-                placeholder="Buscar por nome ou CPF..." 
-                className="pl-9" 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+            <div className="space-y-4">
+              <PatientSelector 
+                onPatientSelect={handleSelectPatient}
+                selectedValue={selectedPatient?.id}
               />
-            </div>
-            
-            <div className="rounded-md border h-[400px] overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Idade</TableHead>
-                    <TableHead>CPF</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead>Convênio</TableHead>
-                    <TableHead className="text-right">Ação</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPatients.length > 0 ? (
-                    filteredPatients.map((patient) => (
-                      <TableRow key={patient.id}>
-                        <TableCell className="font-medium">{patient.name}</TableCell>
-                        <TableCell>{patient.age}</TableCell>
-                        <TableCell>{patient.cpf}</TableCell>
-                        <TableCell>{patient.phone}</TableCell>
-                        <TableCell>{patient.insurance}</TableCell>
-                        <TableCell className="text-right">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleSelectPatient(patient)}
-                          >
-                            Selecionar
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-4">
-                        Nenhum paciente encontrado.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
             </div>
           </DialogContent>
         </Dialog>
