@@ -14,6 +14,32 @@ interface ClinicContextType {
   error: string | null;
 }
 
+// Função auxiliar para acessar localStorage com segurança
+const safeLocalStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      return localStorage.getItem(key);
+    } catch (error) {
+      console.warn('LocalStorage access denied:', error);
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (error) {
+      console.warn('LocalStorage write denied:', error);
+    }
+  },
+  removeItem: (key: string): void => {
+    try {
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.warn('LocalStorage remove denied:', error);
+    }
+  }
+};
+
 const ClinicContext = createContext<ClinicContextType>({
   selectedClinic: null,
   setSelectedClinic: () => {},
@@ -58,7 +84,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setClinics(clinicsData);
         
         // Verifica se já existe uma clínica selecionada no localStorage
-        const storedClinicId = localStorage.getItem('selectedClinicId');
+        const storedClinicId = safeLocalStorage.getItem('selectedClinicId');
         
         // Se existir uma clínica no localStorage e ela estiver na lista, seleciona ela
         // Caso contrário, seleciona a primeira da lista
@@ -102,7 +128,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Este efeito garante que a clínica selecionada é mantida durante navegação
   useEffect(() => {
-    const storedClinicId = localStorage.getItem('selectedClinicId');
+    const storedClinicId = safeLocalStorage.getItem('selectedClinicId');
     if (storedClinicId && clinics.length > 0 && !selectedClinic) {
       const matchingClinic = clinics.find(c => c.id === storedClinicId);
       if (matchingClinic) {
@@ -117,23 +143,19 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setSelectedClinic(clinic);
     
     if (clinic) {
+      safeLocalStorage.setItem('selectedClinicId', clinic.id);
+      
+      // Dispatch a custom event that components can listen for
       try {
-        localStorage.setItem('selectedClinicId', clinic.id);
-        
-        // Dispatch a custom event that components can listen for
         const event = new CustomEvent('clinicChanged', { 
           detail: { clinicId: clinic.id, clinicName: clinic.name } 
         });
         window.dispatchEvent(event);
       } catch (error) {
-        console.warn('Failed to save selected clinic to localStorage:', error);
+        console.warn('Failed to dispatch clinic change event:', error);
       }
     } else {
-      try {
-        localStorage.removeItem('selectedClinicId');
-      } catch (error) {
-        console.warn('Failed to remove selected clinic from localStorage:', error);
-      }
+      safeLocalStorage.removeItem('selectedClinicId');
     }
   };
 

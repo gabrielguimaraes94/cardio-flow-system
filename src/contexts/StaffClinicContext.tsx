@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +29,32 @@ interface StaffClinicContextType {
   loading: boolean;
   error: string | null;
 }
+
+// Função auxiliar para acessar localStorage com segurança
+const safeLocalStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      return localStorage.getItem(key);
+    } catch (error) {
+      console.warn('LocalStorage access denied:', error);
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (error) {
+      console.warn('LocalStorage write denied:', error);
+    }
+  },
+  removeItem: (key: string): void => {
+    try {
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.warn('LocalStorage remove denied:', error);
+    }
+  }
+};
 
 const StaffClinicContext = createContext<StaffClinicContextType>({
   userClinics: [],
@@ -155,14 +182,14 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
           email: 'Email não informado'
         } as Clinic);
         
-        localStorage.setItem('selectedClinicId', onlyClinic.id);
+        safeLocalStorage.setItem('selectedClinicId', onlyClinic.id);
         
         toast({
           title: "Clínica selecionada",
           description: `${onlyClinic.name} foi automaticamente selecionada.`,
         });
       } else if (clinicsList.length > 1) {
-        const storedClinicId = localStorage.getItem('selectedClinicId');
+        const storedClinicId = safeLocalStorage.getItem('selectedClinicId');
         const defaultClinic = clinicsList.find(c => c.id === storedClinicId) || clinicsList[0];
         
         setSelectedClinic({
@@ -176,7 +203,7 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
         } as Clinic);
       } else {
         setSelectedClinic(null);
-        localStorage.removeItem('selectedClinicId');
+        safeLocalStorage.removeItem('selectedClinicId');
       }
     } catch (error) {
       console.error('Error fetching user clinics:', error);

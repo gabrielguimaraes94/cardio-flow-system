@@ -11,104 +11,120 @@ const Index = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { loading: clinicsLoading, userClinics } = useStaffClinic();
   const navigate = useNavigate();
-  const [checkingRedirect, setCheckingRedirect] = useState(false);
-  const [loadingState, setLoadingState] = useState<string>("Verificando autenticação...");
+  const [redirectProcessed, setRedirectProcessed] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Verificando autenticação...");
 
   useEffect(() => {
     let isMounted = true;
-    
-    const checkUserAndRedirect = async () => {
-      // Wait for auth and clinics to finish loading
+    let timeoutId: NodeJS.Timeout;
+
+    const processRedirect = async () => {
+      // Se já processou redirecionamento, não faz nada
+      if (redirectProcessed) {
+        return;
+      }
+
+      // Aguarda auth e clinics carregarem
       if (authLoading || clinicsLoading) {
         return;
       }
 
-      // If no user, stay on login page
+      // Se não há usuário, mostra login
       if (!user) {
         console.log("Index: No user found, showing login form");
-        setLoadingState("");
+        setLoadingMessage("");
         return;
       }
 
-      // Prevent multiple redirect attempts
-      if (checkingRedirect) {
-        return;
-      }
+      // Marca que está processando para evitar múltiplas execuções
+      setRedirectProcessed(true);
+      console.log("Index: Processing redirect for authenticated user");
 
-      if (isMounted) {
-        setCheckingRedirect(true);
-        console.log("Index: User authenticated, checking role before redirecting");
+      try {
+        setLoadingMessage("Verificando permissões...");
         
-        try {
-          setLoadingState("Verificando permissões...");
-          
-          // Check if user is global admin with timeout
-          const adminCheckPromise = isGlobalAdmin(user.id);
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Admin check timeout')), 5000)
-          );
-          
-          const isAdmin = await Promise.race([adminCheckPromise, timeoutPromise]) as boolean;
-          
-          if (!isMounted) return;
-          
-          if (isAdmin) {
-            console.log("User is global admin, redirecting to admin dashboard");
-            setLoadingState("Redirecionando para o painel administrativo...");
-            navigate('/admin/dashboard', { replace: true });
-          } else if (userClinics.length === 0) {
-            console.log("User has no clinics, showing no access page");
-            setLoadingState("Verificando acesso às clínicas...");
-            navigate('/no-access', { replace: true });
-          } else {
-            console.log("User has clinics, redirecting to dashboard");
-            setLoadingState("Redirecionando para o dashboard...");
-            navigate('/dashboard', { replace: true });
-          }
-        } catch (error) {
-          console.error("Error checking admin status:", error);
-          if (isMounted) {
-            setLoadingState("Ocorreu um erro, redirecionando...");
-            // In case of error, redirect to default dashboard if user has clinics
-            if (userClinics.length > 0) {
-              navigate('/dashboard', { replace: true });
-            } else {
-              navigate('/no-access', { replace: true });
-            }
-          }
-        } finally {
-          if (isMounted) {
-            setCheckingRedirect(false);
-          }
+        // Verifica se é admin global com timeout
+        const isAdmin = await Promise.race([
+          isGlobalAdmin(user.id),
+          new Promise<boolean>((_, reject) => 
+            setTimeout(() => reject(new Error('Admin check timeout')), 3000)
+          )
+        ]);
+
+        if (!isMounted) return;
+
+        if (isAdmin) {
+          console.log("Index: User is global admin, redirecting to admin dashboard");
+          setLoadingMessage("Redirecionando para painel administrativo...");
+          navigate('/admin/dashboard', { replace: true });
+          return;
+        }
+
+        // Se não é admin, verifica as clínicas
+        console.log("Index: User clinics count:", userClinics.length);
+        
+        if (userClinics.length === 0) {
+          console.log("Index: No clinics found, redirecting to no-access");
+          setLoadingMessage("Sem acesso a clínicas...");
+          navigate('/no-access', { replace: true });
+        } else {
+          console.log("Index: User has clinics, redirecting to dashboard");
+          setLoadingMessage("Redirecionando para dashboard...");
+          navigate('/dashboard', { replace: true });
+        }
+
+      } catch (error) {
+        console.error("Index: Error during redirect process:", error);
+        
+        if (!isMounted) return;
+        
+        // Em caso de erro, usa fallback baseado nas clínicas carregadas
+        if (userClinics.length > 0) {
+          console.log("Index: Error occurred but user has clinics, redirecting to dashboard");
+          navigate('/dashboard', { replace: true });
+        } else {
+          console.log("Index: Error occurred and no clinics, redirecting to no-access");
+          navigate('/no-access', { replace: true });
         }
       }
     };
-    
-    checkUserAndRedirect();
-    
+
+    // Executa após um pequeno delay para garantir que todos os contexts estão prontos
+    timeoutId = setTimeout(() => {
+      processRedirect();
+    }, 100);
+
     return () => {
       isMounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
-  }, [user, authLoading, clinicsLoading, userClinics, navigate, checkingRedirect]);
+  }, [user, authLoading, clinicsLoading, userClinics, navigate, redirectProcessed]);
 
-  // Show loading indicator during initial loading or redirect checking
-  if (authLoading || clinicsLoading || checkingRedirect) {
+  // Reseta o estado de redirecionamento se o usuário mudar
+  useEffect(() => {
+    setRedirectProcessed(false);
+  }, [user?.id]);
+
+  // Loading durante verificações iniciais ou processamento de redirecionamento
+  if (authLoading || clinicsLoading || (user && !redirectProcessed)) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-cardio-500 mb-4" />
         <div className="text-cardio-500 text-xl">
-          {loadingState}
+          {loadingMessage}
         </div>
       </div>
     );
   }
 
-  // If not loading and no user, show login form
+  // Se não há usuário e não está carregando, mostra login
   if (!user) {
     return <LoginForm />;
   }
 
-  // This state should only be reached briefly during redirection
+  // Estado temporário durante redirecionamento
   return (
     <div className="flex flex-col items-center justify-center h-screen">
       <Loader2 className="h-8 w-8 animate-spin text-cardio-500 mb-4" />
