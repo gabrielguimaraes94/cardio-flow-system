@@ -162,21 +162,30 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
     try {
       setIsUploading(true);
       
-      // If there's a new logo, upload it first
+      // If there's a new logo, upload it first and wait for completion
       let logoUrl = data.logo_url;
       
       if (logo) {
+        console.log('Uploading new logo...');
         const uploadedUrl = await uploadLogo();
         if (uploadedUrl) {
           logoUrl = uploadedUrl;
+          console.log('Logo upload completed, URL:', logoUrl);
         } else {
           // If upload failed, don't proceed
+          toast({
+            title: "Erro no upload",
+            description: "Falha ao fazer upload da imagem. Tente novamente.",
+            variant: "destructive"
+          });
           return;
         }
       }
       
+      console.log('Saving clinic with logo_url:', logoUrl);
+      
       // Call onSave with the updated logo URL
-      onSave({
+      const clinicData: Clinic = {
         id: clinic?.id || '',
         name: data.name,
         address: data.address,
@@ -185,7 +194,10 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
         email: data.email,
         active: data.active,
         logo_url: logoUrl
-      });
+      };
+      
+      console.log('Final clinic data being saved:', clinicData);
+      onSave(clinicData);
       
     } catch (error) {
       console.error('Error saving clinic:', error);
