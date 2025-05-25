@@ -44,6 +44,7 @@ const routes = [
   { path: "/patients/:id/anamnesis/new", element: <AnamnesisForm /> },
   { path: "/patients/:id/anamnesis/:anamnesisId", element: <AnamnesisForm /> },
   { path: "/patients/:id/history", element: <PatientAnamnesisHistory /> },
+  { path: "/anamnesis", element: <AnamnesisForm /> },
   { path: "/catheterization", element: <Catheterization /> },
   { path: "/catheterization/create", element: <CatheterizationReport /> },
   { path: "/catheterization/list", element: <CatheterizationReportList /> },

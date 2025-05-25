@@ -10,33 +10,51 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Save, Plus, Trash2, Search } from 'lucide-react';
-import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '@/components/ui/form';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ArrowLeft, Save, Plus, Trash2, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { usePatient } from '@/contexts/PatientContext';
-import { PatientSelector } from '@/components/angioplasty/PatientSelector';
+import { PatientSelectorDropdown } from '@/components/patients/PatientSelectorDropdown';
 import { patientService } from '@/services/patientService';
-import * as yup from 'yup';
-import { yupResolver } from '@hookform/resolvers/yup';
-import { useForm } from 'react-hook-form';
 
 export const AnamnesisForm: React.FC = () => {
   const navigate = useNavigate();
   const { id, anamnesisId } = useParams<{ id: string; anamnesisId: string }>();
   const { toast } = useToast();
-  const { selectedPatient, setSelectedPatient } = usePatient();
+  const { selectedPatient, setSelectedPatient, clearSelectedPatient, resetPatientSelection } = usePatient();
   
   // Estado para verificar se a anamnese já está salva (somente leitura)
   const [isSaved, setIsSaved] = useState(Boolean(anamnesisId));
   
-  // Estado para pesquisa e seleção de pacientes
-  const [isPatientDialogOpen, setIsPatientDialogOpen] = useState(!selectedPatient && !id);
-  
   // Estado para medicações
   const [medications, setMedications] = useState<{ name: string; dose: string; posology: string }[]>([]);
   const [newMedication, setNewMedication] = useState({ name: '', dose: '', posology: '' });
+
+  // Estado para todos os campos do formulário
+  const [formData, setFormData] = useState({
+    // Fatores de risco
+    hypertension: false,
+    hypertensionTime: '',
+    hypertensionMeds: '',
+    diabetes: false,
+    diabetesType: '',
+    diabetesControl: '',
+    diabetesMeds: '',
+    dyslipidemia: false,
+    cholesterol: '',
+    ldl: '',
+    hdl: '',
+    triglycerides: '',
+    dyslipidemiaeMeds: '',
+    smoking: '',
+    smokingYears: '',
+    familyHistory: false,
+    familyHistoryDetails: '',
+    obesity: false,
+    bmi: '',
+    sedentary: false,
+    physicalActivity: '',
+    // ... adicionar outros campos conforme necessário
+  });
 
   // Carrega dados do paciente quando ID é fornecido via URL
   useEffect(() => {
@@ -67,13 +85,54 @@ export const AnamnesisForm: React.FC = () => {
   // Simula carregar dados de uma anamnese existente quando temos um anamnesisId
   useEffect(() => {
     if (anamnesisId && id) {
-      // Aqui seria feita uma chamada à API para buscar os dados da anamnese
-      // Para este exemplo, vamos simular uma anamnese salva
       setIsSaved(true);
-      
-      // Aqui preencheríamos o formulário com os dados carregados da anamnese
     }
   }, [anamnesisId, id]);
+
+  // Limpa o paciente selecionado quando o componente é desmontado
+  useEffect(() => {
+    return () => {
+      // Cleanup será executado quando sair da página
+    };
+  }, []);
+
+  const resetForm = () => {
+    setFormData({
+      hypertension: false,
+      hypertensionTime: '',
+      hypertensionMeds: '',
+      diabetes: false,
+      diabetesType: '',
+      diabetesControl: '',
+      diabetesMeds: '',
+      dyslipidemia: false,
+      cholesterol: '',
+      ldl: '',
+      hdl: '',
+      triglycerides: '',
+      dyslipidemiaeMeds: '',
+      smoking: '',
+      smokingYears: '',
+      familyHistory: false,
+      familyHistoryDetails: '',
+      obesity: false,
+      bmi: '',
+      sedentary: false,
+      physicalActivity: '',
+    });
+    setMedications([]);
+    setNewMedication({ name: '', dose: '', posology: '' });
+  };
+
+  const handlePatientSelect = (patient: any) => {
+    setSelectedPatient(patient);
+    resetForm(); // Reset form when selecting a patient
+  };
+
+  const handleChangePatient = () => {
+    resetForm(); // Reset form when changing patient
+    resetPatientSelection();
+  };
 
   // Função para adicionar nova medicação
   const addMedication = () => {
@@ -90,19 +149,10 @@ export const AnamnesisForm: React.FC = () => {
     }
   };
   
-  // Função para selecionar um paciente
-  const handleSelectPatient = (patient: any) => {
-    setSelectedPatient(patient);
-    setIsPatientDialogOpen(false);
-    toast({
-      title: "Paciente selecionado",
-      description: `${patient.name} foi selecionado para anamnese.`,
-    });
-  };
-  
   // Função para voltar à página anterior
   const handleGoBack = () => {
-    navigate(-1); // Navega para a página anterior no histórico
+    clearSelectedPatient(); // Limpa o paciente selecionado ao voltar
+    navigate(-1);
   };
   
   // Função para salvar anamnese
@@ -116,14 +166,13 @@ export const AnamnesisForm: React.FC = () => {
       return;
     }
     
-    // Aqui seria feita a chamada à API para salvar a anamnese
-    
     toast({
       title: "Anamnese salva",
       description: "A anamnese foi salva com sucesso e não poderá mais ser alterada.",
     });
     
     setIsSaved(true);
+    clearSelectedPatient(); // Limpa o paciente após salvar
   };
 
   return (
@@ -133,23 +182,30 @@ export const AnamnesisForm: React.FC = () => {
           <Button variant="outline" size="icon" onClick={handleGoBack}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h2 className="text-3xl font-bold mb-1">Anamnese</h2>
-            {selectedPatient ? (
-              <p className="text-gray-500">{selectedPatient.name}, {selectedPatient.age} anos</p>
-            ) : (
-              <p className="text-gray-500">Selecione um paciente</p>
-            )}
+            <p className="text-gray-500">
+              {selectedPatient ? `${selectedPatient.name}, ${selectedPatient.age} anos` : 'Selecione um paciente para iniciar'}
+            </p>
           </div>
-          {!selectedPatient && (
+          {selectedPatient && !isSaved && (
             <Button 
-              onClick={() => setIsPatientDialogOpen(true)}
-              className="ml-auto"
+              variant="outline" 
+              size="sm"
+              onClick={resetForm}
             >
-              Selecionar Paciente
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Limpar Formulário
             </Button>
           )}
         </div>
+
+        {/* Seletor de Paciente */}
+        <PatientSelectorDropdown
+          selectedPatient={selectedPatient}
+          onPatientSelect={handlePatientSelect}
+          onChangePatient={handleChangePatient}
+        />
 
         {/* Aviso de modo somente leitura */}
         {isSaved && (
@@ -174,7 +230,12 @@ export const AnamnesisForm: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="hypertension" />
+                    <Checkbox 
+                      id="hypertension" 
+                      checked={formData.hypertension}
+                      onCheckedChange={(checked) => setFormData({...formData, hypertension: !!checked})}
+                      disabled={isSaved}
+                    />
                     <Label htmlFor="hypertension" className="font-medium">Hipertensão Arterial</Label>
                   </div>
                   
@@ -182,14 +243,26 @@ export const AnamnesisForm: React.FC = () => {
                     <div className="space-y-2">
                       <Label htmlFor="hypertension-time">Há quanto tempo?</Label>
                       <div className="flex gap-2 items-center">
-                        <Input id="hypertension-time" type="number" className="w-20" />
+                        <Input 
+                          id="hypertension-time" 
+                          type="number" 
+                          className="w-20" 
+                          value={formData.hypertensionTime}
+                          onChange={(e) => setFormData({...formData, hypertensionTime: e.target.value})}
+                          disabled={isSaved}
+                        />
                         <span>anos</span>
                       </div>
                     </div>
                     
                     <div className="space-y-2">
                       <Label htmlFor="hypertension-meds">Medicações</Label>
-                      <Input id="hypertension-meds" />
+                      <Input 
+                        id="hypertension-meds" 
+                        value={formData.hypertensionMeds}
+                        onChange={(e) => setFormData({...formData, hypertensionMeds: e.target.value})}
+                        disabled={isSaved}
+                      />
                     </div>
                   </div>
                 </div>
@@ -798,43 +871,47 @@ export const AnamnesisForm: React.FC = () => {
             <Separator />
             
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="medication-name">Nome</Label>
-                  <Input 
-                    id="medication-name" 
-                    placeholder="Nome da medicação" 
-                    value={newMedication.name}
-                    onChange={(e) => setNewMedication({...newMedication, name: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="medication-dose">Dosagem</Label>
-                  <Input 
-                    id="medication-dose" 
-                    placeholder="Ex: 50mg" 
-                    value={newMedication.dose}
-                    onChange={(e) => setNewMedication({...newMedication, dose: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="medication-posology">Posologia</Label>
-                  <Input 
-                    id="medication-posology" 
-                    placeholder="Ex: 1 comprimido de 8/8h" 
-                    value={newMedication.posology}
-                    onChange={(e) => setNewMedication({...newMedication, posology: e.target.value})}
-                  />
-                </div>
-              </div>
-              
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={addMedication}
-              >
-                <Plus className="h-4 w-4 mr-2" /> Adicionar Medicação
-              </Button>
+              {!isSaved && (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="medication-name">Nome</Label>
+                      <Input 
+                        id="medication-name" 
+                        placeholder="Nome da medicação" 
+                        value={newMedication.name}
+                        onChange={(e) => setNewMedication({...newMedication, name: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="medication-dose">Dosagem</Label>
+                      <Input 
+                        id="medication-dose" 
+                        placeholder="Ex: 50mg" 
+                        value={newMedication.dose}
+                        onChange={(e) => setNewMedication({...newMedication, dose: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="medication-posology">Posologia</Label>
+                      <Input 
+                        id="medication-posology" 
+                        placeholder="Ex: 1 comprimido de 8/8h" 
+                        value={newMedication.posology}
+                        onChange={(e) => setNewMedication({...newMedication, posology: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={addMedication}
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> Adicionar Medicação
+                  </Button>
+                </>
+              )}
               
               <div className="mt-4">
                 {medications.length > 0 ? (
@@ -845,7 +922,9 @@ export const AnamnesisForm: React.FC = () => {
                           <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Nome</th>
                           <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Dosagem</th>
                           <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Posologia</th>
-                          <th className="px-4 py-2 text-right text-sm font-medium text-gray-600">Ações</th>
+                          {!isSaved && (
+                            <th className="px-4 py-2 text-right text-sm font-medium text-gray-600">Ações</th>
+                          )}
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -854,16 +933,18 @@ export const AnamnesisForm: React.FC = () => {
                             <td className="px-4 py-3 text-sm">{med.name}</td>
                             <td className="px-4 py-3 text-sm">{med.dose}</td>
                             <td className="px-4 py-3 text-sm">{med.posology}</td>
-                            <td className="px-4 py-3 text-right">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => removeMedication(index)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </td>
+                            {!isSaved && (
+                              <td className="px-4 py-3 text-right">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  onClick={() => removeMedication(index)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -939,7 +1020,7 @@ export const AnamnesisForm: React.FC = () => {
           </CardContent>
         </Card>
 
-        {!isSaved && (
+        {!isSaved && selectedPatient && (
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={handleGoBack}>
               Cancelar
@@ -947,32 +1028,12 @@ export const AnamnesisForm: React.FC = () => {
             <Button 
               className="bg-primary hover:bg-secondary"
               onClick={handleSaveAnamnesis}
-              disabled={!selectedPatient}
             >
               <Save className="h-4 w-4 mr-2" />
               Salvar Anamnese
             </Button>
           </div>
         )}
-        
-        {/* Dialog para selecionar paciente */}
-        <Dialog open={isPatientDialogOpen} onOpenChange={setIsPatientDialogOpen}>
-          <DialogContent className="max-w-3xl">
-            <DialogHeader>
-              <DialogTitle>Selecionar Paciente</DialogTitle>
-              <DialogDescription>
-                Pesquise e selecione o paciente para criar uma nova anamnese.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="space-y-4">
-              <PatientSelector 
-                onPatientSelect={handleSelectPatient}
-                selectedValue={selectedPatient?.id}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     </Layout>
   );

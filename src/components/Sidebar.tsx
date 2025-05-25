@@ -29,6 +29,7 @@ export const Sidebar: React.FC = () => {
   const menuItems = [
     { title: "Dashboard", url: "/dashboard", icon: Heart },
     { title: "Pacientes", url: "/patients", icon: Users },
+    { title: "Anamnese", url: "/anamnesis", icon: FileUser },
     { title: "Cateterismo", url: "/catheterization", icon: FileText },
     { title: "Angioplastia", url: "/angioplasty", icon: FileText },
     { title: "Relatórios", url: "/reports", icon: BarChart },

@@ -22,19 +22,36 @@ interface PatientContextProps {
   selectedPatient: PatientContextType | null;
   setSelectedPatient: (patient: PatientContextType | null) => void;
   clearSelectedPatient: () => void;
+  resetPatientSelection: () => void;
 }
 
 const PatientContext = createContext<PatientContextProps | undefined>(undefined);
 
 export const PatientProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [selectedPatient, setSelectedPatient] = useState<PatientContextType | null>(null);
+  const [selectedPatient, setSelectedPatientState] = useState<PatientContextType | null>(null);
+
+  const setSelectedPatient = (patient: PatientContextType | null) => {
+    console.log('Selecionando paciente:', patient?.name || 'nenhum');
+    setSelectedPatientState(patient);
+  };
 
   const clearSelectedPatient = () => {
-    setSelectedPatient(null);
+    console.log('Limpando paciente selecionado');
+    setSelectedPatientState(null);
+  };
+
+  const resetPatientSelection = () => {
+    console.log('Resetando seleção de paciente');
+    setSelectedPatientState(null);
   };
 
   return (
-    <PatientContext.Provider value={{ selectedPatient, setSelectedPatient, clearSelectedPatient }}>
+    <PatientContext.Provider value={{ 
+      selectedPatient, 
+      setSelectedPatient, 
+      clearSelectedPatient,
+      resetPatientSelection 
+    }}>
       {children}
     </PatientContext.Provider>
   );
