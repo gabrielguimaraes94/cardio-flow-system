@@ -275,31 +275,4 @@ export const ClinicManagement = () => {
       />
     </Card>
   );
-
-  async function handleDeleteClinic(clinicId: string) {
-    try {
-      const { error } = await supabase
-        .from('clinics')
-        .delete()
-        .eq('id', clinicId);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Clínica excluída",
-        description: "A clínica foi excluída com sucesso."
-      });
-      
-      // Atualizar a lista de clínicas no contexto
-      await refetchClinics();
-      
-    } catch (error) {
-      console.error('Erro ao excluir clínica:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir a clínica.",
-        variant: "destructive"
-      });
-    }
-  }
 };
