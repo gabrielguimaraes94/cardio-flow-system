@@ -11,12 +11,4 @@ export interface UserProfile {
   role: 'admin' | 'clinic_admin' | 'doctor' | 'nurse' | 'receptionist' | 'staff';
 }
 
-export interface ProfileFormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  crm: string;
-  title: string;
-  bio: string;
-}
+// Remove ProfileFormData interface since it's now exported from the schema

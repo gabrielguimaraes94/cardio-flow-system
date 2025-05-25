@@ -10,10 +10,10 @@ import { Save, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { UserProfile, ProfileFormData } from '@/types/profile';
+import { UserProfile } from '@/types/profile';
 import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import { profileSchema } from '@/schemas/profileSchema';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { profileSchema, ProfileFormData } from '@/schemas/profileSchema';
 
 export const ProfileSettings: React.FC = () => {
   const { user } = useAuth();
@@ -27,7 +27,7 @@ export const ProfileSettings: React.FC = () => {
     reset,
     formState: { errors, isSubmitting }
   } = useForm<ProfileFormData>({
-    resolver: yupResolver(profileSchema),
+    resolver: zodResolver(profileSchema),
     defaultValues: {
       firstName: "",
       lastName: "",

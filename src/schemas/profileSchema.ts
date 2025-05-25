@@ -1,24 +1,26 @@
 
-import * as yup from 'yup';
+import { z } from 'zod';
 
-export const profileSchema = yup.object({
-  firstName: yup
+export const profileSchema = z.object({
+  firstName: z
     .string()
     .min(2, 'Nome deve ter pelo menos 2 caracteres')
-    .required('Nome é obrigatório'),
-  lastName: yup
+    .nonempty('Nome é obrigatório'),
+  lastName: z
     .string()
     .min(2, 'Sobrenome deve ter pelo menos 2 caracteres')
-    .required('Sobrenome é obrigatório'),
-  email: yup
+    .nonempty('Sobrenome é obrigatório'),
+  email: z
     .string()
     .email('Email inválido')
-    .required('Email é obrigatório'),
-  phone: yup.string().optional(),
-  crm: yup
+    .nonempty('Email é obrigatório'),
+  phone: z.string().optional().or(z.literal('')),
+  crm: z
     .string()
     .min(4, 'CRM deve ter pelo menos 4 caracteres')
-    .required('CRM é obrigatório'),
-  title: yup.string().optional(),
-  bio: yup.string().optional(),
+    .nonempty('CRM é obrigatório'),
+  title: z.string().optional().or(z.literal('')),
+  bio: z.string().optional().or(z.literal('')),
 });
+
+export type ProfileFormData = z.infer<typeof profileSchema>;
