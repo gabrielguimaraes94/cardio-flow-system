@@ -19,6 +19,7 @@ import { PatientList } from "./pages/PatientList";
 import { PatientForm } from "./pages/PatientForm";
 import { PatientAnamnesisHistory } from "./pages/PatientAnamnesisHistory";
 import { AnamnesisForm } from "./pages/AnamnesisForm";
+import { Catheterization } from "./pages/Catheterization";
 import { CatheterizationReport } from "./pages/CatheterizationReport";
 import { CatheterizationTemplateEditor } from "./pages/CatheterizationTemplateEditor";
 import { CatheterizationReportList } from "./pages/CatheterizationReportList";
@@ -43,12 +44,13 @@ const routes = [
   { path: "/patients/:id/anamnesis/new", element: <AnamnesisForm /> },
   { path: "/patients/:id/anamnesis/:anamnesisId", element: <AnamnesisForm /> },
   { path: "/patients/:id/history", element: <PatientAnamnesisHistory /> },
-  { path: "/angioplasty", element: <Angioplasty /> },
-  { path: "/reports", element: <Reports /> },
-  { path: "/schedule", element: <Schedule /> },
+  { path: "/catheterization", element: <Catheterization /> },
   { path: "/catheterization/create", element: <CatheterizationReport /> },
   { path: "/catheterization/list", element: <CatheterizationReportList /> },
   { path: "/catheterization/template-editor", element: <CatheterizationTemplateEditor /> },
+  { path: "/angioplasty", element: <Angioplasty /> },
+  { path: "/reports", element: <Reports /> },
+  { path: "/schedule", element: <Schedule /> },
   { path: "/admin/dashboard", element: <AdminDashboard /> },
   { path: "/insurance/list", element: <InsuranceList /> },
   { path: "/insurance/new", element: <InsuranceForm /> },
