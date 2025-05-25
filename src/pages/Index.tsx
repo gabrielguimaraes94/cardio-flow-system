@@ -38,16 +38,16 @@ const Index = () => {
 
       // Marca que está processando para evitar múltiplas execuções
       setRedirectProcessed(true);
-      console.log("Index: Processing redirect for authenticated user");
+      console.log("Index: User authenticated, checking role before redirecting");
 
       try {
         setLoadingMessage("Verificando permissões...");
         
-        // Verifica se é admin global com timeout
+        // Verifica se é admin global com timeout mais agressivo
         const isAdmin = await Promise.race([
           isGlobalAdmin(user.id),
           new Promise<boolean>((_, reject) => 
-            setTimeout(() => reject(new Error('Admin check timeout')), 3000)
+            setTimeout(() => reject(new Error('Admin check timeout')), 2000)
           )
         ]);
 
@@ -89,10 +89,10 @@ const Index = () => {
       }
     };
 
-    // Executa após um pequeno delay para garantir que todos os contexts estão prontos
+    // Timeout mais curto para evitar travamentos
     timeoutId = setTimeout(() => {
       processRedirect();
-    }, 100);
+    }, 50);
 
     return () => {
       isMounted = false;

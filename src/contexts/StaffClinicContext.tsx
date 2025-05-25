@@ -86,6 +86,17 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const { user, isLoading: authLoading } = useAuth();
   const { setSelectedClinic } = useClinic();
 
+  // Função para validar se uma clínica ainda existe na lista atual
+  const validateStoredClinic = (storedClinicId: string, availableClinics: typeof userClinics): typeof userClinics[0] | null => {
+    const clinic = availableClinics.find(c => c.id === storedClinicId);
+    if (!clinic) {
+      console.log('Clínica armazenada não encontrada, removendo do localStorage');
+      safeLocalStorage.removeItem('selectedClinicId');
+      return null;
+    }
+    return clinic;
+  };
+
   const fetchUserClinics = async () => {
     if (!user || authLoading) {
       setUserClinics([]);
@@ -167,10 +178,9 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       setUserClinics(clinicsList);
       
-      // Auto-select clinic logic:
-      // 1. If only one clinic is available, select it automatically
-      // 2. Otherwise, try to restore previous selection from localStorage
+      // Auto-select clinic logic melhorada:
       if (clinicsList.length === 1) {
+        // Se há apenas uma clínica, seleciona automaticamente
         const onlyClinic = clinicsList[0];
         setSelectedClinic({
           id: onlyClinic.id,
@@ -189,19 +199,32 @@ export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ c
           description: `${onlyClinic.name} foi automaticamente selecionada.`,
         });
       } else if (clinicsList.length > 1) {
+        // Se há múltiplas clínicas, tenta restaurar do localStorage
         const storedClinicId = safeLocalStorage.getItem('selectedClinicId');
-        const defaultClinic = clinicsList.find(c => c.id === storedClinicId) || clinicsList[0];
         
-        setSelectedClinic({
-          id: defaultClinic.id,
-          name: defaultClinic.name,
-          city: defaultClinic.city,
-          logo: defaultClinic.logo,
-          address: 'Endereço não informado',
-          phone: 'Telefone não informado',
-          email: 'Email não informado'
-        } as Clinic);
+        if (storedClinicId) {
+          const validClinic = validateStoredClinic(storedClinicId, clinicsList);
+          
+          if (validClinic) {
+            setSelectedClinic({
+              id: validClinic.id,
+              name: validClinic.name,
+              city: validClinic.city,
+              logo: validClinic.logo,
+              address: 'Endereço não informado',
+              phone: 'Telefone não informado',
+              email: 'Email não informado'
+            } as Clinic);
+          } else {
+            // Se a clínica armazenada não é válida, não seleciona nenhuma
+            setSelectedClinic(null);
+          }
+        } else {
+          // Se não há clínica armazenada, não seleciona nenhuma
+          setSelectedClinic(null);
+        }
       } else {
+        // Se não há clínicas, limpa tudo
         setSelectedClinic(null);
         safeLocalStorage.removeItem('selectedClinicId');
       }
