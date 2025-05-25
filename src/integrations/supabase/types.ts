@@ -9,6 +9,275 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      anamnesis: {
+        Row: {
+          aas: boolean | null
+          angioplasty_date: string | null
+          angioplasty_stents: string | null
+          angioplasty_vessels: string | null
+          anticoagulants: boolean | null
+          antiplatelets: boolean | null
+          apixaban: boolean | null
+          bmi: string | null
+          chest_pain: boolean | null
+          chest_pain_characteristics: string | null
+          chest_pain_duration: string | null
+          chest_pain_radiation: string | null
+          cholesterol: string | null
+          clopidogrel: boolean | null
+          created_at: string
+          created_by: string
+          dabigatran: boolean | null
+          diabetes: boolean | null
+          diabetes_control: string | null
+          diabetes_meds: string | null
+          diabetes_type: string | null
+          dialysis: boolean | null
+          doctor_crm: string | null
+          doctor_name: string | null
+          dyslipidemia: boolean | null
+          dyslipidemia_meds: string | null
+          dyspnea: boolean | null
+          dyspnea_class: string | null
+          edema: boolean | null
+          edema_intensity: string | null
+          edema_location: string | null
+          edoxaban: boolean | null
+          family_history: boolean | null
+          family_history_details: string | null
+          hdl: string | null
+          heart_failure: boolean | null
+          heart_failure_class: string | null
+          hypertension: boolean | null
+          hypertension_meds: string | null
+          hypertension_time: string | null
+          iam_date: string | null
+          iam_location: string | null
+          iam_treatment: string | null
+          id: string
+          ldl: string | null
+          medications: Json | null
+          obesity: boolean | null
+          other_comorbidities: boolean | null
+          other_comorbidities_details: string | null
+          pad: boolean | null
+          pad_severity: string | null
+          pad_treatment: string | null
+          palpitations: boolean | null
+          palpitations_characteristics: string | null
+          patient_id: string
+          physical_activity: string | null
+          prasugrel: boolean | null
+          previous_angioplasty: boolean | null
+          previous_iam: boolean | null
+          renal_disease: boolean | null
+          renal_stage: string | null
+          respiratory_control: string | null
+          respiratory_disease: boolean | null
+          respiratory_type: string | null
+          revascularization: boolean | null
+          revascularization_date: string | null
+          revascularization_grafts: string | null
+          rivaroxaban: boolean | null
+          sedentary: boolean | null
+          smoking: string | null
+          smoking_years: string | null
+          stroke: boolean | null
+          stroke_date: string | null
+          stroke_sequelae: string | null
+          stroke_type: string | null
+          syncope: boolean | null
+          syncope_frequency: string | null
+          ticagrelor: boolean | null
+          triglycerides: string | null
+          updated_at: string
+          valvopathy: boolean | null
+          valvopathy_severity: string | null
+          valvopathy_type: string | null
+          warfarin: boolean | null
+        }
+        Insert: {
+          aas?: boolean | null
+          angioplasty_date?: string | null
+          angioplasty_stents?: string | null
+          angioplasty_vessels?: string | null
+          anticoagulants?: boolean | null
+          antiplatelets?: boolean | null
+          apixaban?: boolean | null
+          bmi?: string | null
+          chest_pain?: boolean | null
+          chest_pain_characteristics?: string | null
+          chest_pain_duration?: string | null
+          chest_pain_radiation?: string | null
+          cholesterol?: string | null
+          clopidogrel?: boolean | null
+          created_at?: string
+          created_by: string
+          dabigatran?: boolean | null
+          diabetes?: boolean | null
+          diabetes_control?: string | null
+          diabetes_meds?: string | null
+          diabetes_type?: string | null
+          dialysis?: boolean | null
+          doctor_crm?: string | null
+          doctor_name?: string | null
+          dyslipidemia?: boolean | null
+          dyslipidemia_meds?: string | null
+          dyspnea?: boolean | null
+          dyspnea_class?: string | null
+          edema?: boolean | null
+          edema_intensity?: string | null
+          edema_location?: string | null
+          edoxaban?: boolean | null
+          family_history?: boolean | null
+          family_history_details?: string | null
+          hdl?: string | null
+          heart_failure?: boolean | null
+          heart_failure_class?: string | null
+          hypertension?: boolean | null
+          hypertension_meds?: string | null
+          hypertension_time?: string | null
+          iam_date?: string | null
+          iam_location?: string | null
+          iam_treatment?: string | null
+          id?: string
+          ldl?: string | null
+          medications?: Json | null
+          obesity?: boolean | null
+          other_comorbidities?: boolean | null
+          other_comorbidities_details?: string | null
+          pad?: boolean | null
+          pad_severity?: string | null
+          pad_treatment?: string | null
+          palpitations?: boolean | null
+          palpitations_characteristics?: string | null
+          patient_id: string
+          physical_activity?: string | null
+          prasugrel?: boolean | null
+          previous_angioplasty?: boolean | null
+          previous_iam?: boolean | null
+          renal_disease?: boolean | null
+          renal_stage?: string | null
+          respiratory_control?: string | null
+          respiratory_disease?: boolean | null
+          respiratory_type?: string | null
+          revascularization?: boolean | null
+          revascularization_date?: string | null
+          revascularization_grafts?: string | null
+          rivaroxaban?: boolean | null
+          sedentary?: boolean | null
+          smoking?: string | null
+          smoking_years?: string | null
+          stroke?: boolean | null
+          stroke_date?: string | null
+          stroke_sequelae?: string | null
+          stroke_type?: string | null
+          syncope?: boolean | null
+          syncope_frequency?: string | null
+          ticagrelor?: boolean | null
+          triglycerides?: string | null
+          updated_at?: string
+          valvopathy?: boolean | null
+          valvopathy_severity?: string | null
+          valvopathy_type?: string | null
+          warfarin?: boolean | null
+        }
+        Update: {
+          aas?: boolean | null
+          angioplasty_date?: string | null
+          angioplasty_stents?: string | null
+          angioplasty_vessels?: string | null
+          anticoagulants?: boolean | null
+          antiplatelets?: boolean | null
+          apixaban?: boolean | null
+          bmi?: string | null
+          chest_pain?: boolean | null
+          chest_pain_characteristics?: string | null
+          chest_pain_duration?: string | null
+          chest_pain_radiation?: string | null
+          cholesterol?: string | null
+          clopidogrel?: boolean | null
+          created_at?: string
+          created_by?: string
+          dabigatran?: boolean | null
+          diabetes?: boolean | null
+          diabetes_control?: string | null
+          diabetes_meds?: string | null
+          diabetes_type?: string | null
+          dialysis?: boolean | null
+          doctor_crm?: string | null
+          doctor_name?: string | null
+          dyslipidemia?: boolean | null
+          dyslipidemia_meds?: string | null
+          dyspnea?: boolean | null
+          dyspnea_class?: string | null
+          edema?: boolean | null
+          edema_intensity?: string | null
+          edema_location?: string | null
+          edoxaban?: boolean | null
+          family_history?: boolean | null
+          family_history_details?: string | null
+          hdl?: string | null
+          heart_failure?: boolean | null
+          heart_failure_class?: string | null
+          hypertension?: boolean | null
+          hypertension_meds?: string | null
+          hypertension_time?: string | null
+          iam_date?: string | null
+          iam_location?: string | null
+          iam_treatment?: string | null
+          id?: string
+          ldl?: string | null
+          medications?: Json | null
+          obesity?: boolean | null
+          other_comorbidities?: boolean | null
+          other_comorbidities_details?: string | null
+          pad?: boolean | null
+          pad_severity?: string | null
+          pad_treatment?: string | null
+          palpitations?: boolean | null
+          palpitations_characteristics?: string | null
+          patient_id?: string
+          physical_activity?: string | null
+          prasugrel?: boolean | null
+          previous_angioplasty?: boolean | null
+          previous_iam?: boolean | null
+          renal_disease?: boolean | null
+          renal_stage?: string | null
+          respiratory_control?: string | null
+          respiratory_disease?: boolean | null
+          respiratory_type?: string | null
+          revascularization?: boolean | null
+          revascularization_date?: string | null
+          revascularization_grafts?: string | null
+          rivaroxaban?: boolean | null
+          sedentary?: boolean | null
+          smoking?: string | null
+          smoking_years?: string | null
+          stroke?: boolean | null
+          stroke_date?: string | null
+          stroke_sequelae?: string | null
+          stroke_type?: string | null
+          syncope?: boolean | null
+          syncope_frequency?: string | null
+          ticagrelor?: boolean | null
+          triglycerides?: string | null
+          updated_at?: string
+          valvopathy?: boolean | null
+          valvopathy_severity?: string | null
+          valvopathy_type?: string | null
+          warfarin?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anamnesis_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       angioplasty_requests: {
         Row: {
           clinic_id: string

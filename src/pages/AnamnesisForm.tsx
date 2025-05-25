@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
@@ -15,6 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import { usePatient } from '@/contexts/PatientContext';
 import { PatientSelectorDropdown } from '@/components/patients/PatientSelectorDropdown';
 import { patientService } from '@/services/patientService';
+import { anamnesisService, type AnamnesisData } from '@/services/anamnesisService';
+import { supabase } from '@/integrations/supabase/client';
 
 export const AnamnesisForm: React.FC = () => {
   const navigate = useNavigate();
@@ -24,6 +27,7 @@ export const AnamnesisForm: React.FC = () => {
   
   // Estado para verificar se a anamnese já está salva (somente leitura)
   const [isSaved, setIsSaved] = useState(Boolean(anamnesisId));
+  const [isLoading, setIsLoading] = useState(false);
   
   // Estado para medicações
   const [medications, setMedications] = useState<{ name: string; dose: string; posology: string }[]>([]);
@@ -82,12 +86,60 @@ export const AnamnesisForm: React.FC = () => {
     fetchPatientData();
   }, [id, selectedPatient, setSelectedPatient, toast]);
 
-  // Simula carregar dados de uma anamnese existente quando temos um anamnesisId
+  // Carrega dados da anamnese existente quando temos um anamnesisId
   useEffect(() => {
-    if (anamnesisId && id) {
-      setIsSaved(true);
-    }
-  }, [anamnesisId, id]);
+    const fetchAnamnesisData = async () => {
+      if (anamnesisId && id) {
+        try {
+          setIsLoading(true);
+          const { anamnesis } = await anamnesisService.getAnamnesisById(anamnesisId);
+          
+          // Preencher o formulário com os dados da anamnese
+          setFormData({
+            hypertension: anamnesis.hypertension || false,
+            hypertensionTime: anamnesis.hypertension_time || '',
+            hypertensionMeds: anamnesis.hypertension_meds || '',
+            diabetes: anamnesis.diabetes || false,
+            diabetesType: anamnesis.diabetes_type || '',
+            diabetesControl: anamnesis.diabetes_control || '',
+            diabetesMeds: anamnesis.diabetes_meds || '',
+            dyslipidemia: anamnesis.dyslipidemia || false,
+            cholesterol: anamnesis.cholesterol || '',
+            ldl: anamnesis.ldl || '',
+            hdl: anamnesis.hdl || '',
+            triglycerides: anamnesis.triglycerides || '',
+            dyslipidemiaeMeds: anamnesis.dyslipidemia_meds || '',
+            smoking: anamnesis.smoking || '',
+            smokingYears: anamnesis.smoking_years || '',
+            familyHistory: anamnesis.family_history || false,
+            familyHistoryDetails: anamnesis.family_history_details || '',
+            obesity: anamnesis.obesity || false,
+            bmi: anamnesis.bmi || '',
+            sedentary: anamnesis.sedentary || false,
+            physicalActivity: anamnesis.physical_activity || '',
+          });
+          
+          // Preencher medicações
+          if (anamnesis.medications) {
+            setMedications(anamnesis.medications as { name: string; dose: string; posology: string }[]);
+          }
+          
+          setIsSaved(true);
+        } catch (error) {
+          console.error('Erro ao carregar anamnese:', error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os dados da anamnese.",
+            variant: "destructive"
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchAnamnesisData();
+  }, [anamnesisId, id, toast]);
 
   // Limpa o paciente selecionado quando o componente é desmontado
   useEffect(() => {
@@ -156,7 +208,7 @@ export const AnamnesisForm: React.FC = () => {
   };
   
   // Função para salvar anamnese
-  const handleSaveAnamnesis = () => {
+  const handleSaveAnamnesis = async () => {
     if (!selectedPatient) {
       toast({
         title: "Erro",
@@ -165,15 +217,98 @@ export const AnamnesisForm: React.FC = () => {
       });
       return;
     }
-    
-    toast({
-      title: "Anamnese salva",
-      description: "A anamnese foi salva com sucesso e não poderá mais ser alterada.",
-    });
-    
-    setIsSaved(true);
-    clearSelectedPatient(); // Limpa o paciente após salvar
+
+    try {
+      setIsLoading(true);
+
+      // Obter usuário atual
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      // Obter dados do perfil do usuário para o nome do médico
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, crm')
+        .eq('id', user.id)
+        .single();
+
+      const doctorName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : '';
+
+      // Preparar dados da anamnese
+      const anamnesisData: Omit<AnamnesisData, 'id'> = {
+        patient_id: selectedPatient.id,
+        created_by: user.id,
+        
+        // Fatores de risco cardiovascular
+        hypertension: formData.hypertension,
+        hypertension_time: formData.hypertensionTime,
+        hypertension_meds: formData.hypertensionMeds,
+        diabetes: formData.diabetes,
+        diabetes_type: formData.diabetesType,
+        diabetes_control: formData.diabetesControl,
+        diabetes_meds: formData.diabetesMeds,
+        dyslipidemia: formData.dyslipidemia,
+        cholesterol: formData.cholesterol,
+        ldl: formData.ldl,
+        hdl: formData.hdl,
+        triglycerides: formData.triglycerides,
+        dyslipidemia_meds: formData.dyslipidemiaeMeds,
+        smoking: formData.smoking,
+        smoking_years: formData.smokingYears,
+        family_history: formData.familyHistory,
+        family_history_details: formData.familyHistoryDetails,
+        obesity: formData.obesity,
+        bmi: formData.bmi,
+        sedentary: formData.sedentary,
+        physical_activity: formData.physicalActivity,
+        
+        // Medicações
+        medications: medications,
+        
+        // Informações do médico
+        doctor_name: doctorName,
+        doctor_crm: profile?.crm || '',
+      };
+
+      // Salvar no banco de dados
+      await anamnesisService.createAnamnesis(anamnesisData);
+      
+      toast({
+        title: "Sucesso",
+        description: "A anamnese foi salva com sucesso no banco de dados.",
+      });
+      
+      setIsSaved(true);
+      
+      // Navegar para o histórico do paciente
+      navigate(`/patients/${selectedPatient.id}/history`);
+      
+    } catch (error) {
+      console.error('Erro ao salvar anamnese:', error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao salvar anamnese. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+            <p>Carregando...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -1028,9 +1163,10 @@ export const AnamnesisForm: React.FC = () => {
             <Button 
               className="bg-primary hover:bg-secondary"
               onClick={handleSaveAnamnesis}
+              disabled={isLoading}
             >
               <Save className="h-4 w-4 mr-2" />
-              Salvar Anamnese
+              {isLoading ? 'Salvando...' : 'Salvar Anamnese'}
             </Button>
           </div>
         )}

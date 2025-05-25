@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Calendar, User } from 'lucide-react';
 import { usePatient } from '@/contexts/PatientContext';
 import { patientService } from '@/services/patientService';
+import { anamnesisService } from '@/services/anamnesisService';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -65,27 +66,22 @@ export const PatientHistory: React.FC = () => {
 
       setLoading(true);
       try {
-        // TODO: Implementar busca real dos dados do banco
-        // Por enquanto, dados mock para demonstração
-        const mockAnamnesisRecords: HistoryRecord[] = [
-          {
-            id: '1',
-            date: '2024-01-15',
-            doctor: 'Dr. Silva',
-            type: 'anamnesis',
-            title: 'Anamnese Cardiológica',
-            description: 'Consulta inicial com avaliação completa'
-          },
-          {
-            id: '2',
-            date: '2024-02-20',
-            doctor: 'Dra. Santos',
-            type: 'anamnesis',
-            title: 'Retorno Cardiológico',
-            description: 'Avaliação de resultados de exames'
-          }
-        ];
+        // Buscar anamneses reais do banco de dados
+        const { anamnesis } = await anamnesisService.getPatientAnamnesis(patientId);
+        
+        const realAnamnesisRecords: HistoryRecord[] = anamnesis.map((item) => ({
+          id: item.id,
+          date: item.created_at,
+          doctor: item.doctor_name || 'Dr. Não informado',
+          type: 'anamnesis',
+          title: 'Anamnese Cardiológica',
+          description: `Avaliação realizada em ${format(new Date(item.created_at), 'dd/MM/yyyy', { locale: ptBR })}`
+        }));
 
+        setAnamnesisRecords(realAnamnesisRecords);
+
+        // TODO: Implementar busca real dos dados de cateterismo e angioplastia
+        // Por enquanto, dados mock para cateterismo e angioplastia
         const mockCatheterizationRecords: HistoryRecord[] = [
           {
             id: '3',
@@ -108,7 +104,6 @@ export const PatientHistory: React.FC = () => {
           }
         ];
 
-        setAnamnesisRecords(mockAnamnesisRecords);
         setCatheterizationRecords(mockCatheterizationRecords);
         setAngioplastyRecords(mockAngioplastyRecords);
       } catch (error) {
@@ -131,11 +126,16 @@ export const PatientHistory: React.FC = () => {
   };
 
   const handleViewRecord = (record: HistoryRecord) => {
-    // TODO: Implementar visualização do registro específico
-    toast({
-      title: "Visualização",
-      description: `Abrindo ${record.title} de ${format(new Date(record.date), 'dd/MM/yyyy', { locale: ptBR })}`,
-    });
+    if (record.type === 'anamnesis') {
+      // Navegar para visualizar a anamnese específica
+      navigate(`/patients/${patientId}/anamnesis/${record.id}`);
+    } else {
+      // TODO: Implementar visualização dos outros tipos de exame
+      toast({
+        title: "Visualização",
+        description: `Abrindo ${record.title} de ${format(new Date(record.date), 'dd/MM/yyyy', { locale: ptBR })}`,
+      });
+    }
   };
 
   const renderRecordsList = (records: HistoryRecord[], emptyMessage: string) => {
