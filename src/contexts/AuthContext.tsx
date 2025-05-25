@@ -17,7 +17,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [authChangeProcessed, setAuthChangeProcessed] = useState(false);
 
   useEffect(() => {
     console.log('AuthProvider effect running');
@@ -26,7 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Configure authentication state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
-        console.log('Auth state changed:', event);
+        console.log('Auth state changed:', event, currentSession ? 'Session exists' : 'No session');
         if (!mounted) return;
         
         // Handle different authentication events
@@ -34,6 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (mounted) {
             setSession(currentSession);
             setUser(currentSession?.user ?? null);
+            setIsLoading(false);
           }
           
           if (event === 'SIGNED_IN') {
@@ -46,6 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (mounted) {
             setSession(null);
             setUser(null);
+            setIsLoading(false);
           }
           
           toast({
@@ -56,15 +57,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (mounted) {
             setSession(currentSession);
             setUser(currentSession?.user ?? null);
+            setIsLoading(false);
           }
-        }
-        
-        if (!authChangeProcessed && mounted) {
-          setAuthChangeProcessed(true);
-        }
-        
-        if (mounted) {
-          setIsLoading(false);
+        } else if (event === 'INITIAL_SESSION') {
+          if (mounted) {
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
+            setIsLoading(false);
+          }
         }
       }
     );
@@ -72,8 +72,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Then check for existing session
     const checkSession = async () => {
       try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        console.log('Current session check:', currentSession ? 'Exists' : 'None');
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        console.log('Current session check:', currentSession ? 'Exists' : 'None', error ? `Error: ${error.message}` : '');
+        
+        if (error) {
+          console.error('Session check error:', error);
+          // Clear potentially corrupted session
+          await supabase.auth.signOut();
+          if (mounted) {
+            setSession(null);
+            setUser(null);
+            setIsLoading(false);
+          }
+          return;
+        }
         
         if (mounted) {
           setSession(currentSession);
@@ -83,6 +95,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         console.error('Error checking session:', error);
         if (mounted) {
+          setSession(null);
+          setUser(null);
           setIsLoading(false);
         }
       }

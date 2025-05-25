@@ -11,36 +11,56 @@ const Index = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { loading: clinicsLoading, userClinics } = useStaffClinic();
   const navigate = useNavigate();
-  const [redirectAttempted, setRedirectAttempted] = useState(false);
-  const [checkingAdminStatus, setCheckingAdminStatus] = useState(false);
+  const [checkingRedirect, setCheckingRedirect] = useState(false);
   const [loadingState, setLoadingState] = useState<string>("Verificando autenticação...");
 
   useEffect(() => {
     let isMounted = true;
     
     const checkUserAndRedirect = async () => {
-      // If still loading or redirection already attempted, do nothing
-      if (authLoading || clinicsLoading || !user || redirectAttempted) return;
-      
+      // Wait for auth and clinics to finish loading
+      if (authLoading || clinicsLoading) {
+        return;
+      }
+
+      // If no user, stay on login page
+      if (!user) {
+        console.log("Index: No user found, showing login form");
+        setLoadingState("");
+        return;
+      }
+
+      // Prevent multiple redirect attempts
+      if (checkingRedirect) {
+        return;
+      }
+
       if (isMounted) {
-        setRedirectAttempted(true);
+        setCheckingRedirect(true);
         console.log("Index: User authenticated, checking role before redirecting");
         
         try {
-          setCheckingAdminStatus(true);
           setLoadingState("Verificando permissões...");
-          // Check if user is global admin
-          const isAdmin = await isGlobalAdmin(user.id);
           
-          if (isAdmin && isMounted) {
+          // Check if user is global admin with timeout
+          const adminCheckPromise = isGlobalAdmin(user.id);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Admin check timeout')), 5000)
+          );
+          
+          const isAdmin = await Promise.race([adminCheckPromise, timeoutPromise]) as boolean;
+          
+          if (!isMounted) return;
+          
+          if (isAdmin) {
             console.log("User is global admin, redirecting to admin dashboard");
             setLoadingState("Redirecionando para o painel administrativo...");
             navigate('/admin/dashboard', { replace: true });
-          } else if (userClinics.length === 0 && isMounted) {
+          } else if (userClinics.length === 0) {
             console.log("User has no clinics, showing no access page");
             setLoadingState("Verificando acesso às clínicas...");
             navigate('/no-access', { replace: true });
-          } else if (isMounted) {
+          } else {
             console.log("User has clinics, redirecting to dashboard");
             setLoadingState("Redirecionando para o dashboard...");
             navigate('/dashboard', { replace: true });
@@ -49,12 +69,16 @@ const Index = () => {
           console.error("Error checking admin status:", error);
           if (isMounted) {
             setLoadingState("Ocorreu um erro, redirecionando...");
-            // In case of error, redirect to default dashboard
-            navigate('/dashboard', { replace: true });
+            // In case of error, redirect to default dashboard if user has clinics
+            if (userClinics.length > 0) {
+              navigate('/dashboard', { replace: true });
+            } else {
+              navigate('/no-access', { replace: true });
+            }
           }
         } finally {
           if (isMounted) {
-            setCheckingAdminStatus(false);
+            setCheckingRedirect(false);
           }
         }
       }
@@ -65,10 +89,10 @@ const Index = () => {
     return () => {
       isMounted = false;
     };
-  }, [user, authLoading, clinicsLoading, userClinics, navigate, redirectAttempted]);
+  }, [user, authLoading, clinicsLoading, userClinics, navigate, checkingRedirect]);
 
-  // Show loading indicator during initial loading
-  if (authLoading || clinicsLoading || checkingAdminStatus) {
+  // Show loading indicator during initial loading or redirect checking
+  if (authLoading || clinicsLoading || checkingRedirect) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-cardio-500 mb-4" />
