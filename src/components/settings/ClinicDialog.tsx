@@ -125,24 +125,7 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `clinic-logos/${fileName}`;
       
-      // Check if storage bucket exists, create if not
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const bucketExists = buckets?.some(bucket => bucket.name === 'clinic-assets');
-      
-      if (!bucketExists) {
-        const { error: bucketError } = await supabase.storage.createBucket('clinic-assets', { 
-          public: true,
-          allowedMimeTypes: ['image/*'],
-          fileSizeLimit: 5242880 // 5MB
-        });
-        
-        if (bucketError) {
-          console.error('Error creating bucket:', bucketError);
-          throw bucketError;
-        }
-      }
-      
-      // Upload the file
+      // Upload the file directly to the existing bucket
       const { data, error } = await supabase.storage
         .from('clinic-assets')
         .upload(filePath, logo, {
