@@ -57,14 +57,16 @@ export const Sidebar: React.FC = () => {
   return (
     <SidebarComponent variant="floating" collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-2">
-            <Heart className="h-6 w-6 text-sidebar-accent-foreground" />
+        <div className="flex items-center justify-between p-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center justify-center w-8 h-8">
+              <Heart className="h-5 w-5 text-sidebar-accent-foreground flex-shrink-0" />
+            </div>
             {state === 'expanded' && (
-              <h1 className="text-xl font-bold text-sidebar-foreground">CardioFlow</h1>
+              <h1 className="text-lg font-bold text-sidebar-foreground truncate">CardioFlow</h1>
             )}
           </div>
-          <SidebarTrigger className="h-8 w-8" />
+          <SidebarTrigger className="h-8 w-8 flex-shrink-0" />
         </div>
       </SidebarHeader>
       
@@ -82,10 +84,15 @@ export const Sidebar: React.FC = () => {
                       asChild 
                       isActive={isActive}
                       tooltip={state === 'collapsed' ? item.title : undefined}
+                      className="w-full justify-start"
                     >
-                      <Link to={item.url} className="flex items-center gap-3">
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.title}</span>
+                      <Link to={item.url} className="flex items-center gap-3 w-full">
+                        <div className="flex items-center justify-center w-5 h-5 flex-shrink-0">
+                          <item.icon className="h-5 w-5" />
+                        </div>
+                        {state === 'expanded' && (
+                          <span className="truncate">{item.title}</span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -102,10 +109,14 @@ export const Sidebar: React.FC = () => {
             <SidebarMenuButton
               onClick={handleLogout}
               tooltip={state === 'collapsed' ? 'Sair' : undefined}
-              className="w-full flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
-              <LogOut className="h-5 w-5" />
-              <span>Sair</span>
+              <div className="flex items-center justify-center w-5 h-5 flex-shrink-0">
+                <LogOut className="h-5 w-5" />
+              </div>
+              {state === 'expanded' && (
+                <span className="truncate">Sair</span>
+              )}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
