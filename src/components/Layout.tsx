@@ -2,7 +2,7 @@
 import React from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,18 +10,16 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <Sidebar />
-          <div className="flex-1 flex flex-col w-full">
-            <Header />
-            <main className="flex-1 p-6 overflow-auto">
-              {children}
-            </main>
-          </div>
-        </div>
-      </SidebarProvider>
-    </div>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <Sidebar />
+        <SidebarInset className="flex flex-col w-full">
+          <Header />
+          <main className="flex-1 p-4 md:p-6 overflow-auto">
+            {children}
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 };

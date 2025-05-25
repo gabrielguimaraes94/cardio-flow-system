@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User, Users, Heart, FileText, Calendar, Settings, LogOut, Menu, FileUser, BarChart } from 'lucide-react';
 import { 
@@ -7,16 +7,12 @@ import {
   SidebarContent, 
   SidebarGroup, 
   SidebarGroupContent, 
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
   SidebarTrigger,
   SidebarFooter,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
   useSidebar
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,7 +29,6 @@ export const Sidebar: React.FC = () => {
   const menuItems = [
     { title: "Dashboard", url: "/dashboard", icon: Heart },
     { title: "Pacientes", url: "/patients", icon: Users },
-    { title: "Anamnese", url: "/patients/:id/anamnesis", icon: FileUser },
     { title: "Cateterismo", url: "/catheterization", icon: FileText },
     { title: "Angioplastia", url: "/angioplasty", icon: FileText },
     { title: "Relatórios", url: "/reports", icon: BarChart },
@@ -61,51 +56,59 @@ export const Sidebar: React.FC = () => {
 
   return (
     <SidebarComponent variant="floating" collapsible="icon">
-      <SidebarHeader className="px-6 py-5 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Heart className="h-6 w-6 text-white" />
-          <h1 className={`text-xl font-bold text-white ${state === 'collapsed' ? 'hidden' : 'block'}`}>CardioFlow</h1>
+      <SidebarHeader className="border-b border-sidebar-border">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-2">
+            <Heart className="h-6 w-6 text-sidebar-accent-foreground" />
+            {state === 'expanded' && (
+              <h1 className="text-xl font-bold text-sidebar-foreground">CardioFlow</h1>
+            )}
+          </div>
+          <SidebarTrigger className="h-8 w-8" />
         </div>
-        <SidebarTrigger>
-          <button className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-sidebar-accent text-sidebar-foreground">
-            <Menu className="h-5 w-5" />
-          </button>
-        </SidebarTrigger>
       </SidebarHeader>
       
-      <SidebarContent className="px-4 py-2">
+      <SidebarContent className="p-2">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild tooltip={state === 'collapsed' ? item.title : undefined}>
-                    <Link to={item.url} className={`flex items-center ${state === 'collapsed' ? 'justify-center' : 'gap-3'}`}>
-                    <item.icon className="h-5 w-5" />
-                    <span className={state === 'collapsed' ? 'hidden' : 'block'}>{item.title}</span>
-                  </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {menuItems.map((item) => {
+                const isActive = location.pathname === item.url || 
+                  (item.url !== '/dashboard' && location.pathname.startsWith(item.url));
+                
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton 
+                      asChild 
+                      isActive={isActive}
+                      tooltip={state === 'collapsed' ? item.title : undefined}
+                    >
+                      <Link to={item.url} className="flex items-center gap-3">
+                        <item.icon className="h-5 w-5" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="px-6 py-4">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={handleLogout}
-            className={`w-full flex items-center text-sidebar-foreground rounded-md hover:bg-sidebar-accent ${
-              state === 'collapsed' 
-                ? 'justify-center p-2' 
-                : 'gap-3 px-3 py-2'
-            }`}
-          >
-            <LogOut className="h-5 w-5" />
-            <span className={state === 'collapsed' ? 'hidden' : 'block'}>Sair</span>
-          </button>
-        </div>
+      <SidebarFooter className="border-t border-sidebar-border p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleLogout}
+              tooltip={state === 'collapsed' ? 'Sair' : undefined}
+              className="w-full flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            >
+              <LogOut className="h-5 w-5" />
+              <span>Sair</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </SidebarComponent>
   );

@@ -9,6 +9,7 @@ import { useClinic } from '@/contexts/ClinicContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { UserProfile } from '@/types/profile';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 export const Header: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -63,40 +64,44 @@ export const Header: React.FC = () => {
   const displayName = profile ? `${profile.firstName} ${profile.lastName}` : 'Usuário';
 
   return (
-    <header className="w-full bg-white border-b border-gray-200 px-6 py-4 flex flex-col md:flex-row items-center justify-between sticky top-0 z-10">
-      <div className="flex items-center">
-        <ClinicSwitcher />
-      </div>
-      <div className="flex items-center gap-4 mt-2 md:mt-0">
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
-        </Button>
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-16 items-center justify-between px-4 md:px-6">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger className="h-8 w-8 md:hidden" />
+          <ClinicSwitcher />
+        </div>
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-cardio-500 flex items-center justify-center">
-                <User className="h-5 w-5 text-white" />
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-medium">{displayName}</span>
-                <ChevronDown className="h-4 w-4" />
-              </div>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem onClick={() => navigate('/settings/profile')}>
-              Meu Perfil
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/settings')}>
-              Configurações
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleLogout}>
-              Sair
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2 md:gap-4">
+          <Button variant="ghost" size="icon" className="relative h-8 w-8">
+            <Bell className="h-4 w-4" />
+            <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></span>
+          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-2 h-8 px-2">
+                <div className="h-6 w-6 rounded-full bg-cardio-500 flex items-center justify-center">
+                  <User className="h-4 w-4 text-white" />
+                </div>
+                <div className="hidden md:flex items-center gap-1">
+                  <span className="text-sm font-medium">{displayName}</span>
+                  <ChevronDown className="h-3 w-3" />
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => navigate('/settings/profile')}>
+                Meu Perfil
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
+                Configurações
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
+                Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   );
