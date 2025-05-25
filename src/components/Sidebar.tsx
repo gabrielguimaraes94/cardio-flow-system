@@ -58,15 +58,21 @@ export const Sidebar: React.FC = () => {
     <SidebarComponent variant="floating" collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center justify-between p-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="flex items-center justify-center w-8 h-8">
-              <Heart className="h-5 w-5 text-sidebar-accent-foreground flex-shrink-0" />
+          {state === 'expanded' ? (
+            <>
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center justify-center w-8 h-8">
+                  <Heart className="h-5 w-5 text-sidebar-accent-foreground flex-shrink-0" />
+                </div>
+                <h1 className="text-lg font-bold text-sidebar-foreground truncate">CardioFlow</h1>
+              </div>
+              <SidebarTrigger className="h-8 w-8 flex-shrink-0" />
+            </>
+          ) : (
+            <div className="flex items-center justify-center w-full">
+              <SidebarTrigger className="h-8 w-8 flex-shrink-0" />
             </div>
-            {state === 'expanded' && (
-              <h1 className="text-lg font-bold text-sidebar-foreground truncate">CardioFlow</h1>
-            )}
-          </div>
-          <SidebarTrigger className="h-8 w-8 flex-shrink-0" />
+          )}
         </div>
       </SidebarHeader>
       
