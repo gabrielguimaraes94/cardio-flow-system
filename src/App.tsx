@@ -17,7 +17,7 @@ import NoAccess from "./pages/NoAccess";
 import NotFound from "./pages/NotFound";
 import { PatientList } from "./pages/PatientList";
 import { PatientForm } from "./pages/PatientForm";
-import { PatientAnamnesisHistory } from "./pages/PatientAnamnesisHistory";
+import { PatientHistory } from "./pages/PatientHistory";
 import { AnamnesisForm } from "./pages/AnamnesisForm";
 import { Catheterization } from "./pages/Catheterization";
 import { CatheterizationReport } from "./pages/CatheterizationReport";
@@ -43,7 +43,7 @@ const routes = [
   { path: "/patients/:id/anamnesis", element: <AnamnesisForm /> },
   { path: "/patients/:id/anamnesis/new", element: <AnamnesisForm /> },
   { path: "/patients/:id/anamnesis/:anamnesisId", element: <AnamnesisForm /> },
-  { path: "/patients/:id/history", element: <PatientAnamnesisHistory /> },
+  { path: "/patients/:patientId/history", element: <PatientHistory /> },
   { path: "/anamnesis", element: <AnamnesisForm /> },
   { path: "/catheterization", element: <Catheterization /> },
   { path: "/catheterization/create", element: <CatheterizationReport /> },

@@ -169,7 +169,7 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                         variant="outline" 
                         size="icon" 
                         onClick={() => handleViewHistory(patient)}
-                        title="Histórico de anamneses"
+                        title="Histórico"
                       >
                         <History className="h-4 w-4" />
                       </Button>
