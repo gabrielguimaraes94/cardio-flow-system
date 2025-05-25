@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
@@ -57,7 +56,6 @@ export const AnamnesisForm: React.FC = () => {
     bmi: '',
     sedentary: false,
     physicalActivity: '',
-    // ... adicionar outros campos conforme necessário
   });
 
   // Carrega dados do paciente quando ID é fornecido via URL
@@ -404,14 +402,23 @@ export const AnamnesisForm: React.FC = () => {
                 
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="diabetes" />
+                    <Checkbox 
+                      id="diabetes" 
+                      checked={formData.diabetes}
+                      onCheckedChange={(checked) => setFormData({...formData, diabetes: !!checked})}
+                      disabled={isSaved}
+                    />
                     <Label htmlFor="diabetes" className="font-medium">Diabetes</Label>
                   </div>
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
                       <Label htmlFor="diabetes-type">Tipo</Label>
-                      <Select>
+                      <Select 
+                        value={formData.diabetesType} 
+                        onValueChange={(value) => setFormData({...formData, diabetesType: value})}
+                        disabled={isSaved}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
@@ -426,7 +433,11 @@ export const AnamnesisForm: React.FC = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="diabetes-control">Controle</Label>
-                      <Select>
+                      <Select 
+                        value={formData.diabetesControl} 
+                        onValueChange={(value) => setFormData({...formData, diabetesControl: value})}
+                        disabled={isSaved}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
@@ -440,7 +451,12 @@ export const AnamnesisForm: React.FC = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="diabetes-meds">Medicações</Label>
-                      <Input id="diabetes-meds" />
+                      <Input 
+                        id="diabetes-meds" 
+                        value={formData.diabetesMeds}
+                        onChange={(e) => setFormData({...formData, diabetesMeds: e.target.value})}
+                        disabled={isSaved}
+                      />
                     </div>
                   </div>
                 </div>
@@ -449,7 +465,7 @@ export const AnamnesisForm: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="dyslipidemia" />
+                    <Checkbox id="dyslipidemia" disabled={isSaved} />
                     <Label htmlFor="dyslipidemia" className="font-medium">Dislipidemia</Label>
                   </div>
                   
@@ -459,26 +475,26 @@ export const AnamnesisForm: React.FC = () => {
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <Label htmlFor="cholesterol" className="text-xs">Colesterol Total</Label>
-                          <Input id="cholesterol" />
+                          <Input id="cholesterol" disabled={isSaved} />
                         </div>
                         <div>
                           <Label htmlFor="ldl" className="text-xs">LDL</Label>
-                          <Input id="ldl" />
+                          <Input id="ldl" disabled={isSaved} />
                         </div>
                         <div>
                           <Label htmlFor="hdl" className="text-xs">HDL</Label>
-                          <Input id="hdl" />
+                          <Input id="hdl" disabled={isSaved} />
                         </div>
                         <div>
                           <Label htmlFor="triglycerides" className="text-xs">Triglicérides</Label>
-                          <Input id="triglycerides" />
+                          <Input id="triglycerides" disabled={isSaved} />
                         </div>
                       </div>
                     </div>
                     
                     <div className="space-y-2">
                       <Label htmlFor="dyslipidemia-meds">Medicações</Label>
-                      <Input id="dyslipidemia-meds" />
+                      <Input id="dyslipidemia-meds" disabled={isSaved} />
                     </div>
                   </div>
                 </div>
@@ -490,7 +506,7 @@ export const AnamnesisForm: React.FC = () => {
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
-                      <Select>
+                      <Select disabled={isSaved}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
@@ -504,7 +520,7 @@ export const AnamnesisForm: React.FC = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="smoking-years">Anos/Maço</Label>
-                      <Input id="smoking-years" />
+                      <Input id="smoking-years" disabled={isSaved} />
                     </div>
                   </div>
                 </div>
@@ -513,42 +529,42 @@ export const AnamnesisForm: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="family-history" />
+                    <Checkbox id="family-history" disabled={isSaved} />
                     <Label htmlFor="family-history" className="font-medium">Histórico Familiar</Label>
                   </div>
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
                       <Label htmlFor="family-history-details">Parentes de 1º grau com DAC</Label>
-                      <Input id="family-history-details" />
+                      <Input id="family-history-details" disabled={isSaved} />
                     </div>
                   </div>
                 </div>
                 
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="obesity" />
+                    <Checkbox id="obesity" disabled={isSaved} />
                     <Label htmlFor="obesity" className="font-medium">Obesidade</Label>
                   </div>
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
                       <Label htmlFor="bmi">IMC atual</Label>
-                      <Input id="bmi" type="number" step="0.01" />
+                      <Input id="bmi" type="number" step="0.01" disabled={isSaved} />
                     </div>
                   </div>
                 </div>
                 
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="sedentary" />
+                    <Checkbox id="sedentary" disabled={isSaved} />
                     <Label htmlFor="sedentary" className="font-medium">Sedentarismo</Label>
                   </div>
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
                       <Label htmlFor="physical-activity">Nível de atividade física</Label>
-                      <Select>
+                      <Select disabled={isSaved}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
@@ -577,7 +593,7 @@ export const AnamnesisForm: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="previous-iam" />
+                    <Checkbox id="previous-iam" disabled={isSaved} />
                     <Label htmlFor="previous-iam" className="font-medium">IAM Prévio</Label>
                   </div>
                   
@@ -585,23 +601,23 @@ export const AnamnesisForm: React.FC = () => {
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-2">
                         <Label htmlFor="iam-date">Data</Label>
-                        <Input id="iam-date" type="date" />
+                        <Input id="iam-date" type="date" disabled={isSaved} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="iam-location">Localização</Label>
-                        <Input id="iam-location" />
+                        <Input id="iam-location" disabled={isSaved} />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="iam-treatment">Tratamento</Label>
-                      <Input id="iam-treatment" />
+                      <Input id="iam-treatment" disabled={isSaved} />
                     </div>
                   </div>
                 </div>
                 
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="previous-angioplasty" />
+                    <Checkbox id="previous-angioplasty" disabled={isSaved} />
                     <Label htmlFor="previous-angioplasty" className="font-medium">Angioplastia Prévia</Label>
                   </div>
                   
@@ -609,16 +625,16 @@ export const AnamnesisForm: React.FC = () => {
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-2">
                         <Label htmlFor="angioplasty-date">Data</Label>
-                        <Input id="angioplasty-date" type="date" />
+                        <Input id="angioplasty-date" type="date" disabled={isSaved} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="angioplasty-vessels">Vasos Tratados</Label>
-                        <Input id="angioplasty-vessels" />
+                        <Input id="angioplasty-vessels" disabled={isSaved} />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="angioplasty-stents">Stents</Label>
-                      <Input id="angioplasty-stents" />
+                      <Input id="angioplasty-stents" disabled={isSaved} />
                     </div>
                   </div>
                 </div>
@@ -627,7 +643,7 @@ export const AnamnesisForm: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="revascularization" />
+                    <Checkbox id="revascularization" disabled={isSaved} />
                     <Label htmlFor="revascularization" className="font-medium">Revascularização Miocárdica</Label>
                   </div>
                   
@@ -635,11 +651,11 @@ export const AnamnesisForm: React.FC = () => {
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-2">
                         <Label htmlFor="revascularization-date">Data</Label>
-                        <Input id="revascularization-date" type="date" />
+                        <Input id="revascularization-date" type="date" disabled={isSaved} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="revascularization-grafts">Enxertos</Label>
-                        <Input id="revascularization-grafts" />
+                        <Input id="revascularization-grafts" disabled={isSaved} />
                       </div>
                     </div>
                   </div>
@@ -647,14 +663,14 @@ export const AnamnesisForm: React.FC = () => {
                 
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="valvopathy" />
+                    <Checkbox id="valvopathy" disabled={isSaved} />
                     <Label htmlFor="valvopathy" className="font-medium">Valvopatias</Label>
                   </div>
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
                       <Label htmlFor="valvopathy-type">Tipo</Label>
-                      <Select>
+                      <Select disabled={isSaved}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
@@ -671,7 +687,7 @@ export const AnamnesisForm: React.FC = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="valvopathy-severity">Gravidade</Label>
-                      <Select>
+                      <Select disabled={isSaved}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
@@ -689,14 +705,14 @@ export const AnamnesisForm: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="heart-failure" />
+                    <Checkbox id="heart-failure" disabled={isSaved} />
                     <Label htmlFor="heart-failure" className="font-medium">Insuficiência Cardíaca</Label>
                   </div>
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
                       <Label htmlFor="heart-failure-class">Classe Funcional (NYHA)</Label>
-                      <Select>
+                      <Select disabled={isSaved}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
@@ -725,14 +741,14 @@ export const AnamnesisForm: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="renal-disease" />
+                    <Checkbox id="renal-disease" disabled={isSaved} />
                     <Label htmlFor="renal-disease" className="font-medium">Doença Renal Crônica</Label>
                   </div>
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
                       <Label htmlFor="renal-stage">Estágio</Label>
-                      <Select>
+                      <Select disabled={isSaved}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
@@ -748,7 +764,7 @@ export const AnamnesisForm: React.FC = () => {
                     </div>
                     
                     <div className="flex items-center space-x-2 mt-2">
-                      <Checkbox id="dialysis" />
+                      <Checkbox id="dialysis" disabled={isSaved} />
                       <Label htmlFor="dialysis">Diálise</Label>
                     </div>
                   </div>
@@ -756,14 +772,14 @@ export const AnamnesisForm: React.FC = () => {
                 
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="respiratory-disease" />
+                    <Checkbox id="respiratory-disease" disabled={isSaved} />
                     <Label htmlFor="respiratory-disease" className="font-medium">DPOC/Asma</Label>
                   </div>
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
                       <Label htmlFor="respiratory-type">Tipo</Label>
-                      <Select>
+                      <Select disabled={isSaved}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
@@ -777,7 +793,7 @@ export const AnamnesisForm: React.FC = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="respiratory-control">Controle</Label>
-                      <Select>
+                      <Select disabled={isSaved}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
@@ -795,14 +811,14 @@ export const AnamnesisForm: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="stroke" />
+                    <Checkbox id="stroke" disabled={isSaved} />
                     <Label htmlFor="stroke" className="font-medium">AVC/AIT Prévio</Label>
                   </div>
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
                       <Label htmlFor="stroke-type">Tipo</Label>
-                      <Select>
+                      <Select disabled={isSaved}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
@@ -816,26 +832,26 @@ export const AnamnesisForm: React.FC = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="stroke-date">Data</Label>
-                      <Input id="stroke-date" type="date" />
+                      <Input id="stroke-date" type="date" disabled={isSaved} />
                     </div>
                     
                     <div className="space-y-2">
                       <Label htmlFor="stroke-sequelae">Sequelas</Label>
-                      <Input id="stroke-sequelae" />
+                      <Input id="stroke-sequelae" disabled={isSaved} />
                     </div>
                   </div>
                 </div>
                 
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="pad" />
+                    <Checkbox id="pad" disabled={isSaved} />
                     <Label htmlFor="pad" className="font-medium">Doença Arterial Periférica</Label>
                   </div>
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
                       <Label htmlFor="pad-severity">Gravidade</Label>
-                      <Select>
+                      <Select disabled={isSaved}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
@@ -849,7 +865,7 @@ export const AnamnesisForm: React.FC = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="pad-treatment">Tratamento</Label>
-                      <Input id="pad-treatment" />
+                      <Input id="pad-treatment" disabled={isSaved} />
                     </div>
                   </div>
                 </div>
@@ -857,14 +873,14 @@ export const AnamnesisForm: React.FC = () => {
               
               <div className="space-y-4">
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="other-comorbidities" />
+                  <Checkbox id="other-comorbidities" disabled={isSaved} />
                   <Label htmlFor="other-comorbidities" className="font-medium">Outras Doenças Relevantes</Label>
                 </div>
                 
                 <div className="pl-6 space-y-2">
                   <div className="space-y-2">
                     <Label htmlFor="other-comorbidities-details">Detalhes</Label>
-                    <Textarea id="other-comorbidities-details" rows={3} />
+                    <Textarea id="other-comorbidities-details" rows={3} disabled={isSaved} />
                   </div>
                 </div>
               </div>
@@ -882,14 +898,14 @@ export const AnamnesisForm: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="chest-pain" />
+                    <Checkbox id="chest-pain" disabled={isSaved} />
                     <Label htmlFor="chest-pain" className="font-medium">Dor Torácica</Label>
                   </div>
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
                       <Label htmlFor="chest-pain-characteristics">Características</Label>
-                      <Select>
+                      <Select disabled={isSaved}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
@@ -903,26 +919,26 @@ export const AnamnesisForm: React.FC = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="chest-pain-duration">Duração</Label>
-                      <Input id="chest-pain-duration" />
+                      <Input id="chest-pain-duration" disabled={isSaved} />
                     </div>
                     
                     <div className="space-y-2">
                       <Label htmlFor="chest-pain-radiation">Irradiação</Label>
-                      <Input id="chest-pain-radiation" />
+                      <Input id="chest-pain-radiation" disabled={isSaved} />
                     </div>
                   </div>
                 </div>
                 
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="dyspnea" />
+                    <Checkbox id="dyspnea" disabled={isSaved} />
                     <Label htmlFor="dyspnea" className="font-medium">Dispneia</Label>
                   </div>
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
                       <Label htmlFor="dyspnea-class">Classe Funcional</Label>
-                      <Select>
+                      <Select disabled={isSaved}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
@@ -941,46 +957,46 @@ export const AnamnesisForm: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="syncope" />
+                    <Checkbox id="syncope" disabled={isSaved} />
                     <Label htmlFor="syncope" className="font-medium">Síncope/Pré-síncope</Label>
                   </div>
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
                       <Label htmlFor="syncope-frequency">Frequência</Label>
-                      <Input id="syncope-frequency" />
+                      <Input id="syncope-frequency" disabled={isSaved} />
                     </div>
                   </div>
                 </div>
                 
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="palpitations" />
+                    <Checkbox id="palpitations" disabled={isSaved} />
                     <Label htmlFor="palpitations" className="font-medium">Palpitações</Label>
                   </div>
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
                       <Label htmlFor="palpitations-characteristics">Características</Label>
-                      <Input id="palpitations-characteristics" />
+                      <Input id="palpitations-characteristics" disabled={isSaved} />
                     </div>
                   </div>
                 </div>
                 
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="edema" />
+                    <Checkbox id="edema" disabled={isSaved} />
                     <Label htmlFor="edema" className="font-medium">Edema de Membros</Label>
                   </div>
                   
                   <div className="pl-6 space-y-2">
                     <div className="space-y-2">
                       <Label htmlFor="edema-location">Localização</Label>
-                      <Input id="edema-location" />
+                      <Input id="edema-location" disabled={isSaved} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="edema-intensity">Intensidade</Label>
-                      <Select>
+                      <Select disabled={isSaved}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
@@ -1016,6 +1032,7 @@ export const AnamnesisForm: React.FC = () => {
                         placeholder="Nome da medicação" 
                         value={newMedication.name}
                         onChange={(e) => setNewMedication({...newMedication, name: e.target.value})}
+                        disabled={isSaved}
                       />
                     </div>
                     <div className="space-y-2">
@@ -1025,6 +1042,7 @@ export const AnamnesisForm: React.FC = () => {
                         placeholder="Ex: 50mg" 
                         value={newMedication.dose}
                         onChange={(e) => setNewMedication({...newMedication, dose: e.target.value})}
+                        disabled={isSaved}
                       />
                     </div>
                     <div className="space-y-2">
@@ -1034,6 +1052,7 @@ export const AnamnesisForm: React.FC = () => {
                         placeholder="Ex: 1 comprimido de 8/8h" 
                         value={newMedication.posology}
                         onChange={(e) => setNewMedication({...newMedication, posology: e.target.value})}
+                        disabled={isSaved}
                       />
                     </div>
                   </div>
@@ -1042,6 +1061,7 @@ export const AnamnesisForm: React.FC = () => {
                     variant="outline" 
                     className="w-full"
                     onClick={addMedication}
+                    disabled={isSaved}
                   >
                     <Plus className="h-4 w-4 mr-2" /> Adicionar Medicação
                   </Button>
@@ -1098,52 +1118,52 @@ export const AnamnesisForm: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
-                        <Checkbox id="antiplatelets" />
+                        <Checkbox id="antiplatelets" disabled={isSaved} />
                         <Label htmlFor="antiplatelets">Antiagregantes</Label>
                       </div>
                       <div className="pl-6">
                         <div className="flex items-center space-x-2 mb-2">
-                          <Checkbox id="aas" />
+                          <Checkbox id="aas" disabled={isSaved} />
                           <Label htmlFor="aas">AAS</Label>
                         </div>
                         <div className="flex items-center space-x-2 mb-2">
-                          <Checkbox id="clopidogrel" />
+                          <Checkbox id="clopidogrel" disabled={isSaved} />
                           <Label htmlFor="clopidogrel">Clopidogrel</Label>
                         </div>
                         <div className="flex items-center space-x-2 mb-2">
-                          <Checkbox id="ticagrelor" />
+                          <Checkbox id="ticagrelor" disabled={isSaved} />
                           <Label htmlFor="ticagrelor">Ticagrelor</Label>
                         </div>
                         <div className="flex items-center space-x-2 mb-2">
-                          <Checkbox id="prasugrel" />
+                          <Checkbox id="prasugrel" disabled={isSaved} />
                           <Label htmlFor="prasugrel">Prasugrel</Label>
                         </div>
                       </div>
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
-                        <Checkbox id="anticoagulants" />
+                        <Checkbox id="anticoagulants" disabled={isSaved} />
                         <Label htmlFor="anticoagulants">Anticoagulantes</Label>
                       </div>
                       <div className="pl-6">
                         <div className="flex items-center space-x-2 mb-2">
-                          <Checkbox id="warfarin" />
+                          <Checkbox id="warfarin" disabled={isSaved} />
                           <Label htmlFor="warfarin">Varfarina</Label>
                         </div>
                         <div className="flex items-center space-x-2 mb-2">
-                          <Checkbox id="dabigatran" />
+                          <Checkbox id="dabigatran" disabled={isSaved} />
                           <Label htmlFor="dabigatran">Dabigatrana</Label>
                         </div>
                         <div className="flex items-center space-x-2 mb-2">
-                          <Checkbox id="rivaroxaban" />
+                          <Checkbox id="rivaroxaban" disabled={isSaved} />
                           <Label htmlFor="rivaroxaban">Rivaroxabana</Label>
                         </div>
                         <div className="flex items-center space-x-2 mb-2">
-                          <Checkbox id="apixaban" />
+                          <Checkbox id="apixaban" disabled={isSaved} />
                           <Label htmlFor="apixaban">Apixabana</Label>
                         </div>
                         <div className="flex items-center space-x-2 mb-2">
-                          <Checkbox id="edoxaban" />
+                          <Checkbox id="edoxaban" disabled={isSaved} />
                           <Label htmlFor="edoxaban">Edoxabana</Label>
                         </div>
                       </div>

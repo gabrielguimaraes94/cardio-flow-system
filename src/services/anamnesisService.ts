@@ -120,7 +120,7 @@ export const anamnesisService = {
     
     const { data: result, error } = await supabase
       .from('anamnesis')
-      .insert([data])
+      .insert(data)
       .select()
       .single();
 
