@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile } from '@/types/profile';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { yupResolver } from '@hookform/resolvers/yup';
 import { profileSchema, ProfileFormData } from '@/schemas/profileSchema';
 
 export const ProfileSettings: React.FC = () => {
@@ -27,7 +27,7 @@ export const ProfileSettings: React.FC = () => {
     reset,
     formState: { errors, isSubmitting }
   } = useForm<ProfileFormData>({
-    resolver: zodResolver(profileSchema),
+    resolver: yupResolver(profileSchema),
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -74,7 +74,7 @@ export const ProfileSettings: React.FC = () => {
 
             setProfile(userProfile);
             
-            // Reset form with loaded data
+            // Reset form with loaded data - garantindo que todos os campos sejam strings
             const formData: ProfileFormData = {
               firstName: userProfile.firstName,
               lastName: userProfile.lastName,
@@ -86,7 +86,11 @@ export const ProfileSettings: React.FC = () => {
             };
             
             console.log('Resetting form with data:', formData);
-            reset(formData);
+            
+            // Usar setTimeout para garantir que o reset aconteça após o render
+            setTimeout(() => {
+              reset(formData);
+            }, 100);
           }
         } catch (error: any) {
           console.error("Error loading profile:", error);
@@ -151,16 +155,16 @@ export const ProfileSettings: React.FC = () => {
 
   return (
     <Card>
-      <CardContent className="p-6">
+      <CardContent className="p-4 md:p-6">
         <div className="space-y-6">
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
             <Avatar className="h-12 w-12">
               <AvatarImage src={`https://avatar.vercel.sh/${profile?.email || 'user'}.png`} />
               <AvatarFallback>
                 <User className="h-6 w-6" />
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div className="text-center sm:text-left">
               <h2 className="text-lg font-medium">Meu Perfil</h2>
               <p className="text-sm text-muted-foreground">
                 Atualize suas informações de perfil.
@@ -174,7 +178,7 @@ export const ProfileSettings: React.FC = () => {
             </div>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">Nome *</Label>
                   <Input
@@ -216,7 +220,7 @@ export const ProfileSettings: React.FC = () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="phone">Telefone</Label>
                   <Input
@@ -261,7 +265,7 @@ export const ProfileSettings: React.FC = () => {
 
               <Button 
                 type="submit" 
-                className="bg-cardio-500 hover:bg-cardio-600"
+                className="w-full sm:w-auto bg-cardio-500 hover:bg-cardio-600"
                 disabled={isSubmitting}
               >
                 <Save className="h-4 w-4 mr-2" />
