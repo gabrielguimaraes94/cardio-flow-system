@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, Bell, ChevronDown, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarOpen }) 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const navigate = useNavigate();
 
-  // Fetch user profile whenever user changes
   useEffect(() => {
     if (user) {
       const getProfile = async () => {
