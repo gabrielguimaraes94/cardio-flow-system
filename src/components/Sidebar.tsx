@@ -1,27 +1,20 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Users, Heart, FileText, Calendar, Settings, LogOut, Menu, FileUser, BarChart } from 'lucide-react';
-import { 
-  Sidebar as SidebarComponent,
-  SidebarContent, 
-  SidebarGroup, 
-  SidebarGroupContent, 
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarHeader,
-  SidebarTrigger,
-  SidebarFooter,
-  useSidebar
-} from '@/components/ui/sidebar';
+import { User, Users, Heart, FileText, Calendar, Settings, LogOut, Menu, BarChart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const location = useLocation();
-  const { state } = useSidebar();
   const { signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -55,61 +48,93 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <SidebarComponent variant="floating" collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center justify-between p-4">
+    <>
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={onToggle}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <div
+        className={cn(
+          "fixed left-0 top-0 z-50 h-full bg-white border-r border-gray-200 transition-all duration-300 ease-in-out",
+          "md:relative md:z-auto",
+          isOpen ? "w-64" : "w-16",
+          "md:translate-x-0",
+          isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        )}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
-            <Heart className="h-6 w-6 text-sidebar-accent-foreground" />
-            {state === 'expanded' && (
-              <h1 className="text-xl font-bold text-sidebar-foreground">CardioFlow</h1>
+            <Heart className="h-6 w-6 text-cardio-500 flex-shrink-0" />
+            {isOpen && (
+              <h1 className="text-xl font-bold text-gray-900">CardioFlow</h1>
             )}
           </div>
-          <SidebarTrigger className="h-8 w-8" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggle}
+            className="h-8 w-8 flex-shrink-0"
+          >
+            {isOpen ? (
+              <ChevronLeft className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </Button>
         </div>
-      </SidebarHeader>
-      
-      <SidebarContent className="p-2">
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => {
-                const isActive = location.pathname === item.url || 
-                  (item.url !== '/dashboard' && location.pathname.startsWith(item.url));
-                
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton 
-                      asChild 
-                      isActive={isActive}
-                      tooltip={state === 'collapsed' ? item.title : undefined}
-                    >
-                      <Link to={item.url} className="flex items-center gap-3">
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-2">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={handleLogout}
-              tooltip={state === 'collapsed' ? 'Sair' : undefined}
-              className="w-full flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            >
-              <LogOut className="h-5 w-5" />
-              <span>Sair</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-    </SidebarComponent>
+        {/* Menu Items */}
+        <nav className="flex-1 p-2">
+          <ul className="space-y-1">
+            {menuItems.map((item) => {
+              const isActive = location.pathname === item.url || 
+                (item.url !== '/dashboard' && location.pathname.startsWith(item.url));
+              
+              return (
+                <li key={item.title}>
+                  <Link
+                    to={item.url}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
+                      "hover:bg-gray-100",
+                      isActive 
+                        ? "bg-cardio-100 text-cardio-700 font-medium" 
+                        : "text-gray-700",
+                      !isOpen && "justify-center"
+                    )}
+                    title={!isOpen ? item.title : undefined}
+                  >
+                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                    {isOpen && <span className="truncate">{item.title}</span>}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        {/* Footer - Logout */}
+        <div className="p-2 border-t border-gray-200">
+          <button
+            onClick={handleLogout}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full",
+              "hover:bg-red-50 text-red-600",
+              !isOpen && "justify-center"
+            )}
+            title={!isOpen ? 'Sair' : undefined}
+          >
+            <LogOut className="h-5 w-5 flex-shrink-0" />
+            {isOpen && <span className="truncate">Sair</span>}
+          </button>
+        </div>
+      </div>
+    </>
   );
 };
