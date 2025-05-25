@@ -55,25 +55,28 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <SidebarComponent variant="floating" collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center justify-between p-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="flex items-center justify-center w-8 h-8">
-              <Heart className="h-5 w-5 text-sidebar-accent-foreground flex-shrink-0" />
+    <SidebarComponent variant="sidebar" collapsible="icon" className="border-r-0">
+      <SidebarHeader className="border-b border-gray-200/60 bg-gradient-to-r from-cardio-600 to-cardio-700">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center justify-center w-10 h-10 bg-white/20 rounded-xl backdrop-blur-sm">
+              <Heart className="h-6 w-6 text-white flex-shrink-0" />
             </div>
             {state === 'expanded' && (
-              <h1 className="text-lg font-bold text-sidebar-foreground truncate">CardioFlow</h1>
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold text-white truncate">CardioFlow</h1>
+                <p className="text-xs text-white/80 truncate">Sistema Médico</p>
+              </div>
             )}
           </div>
-          <SidebarTrigger className="h-8 w-8 flex-shrink-0" />
+          <SidebarTrigger className="h-8 w-8 text-white hover:bg-white/20 border-0 flex-shrink-0" />
         </div>
       </SidebarHeader>
       
-      <SidebarContent className="p-2">
+      <SidebarContent className="p-3 bg-white">
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {menuItems.map((item) => {
                 const isActive = location.pathname === item.url || 
                   (item.url !== '/dashboard' && location.pathname.startsWith(item.url));
@@ -84,14 +87,20 @@ export const Sidebar: React.FC = () => {
                       asChild 
                       isActive={isActive}
                       tooltip={state === 'collapsed' ? item.title : undefined}
-                      className="w-full justify-start"
+                      className={`
+                        w-full justify-start h-12 rounded-xl transition-all duration-200
+                        ${isActive 
+                          ? 'bg-gradient-to-r from-cardio-500 to-cardio-600 text-white shadow-lg shadow-cardio-500/25' 
+                          : 'text-gray-700 hover:bg-gray-100 hover:text-cardio-600'
+                        }
+                      `}
                     >
-                      <Link to={item.url} className="flex items-center gap-3 w-full">
-                        <div className="flex items-center justify-center w-5 h-5 flex-shrink-0">
-                          <item.icon className="h-5 w-5" />
+                      <Link to={item.url} className="flex items-center gap-4 w-full px-1">
+                        <div className="flex items-center justify-center w-6 h-6 flex-shrink-0">
+                          <item.icon className={`h-5 w-5 ${isActive ? 'text-white' : ''}`} />
                         </div>
                         {state === 'expanded' && (
-                          <span className="truncate">{item.title}</span>
+                          <span className="font-medium truncate">{item.title}</span>
                         )}
                       </Link>
                     </SidebarMenuButton>
@@ -103,20 +112,22 @@ export const Sidebar: React.FC = () => {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-2">
+      <SidebarFooter className="border-t border-gray-200/60 p-3 bg-gray-50/50">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={handleLogout}
               tooltip={state === 'collapsed' ? 'Sair' : undefined}
-              className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              className="w-full justify-start h-12 rounded-xl text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
             >
-              <div className="flex items-center justify-center w-5 h-5 flex-shrink-0">
-                <LogOut className="h-5 w-5" />
+              <div className="flex items-center gap-4 w-full px-1">
+                <div className="flex items-center justify-center w-6 h-6 flex-shrink-0">
+                  <LogOut className="h-5 w-5" />
+                </div>
+                {state === 'expanded' && (
+                  <span className="font-medium truncate">Sair</span>
+                )}
               </div>
-              {state === 'expanded' && (
-                <span className="truncate">Sair</span>
-              )}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
