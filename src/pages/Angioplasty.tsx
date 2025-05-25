@@ -22,7 +22,7 @@ export const Angioplasty = () => {
     }
   }, [selectedClinic]);
   return <Layout>
-      <div className="container mx-auto space-y-6">
+      <div className="container mx-auto space-y-6 px-0">
         <div>
           <h1 className="text-3xl font-bold mb-1">Solicitação de Angioplastia</h1>
           <p className="text-gray-500">Gere solicitações de angioplastia para convênios</p>
