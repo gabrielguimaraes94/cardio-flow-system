@@ -125,15 +125,21 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `clinic-logos/${fileName}`;
       
-      // Check if storage bucket exists, create if not (would normally be handled by SQL migration)
-      try {
-        const { data: bucketExists } = await supabase.storage.getBucket('clinic-assets');
-        if (!bucketExists) {
-          await supabase.storage.createBucket('clinic-assets', { public: true });
+      // Check if storage bucket exists, create if not
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const bucketExists = buckets?.some(bucket => bucket.name === 'clinic-assets');
+      
+      if (!bucketExists) {
+        const { error: bucketError } = await supabase.storage.createBucket('clinic-assets', { 
+          public: true,
+          allowedMimeTypes: ['image/*'],
+          fileSizeLimit: 5242880 // 5MB
+        });
+        
+        if (bucketError) {
+          console.error('Error creating bucket:', bucketError);
+          throw bucketError;
         }
-      } catch (error) {
-        // Bucket doesn't exist, create it
-        await supabase.storage.createBucket('clinic-assets', { public: true });
       }
       
       // Upload the file
@@ -145,6 +151,7 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
         });
       
       if (error) {
+        console.error('Error uploading file:', error);
         throw error;
       }
       
@@ -153,6 +160,7 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
         .from('clinic-assets')
         .getPublicUrl(filePath);
       
+      console.log('Logo uploaded successfully:', publicUrl);
       return publicUrl;
     } catch (error) {
       console.error('Error uploading logo:', error);
@@ -169,16 +177,22 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
 
   const onSubmit = async (data: ClinicFormData) => {
     try {
-      // If there's a new logo, upload it
+      setIsUploading(true);
+      
+      // If there's a new logo, upload it first
       let logoUrl = data.logo_url;
       
       if (logo) {
         const uploadedUrl = await uploadLogo();
         if (uploadedUrl) {
           logoUrl = uploadedUrl;
+        } else {
+          // If upload failed, don't proceed
+          return;
         }
       }
       
+      // Call onSave with the updated logo URL
       onSave({
         id: clinic?.id || '',
         name: data.name,
@@ -189,6 +203,7 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
         active: data.active,
         logo_url: logoUrl
       });
+      
     } catch (error) {
       console.error('Error saving clinic:', error);
       toast({
@@ -196,6 +211,8 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
         description: "Ocorreu um erro ao salvar os dados da clínica.",
         variant: "destructive"
       });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -298,7 +315,7 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
                     className="cursor-pointer"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Formatos recomendados: PNG, JPG. Tamanho máximo: 2MB.
+                    Formatos recomendados: PNG, JPG. Tamanho máximo: 5MB.
                   </p>
                 </div>
               </div>
@@ -323,9 +340,11 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
             />
             
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={onClose} disabled={isUploading}>
+                Cancelar
+              </Button>
               <Button type="submit" disabled={isUploading}>
-                {isUploading ? 'Enviando...' : 'Salvar'}
+                {isUploading ? 'Salvando...' : 'Salvar'}
               </Button>
             </DialogFooter>
           </form>

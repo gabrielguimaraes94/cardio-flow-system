@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash, MapPin, Phone, Mail, Building } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,7 @@ interface Clinic {
   phone: string;
   email: string;
   active: boolean;
+  logo_url?: string;
 }
 
 export const ClinicManagement = () => {
@@ -67,6 +69,8 @@ export const ClinicManagement = () => {
     if (!user) return;
     
     try {
+      console.log('Salvando clínica com logo_url:', clinic.logo_url);
+      
       if (currentClinic) {
         // Editar clínica existente
         const { error } = await supabase
@@ -78,11 +82,15 @@ export const ClinicManagement = () => {
             phone: clinic.phone,
             email: clinic.email,
             active: clinic.active,
+            logo_url: clinic.logo_url, // Make sure to include logo_url
             updated_at: new Date().toISOString()
           })
           .eq('id', clinic.id);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Erro ao atualizar clínica:', error);
+          throw error;
+        }
         
         toast({
           title: "Clínica atualizada",
@@ -99,10 +107,14 @@ export const ClinicManagement = () => {
             phone: clinic.phone,
             email: clinic.email,
             active: clinic.active,
+            logo_url: clinic.logo_url, // Make sure to include logo_url
             created_by: user.id
           });
         
-        if (error) throw error;
+        if (error) {
+          console.error('Erro ao criar clínica:', error);
+          throw error;
+        }
         
         toast({
           title: "Clínica adicionada",
@@ -194,9 +206,20 @@ export const ClinicManagement = () => {
                 <Card key={clinic.id} className="overflow-hidden">
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-xl">{clinic.name}</CardTitle>
-                        <CardDescription className="mt-1">{clinic.city}</CardDescription>
+                      <div className="flex items-center gap-3">
+                        {clinic.logo_url && (
+                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                            <img 
+                              src={clinic.logo_url} 
+                              alt={`Logo ${clinic.name}`}
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                        )}
+                        <div>
+                          <CardTitle className="text-xl">{clinic.name}</CardTitle>
+                          <CardDescription className="mt-1">{clinic.city}</CardDescription>
+                        </div>
                       </div>
                       {clinic.active ? (
                         <Badge variant="outline" className="bg-green-100 text-green-800">Ativo</Badge>
@@ -252,4 +275,31 @@ export const ClinicManagement = () => {
       />
     </Card>
   );
+
+  async function handleDeleteClinic(clinicId: string) {
+    try {
+      const { error } = await supabase
+        .from('clinics')
+        .delete()
+        .eq('id', clinicId);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Clínica excluída",
+        description: "A clínica foi excluída com sucesso."
+      });
+      
+      // Atualizar a lista de clínicas no contexto
+      await refetchClinics();
+      
+    } catch (error) {
+      console.error('Erro ao excluir clínica:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a clínica.",
+        variant: "destructive"
+      });
+    }
+  }
 };
