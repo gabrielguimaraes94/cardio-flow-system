@@ -10,3 +10,13 @@ export interface UserProfile {
   bio?: string;
   role: 'admin' | 'clinic_admin' | 'doctor' | 'nurse' | 'receptionist' | 'staff';
 }
+
+export interface ProfileFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  crm: string;
+  title: string;
+  bio: string;
+}

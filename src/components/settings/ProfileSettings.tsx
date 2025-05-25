@@ -5,44 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Save, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { UserProfile } from '@/types/profile';
-import { 
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { UserProfile, ProfileFormData } from '@/types/profile';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-
-// Schema for form validation
-const profileFormSchema = z.object({
-  firstName: z.string().min(2, {
-    message: "Nome deve ter pelo menos 2 caracteres",
-  }),
-  lastName: z.string().min(2, {
-    message: "Sobrenome deve ter pelo menos 2 caracteres",
-  }),
-  email: z.string().email({
-    message: "Email inválido",
-  }),
-  phone: z.string().optional(),
-  crm: z.string().min(4, {
-    message: "CRM deve ter pelo menos 4 caracteres",
-  }),
-  title: z.string().optional(),
-  bio: z.string().optional(),
-});
-
-type ProfileFormValues = z.infer<typeof profileFormSchema>;
+import { yupResolver } from '@hookform/resolvers/yup';
+import { profileSchema } from '@/schemas/profileSchema';
 
 export const ProfileSettings: React.FC = () => {
   const { user } = useAuth();
@@ -50,8 +21,13 @@ export const ProfileSettings: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileFormSchema),
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting }
+  } = useForm<ProfileFormData>({
+    resolver: yupResolver(profileSchema),
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -68,6 +44,8 @@ export const ProfileSettings: React.FC = () => {
       if (user) {
         setIsLoading(true);
         try {
+          console.log('Loading profile for user:', user.id);
+          
           const { data, error } = await supabase
             .from('profiles')
             .select('*')
@@ -75,11 +53,13 @@ export const ProfileSettings: React.FC = () => {
             .single();
 
           if (error) {
+            console.error('Error loading profile:', error);
             throw error;
           }
 
+          console.log('Profile data loaded:', data);
+
           if (data) {
-            // Create a UserProfile object from the database data
             const userProfile: UserProfile = {
               id: data.id,
               firstName: data.first_name || "",
@@ -94,7 +74,8 @@ export const ProfileSettings: React.FC = () => {
 
             setProfile(userProfile);
             
-            form.reset({
+            // Reset form with loaded data
+            const formData: ProfileFormData = {
               firstName: userProfile.firstName,
               lastName: userProfile.lastName,
               email: userProfile.email,
@@ -102,7 +83,10 @@ export const ProfileSettings: React.FC = () => {
               crm: userProfile.crm,
               title: userProfile.title || "",
               bio: userProfile.bio || "",
-            });
+            };
+            
+            console.log('Resetting form with data:', formData);
+            reset(formData);
           }
         } catch (error: any) {
           console.error("Error loading profile:", error);
@@ -118,9 +102,9 @@ export const ProfileSettings: React.FC = () => {
     };
 
     loadProfile();
-  }, [user, form, toast]);
+  }, [user, reset, toast]);
 
-  const onSubmit = async (values: ProfileFormValues) => {
+  const onSubmit = async (values: ProfileFormData) => {
     if (!user) {
       toast({
         title: "Erro",
@@ -131,7 +115,7 @@ export const ProfileSettings: React.FC = () => {
     }
 
     try {
-      setIsLoading(true);
+      console.log('Saving profile data:', values);
 
       const { error } = await supabase
         .from('profiles')
@@ -139,14 +123,15 @@ export const ProfileSettings: React.FC = () => {
           first_name: values.firstName,
           last_name: values.lastName,
           email: values.email,
-          phone: values.phone,
+          phone: values.phone || null,
           crm: values.crm,
-          title: values.title,
-          bio: values.bio,
+          title: values.title || null,
+          bio: values.bio || null,
         })
         .eq('id', user.id);
 
       if (error) {
+        console.error('Error saving profile:', error);
         throw error;
       }
 
@@ -161,8 +146,6 @@ export const ProfileSettings: React.FC = () => {
         description: error.message || "Não foi possível salvar o perfil",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -172,7 +155,7 @@ export const ProfileSettings: React.FC = () => {
         <div className="space-y-6">
           <div className="flex items-center space-x-4">
             <Avatar className="h-12 w-12">
-              <AvatarImage src={`https://avatar.vercel.sh/${form.getValues('email')}.png`} />
+              <AvatarImage src={`https://avatar.vercel.sh/${profile?.email || 'user'}.png`} />
               <AvatarFallback>
                 <User className="h-6 w-6" />
               </AvatarFallback>
@@ -190,120 +173,101 @@ export const ProfileSettings: React.FC = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cardio-500"></div>
             </div>
           ) : (
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="firstName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Seu nome" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">Nome *</Label>
+                  <Input
+                    id="firstName"
+                    placeholder="Seu nome"
+                    {...register('firstName')}
+                    className={errors.firstName ? 'border-red-500' : ''}
                   />
+                  {errors.firstName && (
+                    <p className="text-sm text-red-600">{errors.firstName.message}</p>
+                  )}
+                </div>
 
-                  <FormField
-                    control={form.control}
-                    name="lastName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Sobrenome</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Seu sobrenome" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Sobrenome *</Label>
+                  <Input
+                    id="lastName"
+                    placeholder="Seu sobrenome"
+                    {...register('lastName')}
+                    className={errors.lastName ? 'border-red-500' : ''}
+                  />
+                  {errors.lastName && (
+                    <p className="text-sm text-red-600">{errors.lastName.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seuemail@exemplo.com"
+                  {...register('email')}
+                  className={errors.email ? 'border-red-500' : ''}
+                />
+                {errors.email && (
+                  <p className="text-sm text-red-600">{errors.email.message}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Telefone</Label>
+                  <Input
+                    id="phone"
+                    placeholder="(00) 0000-0000"
+                    {...register('phone')}
                   />
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input placeholder="seuemail@exemplo.com" {...field} type="email" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                <div className="space-y-2">
+                  <Label htmlFor="crm">CRM *</Label>
+                  <Input
+                    id="crm"
+                    placeholder="Número do CRM"
+                    {...register('crm')}
+                    className={errors.crm ? 'border-red-500' : ''}
+                  />
+                  {errors.crm && (
+                    <p className="text-sm text-red-600">{errors.crm.message}</p>
                   )}
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Telefone</FormLabel>
-                        <FormControl>
-                          <Input placeholder="(00) 0000-0000" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="crm"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>CRM</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Número do CRM" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
+              </div>
 
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Título/Cargo</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: Médico Cardiologista" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              <div className="space-y-2">
+                <Label htmlFor="title">Título/Cargo</Label>
+                <Input
+                  id="title"
+                  placeholder="Ex: Médico Cardiologista"
+                  {...register('title')}
                 />
+              </div>
 
-                <FormField
-                  control={form.control}
-                  name="bio"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bio</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Escreva uma breve descrição sobre você"
-                          className="resize-none"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              <div className="space-y-2">
+                <Label htmlFor="bio">Bio</Label>
+                <Textarea
+                  id="bio"
+                  placeholder="Escreva uma breve descrição sobre você"
+                  className="resize-none"
+                  {...register('bio')}
                 />
+              </div>
 
-                <Button type="submit" className="bg-cardio-500 hover:bg-cardio-600">
-                  <Save className="h-4 w-4 mr-2" />
-                  Salvar Alterações
-                </Button>
-              </form>
-            </Form>
+              <Button 
+                type="submit" 
+                className="bg-cardio-500 hover:bg-cardio-600"
+                disabled={isSubmitting}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
+              </Button>
+            </form>
           )}
         </div>
       </CardContent>
