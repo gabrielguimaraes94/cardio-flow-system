@@ -90,7 +90,7 @@ export const Sidebar: React.FC = () => {
                       asChild 
                       isActive={isActive}
                       tooltip={state === 'collapsed' ? item.title : undefined}
-                      className="w-full justify-start"
+                      className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     >
                       <Link to={item.url} className="flex items-center gap-3 w-full">
                         <div className="flex items-center justify-center w-5 h-5 flex-shrink-0">
