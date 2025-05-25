@@ -61,9 +61,7 @@ export const Sidebar: React.FC = () => {
           {state === 'expanded' ? (
             <>
               <div className="flex items-center gap-2 min-w-0">
-                <div className="flex items-center justify-center w-8 h-8">
-                  <Heart className="h-5 w-5 text-sidebar-accent-foreground flex-shrink-0" />
-                </div>
+                <Heart className="h-5 w-5 text-sidebar-accent-foreground flex-shrink-0" />
                 <h1 className="text-lg font-bold text-sidebar-foreground truncate">CardioFlow</h1>
               </div>
               <SidebarTrigger className="h-8 w-8 flex-shrink-0" />
@@ -93,12 +91,8 @@ export const Sidebar: React.FC = () => {
                       className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     >
                       <Link to={item.url} className="flex items-center gap-3 w-full">
-                        <div className="flex items-center justify-center w-5 h-5 flex-shrink-0">
-                          <item.icon className="h-5 w-5" />
-                        </div>
-                        {state === 'expanded' && (
-                          <span className="truncate">{item.title}</span>
-                        )}
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        <span className="truncate">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -117,12 +111,8 @@ export const Sidebar: React.FC = () => {
               tooltip={state === 'collapsed' ? 'Sair' : undefined}
               className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
-              <div className="flex items-center justify-center w-5 h-5 flex-shrink-0">
-                <LogOut className="h-5 w-5" />
-              </div>
-              {state === 'expanded' && (
-                <span className="truncate">Sair</span>
-              )}
+              <LogOut className="h-5 w-5 flex-shrink-0" />
+              <span className="truncate">Sair</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
