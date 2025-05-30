@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -102,17 +103,10 @@ export const ImprovedRequestGenerator: React.FC = () => {
     toast.success('Solicitação gerada com sucesso!');
   };
 
-  // Ensure we have a valid clinic for the PDF, using the same structure as ClinicManagement
-  const clinicForPDF: Clinic = selectedClinic ? {
-    ...selectedClinic,
-    // Ensure required fields have default values if missing
-    address: selectedClinic.address || 'Endereço não informado',
-    phone: selectedClinic.phone || 'Telefone não informado',
-    // Use logo_url directly from selectedClinic (same as ClinicManagement)
-    logo_url: selectedClinic.logo_url || undefined,
-  } : {
+  // Use selectedClinic directly without transformation to preserve logo_url
+  const clinicForPDF: Clinic = selectedClinic || {
     id: '',
-    name: '',
+    name: 'Clínica não selecionada',
     address: 'Endereço não informado',
     phone: 'Telefone não informado',
     city: '',
