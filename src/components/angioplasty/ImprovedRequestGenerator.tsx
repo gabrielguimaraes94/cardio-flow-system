@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -33,8 +34,8 @@ import { Clinic } from '@/types/clinic';
 const requestFormSchema = z.object({
   patientId: z.string().min(1, { message: 'Selecione um paciente' }),
   insuranceId: z.string().min(1, { message: 'Selecione um convênio' }),
-  coronaryAngiography: z.string().min(1, { message: 'Campo obrigatório' }),
-  proposedTreatment: z.string().min(1, { message: 'Campo obrigatório' }),
+  coronaryAngiography: z.string().optional(),
+  proposedTreatment: z.string().optional(),
 });
 
 type RequestFormValues = z.infer<typeof requestFormSchema>;
@@ -100,6 +101,20 @@ export const ImprovedRequestGenerator: React.FC = () => {
   };
 
   const handleGenerateRequest = (values: RequestFormValues) => {
+    // Validação customizada apenas no momento do submit
+    const coronaryAngiography = values.coronaryAngiography?.trim() || '';
+    const proposedTreatment = values.proposedTreatment?.trim() || '';
+
+    if (!coronaryAngiography) {
+      toast.error('Campo Coronariografia é obrigatório');
+      return;
+    }
+
+    if (!proposedTreatment) {
+      toast.error('Campo Tratamento Proposto é obrigatório');
+      return;
+    }
+
     if (selectedProcedures.length === 0) {
       toast.error('Selecione pelo menos um procedimento TUSS');
       return;
