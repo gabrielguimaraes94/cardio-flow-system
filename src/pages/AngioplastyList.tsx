@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Search, Filter } from 'lucide-react';
+import { Eye, Search, Filter, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const AngioplastyList: React.FC = () => {
