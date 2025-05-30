@@ -98,7 +98,7 @@ export const ImprovedRequestGenerator: React.FC = () => {
       return;
     }
 
-    // Switching to the preview tab
+    // Switching to the preview tab automatically
     setCurrentTab('preview');
     toast.success('Solicitação gerada com sucesso!');
   };
