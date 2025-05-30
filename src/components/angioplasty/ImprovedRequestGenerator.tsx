@@ -1,53 +1,40 @@
 
 import React, { useState, useRef } from 'react';
-import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { TussCodeList, TussCode } from './TussCodeList';
-import { MaterialsList } from './MaterialsList';
+import { TussCode } from './TussCodeList';
 import { MaterialWithQuantity } from '@/types/material';
 import { toast } from 'sonner';
 import { PDFViewer } from './PDFViewer';
 import { PDFActions } from './PDFActions';
 import { useClinic } from '@/contexts/ClinicContext';
 import { PatientSelector, Patient } from './PatientSelector';
-import { SurgicalTeamSelector } from './SurgicalTeamSelector';
 import { format } from 'date-fns';
-import { InsuranceSelector } from './InsuranceSelector';
 import { SimpleInsuranceCompany } from '@/types/insurance-selector';
 import { Clinic } from '@/types/clinic';
-
-const requestFormSchema = z.object({
-  patientId: z.string().min(1, { message: 'Selecione um paciente' }),
-  insuranceId: z.string().min(1, { message: 'Selecione um convênio' }),
-  coronaryAngiography: z.string().optional(),
-  proposedTreatment: z.string().optional(),
-});
-
-type RequestFormValues = z.infer<typeof requestFormSchema>;
+import { 
+  RequestFormValues, 
+  requestFormSchema, 
+  SurgicalTeam 
+} from '@/types/angioplasty-request';
+import { BasicInformationForm } from './forms/BasicInformationForm';
+import { ClinicalInformationForm } from './forms/ClinicalInformationForm';
+import { ProceduresAndMaterialsForm } from './forms/ProceduresAndMaterialsForm';
+import { useAngioplastyFormValidation } from '@/hooks/useAngioplastyFormValidation';
 
 export const ImprovedRequestGenerator: React.FC = () => {
   const { selectedClinic } = useClinic();
+  const { validateForm } = useAngioplastyFormValidation();
   const [currentTab, setCurrentTab] = useState<string>('form');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [selectedInsurance, setSelectedInsurance] = useState<SimpleInsuranceCompany | null>(null);
   const [selectedProcedures, setSelectedProcedures] = useState<TussCode[]>([]);
   const [selectedMaterials, setSelectedMaterials] = useState<MaterialWithQuantity[]>([]);
-  const [surgicalTeam, setSurgicalTeam] = useState<any>({
+  const [surgicalTeam, setSurgicalTeam] = useState<SurgicalTeam>({
     surgeon: null,
     assistant: null,
     anesthesiologist: null,
@@ -101,27 +88,13 @@ export const ImprovedRequestGenerator: React.FC = () => {
   };
 
   const handleGenerateRequest = (values: RequestFormValues) => {
-    // Validação customizada apenas no momento do submit
-    const coronaryAngiography = values.coronaryAngiography?.trim() || '';
-    const proposedTreatment = values.proposedTreatment?.trim() || '';
+    const isValid = validateForm({
+      values,
+      selectedProcedures,
+      surgicalTeam,
+    });
 
-    if (!coronaryAngiography) {
-      toast.error('Campo Coronariografia é obrigatório');
-      return;
-    }
-
-    if (!proposedTreatment) {
-      toast.error('Campo Tratamento Proposto é obrigatório');
-      return;
-    }
-
-    if (selectedProcedures.length === 0) {
-      toast.error('Selecione pelo menos um procedimento TUSS');
-      return;
-    }
-
-    if (!surgicalTeam.surgeon) {
-      toast.error('Selecione um cirurgião para a equipe cirúrgica');
+    if (!isValid) {
       return;
     }
 
@@ -156,136 +129,30 @@ export const ImprovedRequestGenerator: React.FC = () => {
           <form onSubmit={form.handleSubmit(handleGenerateRequest)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-6">
-                <Card>
-                  <CardContent className="pt-6">
-                    <h3 className="text-lg font-medium mb-4">Informações Básicas</h3>
-                    
-                    <div className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="patientId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Paciente</FormLabel>
-                            <FormControl>
-                              <PatientSelector 
-                                onPatientSelect={handlePatientSelect} 
-                                selectedValue={field.value}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                <BasicInformationForm
+                  form={form}
+                  requestNumber={requestNumber}
+                  setRequestNumber={setRequestNumber}
+                  onPatientSelect={handlePatientSelect}
+                  onInsuranceSelect={handleInsuranceSelect}
+                  selectedInsurance={selectedInsurance}
+                />
 
-                      <FormField
-                        control={form.control}
-                        name="insuranceId"
-                        render={() => (
-                          <FormItem>
-                            <FormLabel>Convênio</FormLabel>
-                            <FormControl>
-                              <InsuranceSelector 
-                                onInsuranceSelect={handleInsuranceSelect}
-                                selectedInsurance={selectedInsurance}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="space-y-2">
-                        <Label htmlFor="requestNumber">Número da Solicitação</Label>
-                        <Input
-                          id="requestNumber"
-                          value={requestNumber}
-                          onChange={(e) => setRequestNumber(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="pt-6">
-                    <h3 className="text-lg font-medium mb-4">Procedimentos TUSS</h3>
-                    <TussCodeList 
-                      selectedProcedures={selectedProcedures}
-                      onAdd={handleAddProcedure}
-                      onRemove={handleRemoveProcedure}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="pt-6">
-                    <h3 className="text-lg font-medium mb-4">Materiais</h3>
-                    <MaterialsList
-                      selectedMaterials={selectedMaterials}
-                      onAdd={handleAddMaterial}
-                      onRemove={handleRemoveMaterial}
-                      onUpdateQuantity={handleUpdateMaterialQuantity}
-                      selectedProcedures={selectedProcedures}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="pt-6">
-                    <h3 className="text-lg font-medium mb-4">Equipe Cirúrgica</h3>
-                    <SurgicalTeamSelector
-                      surgicalTeam={surgicalTeam}
-                      setSurgicalTeam={setSurgicalTeam}
-                    />
-                  </CardContent>
-                </Card>
+                <ProceduresAndMaterialsForm
+                  selectedProcedures={selectedProcedures}
+                  selectedMaterials={selectedMaterials}
+                  surgicalTeam={surgicalTeam}
+                  onAddProcedure={handleAddProcedure}
+                  onRemoveProcedure={handleRemoveProcedure}
+                  onAddMaterial={handleAddMaterial}
+                  onRemoveMaterial={handleRemoveMaterial}
+                  onUpdateMaterialQuantity={handleUpdateMaterialQuantity}
+                  setSurgicalTeam={setSurgicalTeam}
+                />
               </div>
 
               <div className="space-y-6">
-                <Card>
-                  <CardContent className="pt-6">
-                    <FormField
-                      control={form.control}
-                      name="coronaryAngiography"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Coronariografia</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Descreva os resultados da coronariografia"
-                              className="min-h-32"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="pt-6">
-                    <FormField
-                      control={form.control}
-                      name="proposedTreatment"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tratamento Proposto</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Descreva o tratamento proposto para o paciente"
-                              className="min-h-32"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
+                <ClinicalInformationForm form={form} />
 
                 <div className="flex justify-end">
                   <Button type="submit" className="w-full sm:w-auto">
