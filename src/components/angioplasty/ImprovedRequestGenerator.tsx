@@ -103,7 +103,7 @@ export const ImprovedRequestGenerator: React.FC = () => {
     toast.success('Solicitação gerada com sucesso!');
   };
 
-  // Use selectedClinic directly without transformation to preserve logo_url
+  // Use selectedClinic directly from context - it has all complete data
   const clinicForPDF: Clinic = selectedClinic || {
     id: '',
     name: 'Clínica não selecionada',

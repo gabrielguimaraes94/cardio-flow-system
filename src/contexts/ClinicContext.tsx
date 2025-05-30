@@ -107,6 +107,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             console.log('✅ Restaurando clínica válida do localStorage:', validClinic.name);
             console.log('🏥 Dados completos da clínica:', validClinic);
             console.log('🖼️ Logo URL da clínica:', validClinic.logo_url);
+            // Use os dados completos da clínica sem modificações
             handleSetSelectedClinic(validClinic);
           } else {
             console.log('❌ Clínica do localStorage inválida, selecionando primeira da lista');
@@ -159,6 +160,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     console.log('🏥 Dados completos da clínica sendo selecionada:', clinic);
     console.log('🖼️ Logo URL da clínica sendo selecionada:', clinic?.logo_url);
     
+    // Preserve TODOS os dados da clínica sem modificações
     setSelectedClinic(clinic);
     
     if (clinic) {
