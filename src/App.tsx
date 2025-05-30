@@ -24,6 +24,9 @@ import { CatheterizationReport } from "./pages/CatheterizationReport";
 import { CatheterizationTemplateEditor } from "./pages/CatheterizationTemplateEditor";
 import { CatheterizationReportList } from "./pages/CatheterizationReportList";
 import { Angioplasty } from "./pages/Angioplasty";
+import { AngioplastyCreate } from "./pages/AngioplastyCreate";
+import { AngioplastyList } from "./pages/AngioplastyList";
+import { AngioplastySearch } from "./pages/AngioplastySearch";
 import { Reports } from "./pages/Reports";
 import { Schedule } from "./pages/Schedule";
 import { InsuranceList } from "./pages/insurance/InsuranceList";
@@ -50,6 +53,9 @@ const routes = [
   { path: "/catheterization/list", element: <CatheterizationReportList /> },
   { path: "/catheterization/template-editor", element: <CatheterizationTemplateEditor /> },
   { path: "/angioplasty", element: <Angioplasty /> },
+  { path: "/angioplasty/create", element: <AngioplastyCreate /> },
+  { path: "/angioplasty/list", element: <AngioplastyList /> },
+  { path: "/angioplasty/search", element: <AngioplastySearch /> },
   { path: "/reports", element: <Reports /> },
   { path: "/schedule", element: <Schedule /> },
   { path: "/admin/dashboard", element: <AdminDashboard /> },
