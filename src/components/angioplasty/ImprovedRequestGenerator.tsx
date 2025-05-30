@@ -117,6 +117,10 @@ export const ImprovedRequestGenerator: React.FC = () => {
     email: '',
   };
 
+  // Debug log para verificar os dados da clínica
+  console.log('ImprovedRequestGenerator - selectedClinic:', selectedClinic);
+  console.log('ImprovedRequestGenerator - clinicForPDF:', clinicForPDF);
+
   return (
     <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
       <TabsList className="mb-6">

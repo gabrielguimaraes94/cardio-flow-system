@@ -7,6 +7,9 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ clinic }) => {
+  console.log('Header - clinic data:', clinic);
+  console.log('Header - logo_url:', clinic.logo_url);
+
   return (
     <div className="flex justify-between items-start mb-8">
       <div className="max-w-[70%]">
@@ -17,12 +20,21 @@ export const Header: React.FC<HeaderProps> = ({ clinic }) => {
         {clinic.email && <p className="text-sm">Email: {clinic.email}</p>}
       </div>
       {clinic.logo_url && (
-        <div className="w-24 h-24 flex items-center justify-center">
+        <div className="w-24 h-24 flex items-center justify-center border border-gray-200 rounded">
           <img 
             src={clinic.logo_url} 
             alt={`${clinic.name} Logo`} 
             className="max-w-full max-h-full object-contain"
+            onLoad={() => console.log('Logo carregado com sucesso:', clinic.logo_url)}
+            onError={(e) => {
+              console.error('Erro ao carregar logo:', clinic.logo_url, e);
+            }}
           />
+        </div>
+      )}
+      {!clinic.logo_url && (
+        <div className="w-24 h-24 flex items-center justify-center border border-gray-200 rounded bg-gray-50">
+          <span className="text-xs text-gray-400">Sem logo</span>
         </div>
       )}
     </div>
