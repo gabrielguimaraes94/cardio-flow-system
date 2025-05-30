@@ -9,9 +9,9 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ clinic }) => {
   console.log('=== HEADER PDF DEBUG ===');
   console.log('Header - dados completos da clínica:', clinic);
-  console.log('Header - logo_url:', clinic.logo_url);
+  console.log('Header - logo_url existe?:', !!clinic.logo_url);
+  console.log('Header - logo_url value:', clinic.logo_url);
   console.log('Header - clinic.name:', clinic.name);
-  console.log('Header - clinic.id:', clinic.id);
   console.log('=== FIM HEADER DEBUG ===');
 
   return (
@@ -30,11 +30,12 @@ export const Header: React.FC<HeaderProps> = ({ clinic }) => {
             alt={`${clinic.name} Logo`} 
             className="max-w-full max-h-full object-contain"
             onLoad={() => {
-              console.log('✅ Logo carregado com sucesso:', clinic.logo_url);
+              console.log('✅ Logo carregado com sucesso no Header PDF:', clinic.logo_url);
             }}
             onError={(e) => {
-              console.error('❌ Erro ao carregar logo:', clinic.logo_url);
-              console.error('Erro completo:', e);
+              console.error('❌ Erro ao carregar logo no Header PDF:', clinic.logo_url);
+              console.error('Erro detalhado:', e);
+              console.error('Event target:', e.target);
             }}
           />
         </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -103,11 +102,14 @@ export const ImprovedRequestGenerator: React.FC = () => {
     toast.success('Solicitação gerada com sucesso!');
   };
 
-  // Ensure we have a valid clinic for the PDF, providing default values for required fields
+  // Ensure we have a valid clinic for the PDF, using the same structure as ClinicManagement
   const clinicForPDF: Clinic = selectedClinic ? {
     ...selectedClinic,
+    // Ensure required fields have default values if missing
     address: selectedClinic.address || 'Endereço não informado',
     phone: selectedClinic.phone || 'Telefone não informado',
+    // Use logo_url directly from selectedClinic (same as ClinicManagement)
+    logo_url: selectedClinic.logo_url || undefined,
   } : {
     id: '',
     name: '',
@@ -117,13 +119,12 @@ export const ImprovedRequestGenerator: React.FC = () => {
     email: '',
   };
 
-  // Debug logs detalhados para rastrear os dados da clínica
+  // Debug logs para rastrear os dados da clínica
   console.log('=== ANGIOPLASTY GENERATOR DEBUG ===');
-  console.log('selectedClinic do contexto:', selectedClinic);
+  console.log('selectedClinic completa do contexto:', selectedClinic);
   console.log('selectedClinic?.logo_url:', selectedClinic?.logo_url);
-  console.log('clinicForPDF:', clinicForPDF);
-  console.log('clinicForPDF.logo_url:', clinicForPDF.logo_url);
-  console.log('currentTab:', currentTab);
+  console.log('clinicForPDF final:', clinicForPDF);
+  console.log('clinicForPDF.logo_url final:', clinicForPDF.logo_url);
   console.log('=== FIM DEBUG ===');
 
   return (
