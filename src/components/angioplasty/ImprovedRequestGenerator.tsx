@@ -33,8 +33,8 @@ import { Clinic } from '@/types/clinic';
 const requestFormSchema = z.object({
   patientId: z.string().min(1, { message: 'Selecione um paciente' }),
   insuranceId: z.string().min(1, { message: 'Selecione um convênio' }),
-  coronaryAngiography: z.string().min(10, { message: 'Descreva os resultados da coronariografia em pelo menos 10 caracteres' }),
-  proposedTreatment: z.string().min(10, { message: 'Descreva o tratamento proposto em pelo menos 10 caracteres' }),
+  coronaryAngiography: z.string().min(1, { message: 'Campo obrigatório' }),
+  proposedTreatment: z.string().min(1, { message: 'Campo obrigatório' }),
 });
 
 type RequestFormValues = z.infer<typeof requestFormSchema>;

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
@@ -158,7 +157,7 @@ Sugere-se angioplastia coronariana com implante de stent farmacológico.
               </CardContent>
               <CardFooter>
                 <Button variant="link" className="w-full justify-start p-0" asChild>
-                  <a href="/catheterization/templates">
+                  <a href="/catheterization/template-editor">
                     <FileText className="mr-2 h-4 w-4" />
                     Gerenciar Templates
                   </a>
@@ -325,6 +324,7 @@ Sugere-se angioplastia coronariana com implante de stent farmacológico.
                       className="min-h-[500px] font-mono"
                       value={reportText}
                       onChange={(e) => setReportText(e.target.value)}
+                      placeholder="Digite aqui o relatório de cateterismo..."
                     />
                   </TabsContent>
                 </Tabs>
