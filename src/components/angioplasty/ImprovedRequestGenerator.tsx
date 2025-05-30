@@ -117,9 +117,14 @@ export const ImprovedRequestGenerator: React.FC = () => {
     email: '',
   };
 
-  // Debug log para verificar os dados da clínica
-  console.log('ImprovedRequestGenerator - selectedClinic:', selectedClinic);
-  console.log('ImprovedRequestGenerator - clinicForPDF:', clinicForPDF);
+  // Debug logs detalhados para rastrear os dados da clínica
+  console.log('=== ANGIOPLASTY GENERATOR DEBUG ===');
+  console.log('selectedClinic do contexto:', selectedClinic);
+  console.log('selectedClinic?.logo_url:', selectedClinic?.logo_url);
+  console.log('clinicForPDF:', clinicForPDF);
+  console.log('clinicForPDF.logo_url:', clinicForPDF.logo_url);
+  console.log('currentTab:', currentTab);
+  console.log('=== FIM DEBUG ===');
 
   return (
     <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">

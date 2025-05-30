@@ -89,7 +89,9 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setLoading(true);
       setError(null);
       
+      console.log('🔄 Buscando clínicas do usuário...');
       const clinicsData = await clinicService.getUserClinics();
+      console.log('📋 Clínicas retornadas:', clinicsData);
       
       if (clinicsData && clinicsData.length > 0) {
         setClinics(clinicsData);
@@ -102,18 +104,26 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           const validClinic = validateStoredClinic(storedClinicId, clinicsData);
           
           if (validClinic) {
-            console.log('Restaurando clínica válida do localStorage:', validClinic.name);
+            console.log('✅ Restaurando clínica válida do localStorage:', validClinic.name);
+            console.log('🏥 Dados completos da clínica:', validClinic);
+            console.log('🖼️ Logo URL da clínica:', validClinic.logo_url);
             handleSetSelectedClinic(validClinic);
           } else {
-            console.log('Clínica do localStorage inválida, selecionando primeira da lista');
-            handleSetSelectedClinic(clinicsData[0]);
+            console.log('❌ Clínica do localStorage inválida, selecionando primeira da lista');
+            const firstClinic = clinicsData[0];
+            console.log('🏥 Primeira clínica selecionada:', firstClinic);
+            console.log('🖼️ Logo URL da primeira clínica:', firstClinic.logo_url);
+            handleSetSelectedClinic(firstClinic);
           }
         } else {
-          console.log('Nenhuma clínica no localStorage, selecionando primeira da lista');
-          handleSetSelectedClinic(clinicsData[0]);
+          console.log('⚠️ Nenhuma clínica no localStorage, selecionando primeira da lista');
+          const firstClinic = clinicsData[0];
+          console.log('🏥 Primeira clínica selecionada:', firstClinic);
+          console.log('🖼️ Logo URL da primeira clínica:', firstClinic.logo_url);
+          handleSetSelectedClinic(firstClinic);
         }
       } else {
-        console.log('Nenhuma clínica encontrada para o usuário');
+        console.log('❌ Nenhuma clínica encontrada para o usuário');
         setClinics([]);
         setSelectedClinic(null);
         safeLocalStorage.removeItem('selectedClinicId');
@@ -141,10 +151,14 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const handleSetSelectedClinic = (clinic: Clinic | null) => {
     // Evita loops desnecessários se a clínica já está selecionada
     if (selectedClinic?.id === clinic?.id) {
+      console.log('🔄 Clínica já selecionada, ignorando mudança');
       return;
     }
     
-    console.log('Alterando clínica selecionada para:', clinic?.name || 'nenhuma');
+    console.log('🔄 Alterando clínica selecionada para:', clinic?.name || 'nenhuma');
+    console.log('🏥 Dados completos da clínica sendo selecionada:', clinic);
+    console.log('🖼️ Logo URL da clínica sendo selecionada:', clinic?.logo_url);
+    
     setSelectedClinic(clinic);
     
     if (clinic) {
