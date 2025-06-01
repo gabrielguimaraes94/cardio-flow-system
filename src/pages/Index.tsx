@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { LoginForm } from "../components/auth/LoginForm";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,120 +11,77 @@ const Index = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { loading: clinicsLoading, userClinics } = useStaffClinic();
   const navigate = useNavigate();
-  const [redirectProcessed, setRedirectProcessed] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState("Verificando autenticação...");
 
   useEffect(() => {
-    let isMounted = true;
-    let timeoutId: NodeJS.Timeout;
-
-    const processRedirect = async () => {
-      // Se já processou redirecionamento, não faz nada
-      if (redirectProcessed) {
-        return;
-      }
-
-      // Aguarda auth e clinics carregarem
-      if (authLoading || clinicsLoading) {
-        return;
-      }
-
+    const handleRedirect = async () => {
+      // Se ainda está carregando auth, espera
+      if (authLoading) return;
+      
       // Se não há usuário, mostra login
-      if (!user) {
-        console.log("Index: No user found, showing login form");
-        setLoadingMessage("");
-        return;
-      }
+      if (!user) return;
 
-      // Marca que está processando para evitar múltiplas execuções
-      setRedirectProcessed(true);
-      console.log("Index: User authenticated, checking role before redirecting");
+      // Se ainda está carregando clínicas, espera
+      if (clinicsLoading) return;
+
+      console.log("Index: Processando redirecionamento para usuário autenticado");
 
       try {
-        setLoadingMessage("Verificando permissões...");
-        
-        // Verifica se é admin global com timeout mais agressivo
+        // Verifica se é admin global (com timeout rápido)
         const isAdmin = await Promise.race([
           isGlobalAdmin(user.id),
           new Promise<boolean>((_, reject) => 
-            setTimeout(() => reject(new Error('Admin check timeout')), 2000)
+            setTimeout(() => reject(new Error('Timeout')), 1500)
           )
         ]);
 
-        if (!isMounted) return;
-
         if (isAdmin) {
-          console.log("Index: User is global admin, redirecting to admin dashboard");
-          setLoadingMessage("Redirecionando para painel administrativo...");
+          console.log("Index: Redirecionando admin para dashboard administrativo");
           navigate('/admin/dashboard', { replace: true });
           return;
         }
-
-        // Se não é admin, verifica as clínicas
-        console.log("Index: User clinics count:", userClinics.length);
-        
-        if (userClinics.length === 0) {
-          console.log("Index: No clinics found, redirecting to no-access");
-          setLoadingMessage("Sem acesso a clínicas...");
-          navigate('/no-access', { replace: true });
-        } else {
-          console.log("Index: User has clinics, redirecting to dashboard");
-          setLoadingMessage("Redirecionando para dashboard...");
-          navigate('/dashboard', { replace: true });
-        }
-
       } catch (error) {
-        console.error("Index: Error during redirect process:", error);
-        
-        if (!isMounted) return;
-        
-        // Em caso de erro, usa fallback baseado nas clínicas carregadas
-        if (userClinics.length > 0) {
-          console.log("Index: Error occurred but user has clinics, redirecting to dashboard");
-          navigate('/dashboard', { replace: true });
-        } else {
-          console.log("Index: Error occurred and no clinics, redirecting to no-access");
-          navigate('/no-access', { replace: true });
-        }
+        console.log("Index: Erro ou timeout na verificação de admin, continuando como usuário normal");
+      }
+
+      // Para usuários normais, verifica clínicas
+      if (userClinics.length > 0) {
+        console.log("Index: Usuário tem clínicas, redirecionando para dashboard");
+        navigate('/dashboard', { replace: true });
+      } else {
+        console.log("Index: Usuário sem clínicas, redirecionando para no-access");
+        navigate('/no-access', { replace: true });
       }
     };
 
-    // Timeout mais curto para evitar travamentos
-    timeoutId = setTimeout(() => {
-      processRedirect();
-    }, 50);
+    handleRedirect();
+  }, [user, authLoading, clinicsLoading, userClinics, navigate]);
 
-    return () => {
-      isMounted = false;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [user, authLoading, clinicsLoading, userClinics, navigate, redirectProcessed]);
-
-  // Reseta o estado de redirecionamento se o usuário mudar
-  useEffect(() => {
-    setRedirectProcessed(false);
-  }, [user?.id]);
-
-  // Loading durante verificações iniciais ou processamento de redirecionamento
-  if (authLoading || clinicsLoading || (user && !redirectProcessed)) {
+  // Mostra loading apenas quando necessário
+  if (authLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-cardio-500 mb-4" />
-        <div className="text-cardio-500 text-xl">
-          {loadingMessage}
-        </div>
+        <div className="text-cardio-500 text-xl">Verificando autenticação...</div>
       </div>
     );
   }
 
-  // Se não há usuário e não está carregando, mostra login
+  // Se não há usuário, mostra login
   if (!user) {
     return <LoginForm />;
   }
 
-  // Estado temporário durante redirecionamento
+  // Mostra loading apenas durante carregamento de clínicas
+  if (clinicsLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-cardio-500 mb-4" />
+        <div className="text-cardio-500 text-xl">Carregando clínicas...</div>
+      </div>
+    );
+  }
+
+  // Loading final rápido durante redirecionamento
   return (
     <div className="flex flex-col items-center justify-center h-screen">
       <Loader2 className="h-8 w-8 animate-spin text-cardio-500 mb-4" />
