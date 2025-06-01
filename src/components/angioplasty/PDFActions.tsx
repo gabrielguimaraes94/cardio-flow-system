@@ -48,7 +48,7 @@ export const PDFActions: React.FC<PDFActionsProps> = ({ data, contentRef }) => {
 
     setIsSaving(true);
     try {
-      const requestData: Omit<AngioplastyRequest, 'id' | 'createdAt'> = {
+      const requestData: Omit<AngioplastyRequest, 'id' | 'createdAt' | 'status' | 'cancelledAt' | 'cancelledBy' | 'cancellationReason'> = {
         patientId: data.patient.id,
         patientName: data.patient.name,
         insuranceId: data.insurance.id,

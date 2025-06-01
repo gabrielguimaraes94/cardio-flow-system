@@ -6,25 +6,29 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Search, Filter, Plus, Loader2 } from 'lucide-react';
+import { Search, Filter, Plus, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { angioplastyService, AngioplastyRequest } from '@/services/angioplastyService';
+import { angioplastyService, AngioplastyRequest, AngioplastyStatus } from '@/services/angioplastyService';
 import { useToast } from '@/hooks/use-toast';
+import { AngioplastyRequestActions } from '@/components/angioplasty/AngioplastyRequestActions';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export const AngioplastyList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [angioplasties, setAngioplasties] = useState<AngioplastyRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<AngioplastyStatus | 'all'>('all');
   const { toast } = useToast();
 
   useEffect(() => {
     loadAngioplasties();
-  }, []);
+  }, [statusFilter]);
 
   const loadAngioplasties = async () => {
     try {
       setLoading(true);
-      const requests = await angioplastyService.getAllRequests();
+      const filterStatus = statusFilter === 'all' ? undefined : statusFilter;
+      const requests = await angioplastyService.getAllRequests(filterStatus);
       setAngioplasties(requests);
     } catch (error) {
       console.error('Erro ao carregar solicitações de angioplastia:', error);
@@ -44,24 +48,39 @@ export const AngioplastyList: React.FC = () => {
     item.insuranceName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusBadge = (status?: string) => {
-    // Como não temos status no banco ainda, vamos mostrar como "Criada" para todas
-    return <Badge className="bg-blue-100 text-blue-800">Criada</Badge>;
+  const getStatusBadge = (status: AngioplastyStatus) => {
+    if (status === 'active') {
+      return <Badge className="bg-green-100 text-green-800">Ativa</Badge>;
+    }
+    return <Badge className="bg-red-100 text-red-800">Cancelada</Badge>;
   };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  const getStatusFilterLabel = (status: AngioplastyStatus | 'all') => {
+    switch (status) {
+      case 'active':
+        return 'Ativas';
+      case 'cancelled':
+        return 'Canceladas';
+      default:
+        return 'Todas';
+    }
+  };
+
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-1">Lista de Solicitações</h1>
-            <p className="text-gray-500">Visualize e gerencie todas as solicitações de angioplastia</p>
+            <h1 className="text-2xl md:text-3xl font-bold mb-1">Lista de Solicitações</h1>
+            <p className="text-gray-500 text-sm md:text-base">
+              Visualize e gerencie todas as solicitações de angioplastia
+            </p>
           </div>
-          <Button asChild>
+          <Button asChild className="w-full sm:w-auto">
             <Link to="/angioplasty/create">
               <Plus className="mr-2 h-4 w-4" />
               Nova Solicitação
@@ -71,9 +90,9 @@ export const AngioplastyList: React.FC = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Solicitações de Angioplastia</CardTitle>
-            <div className="flex items-center space-x-2 mt-4">
-              <div className="relative flex-1">
+            <CardTitle className="text-lg md:text-xl">Solicitações de Angioplastia</CardTitle>
+            <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2 mt-4">
+              <div className="relative flex-1 w-full">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por paciente, número da solicitação ou convênio..."
@@ -82,58 +101,76 @@ export const AngioplastyList: React.FC = () => {
                   className="pl-8"
                 />
               </div>
-              <Button variant="outline" size="sm">
-                <Filter className="mr-2 h-4 w-4" />
-                Filtros
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                    <Filter className="mr-2 h-4 w-4" />
+                    {getStatusFilterLabel(statusFilter)}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-white">
+                  <DropdownMenuItem onClick={() => setStatusFilter('all')}>
+                    Todas
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter('active')}>
+                    Ativas
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter('cancelled')}>
+                    Canceladas
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0 sm:p-6">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin mr-2" />
                 <span>Carregando solicitações...</span>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Número da Solicitação</TableHead>
-                    <TableHead>Paciente</TableHead>
-                    <TableHead>Convênio</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAngioplasties.length === 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                        {angioplasties.length === 0 
-                          ? "Nenhuma solicitação encontrada. Crie sua primeira solicitação."
-                          : "Nenhuma solicitação corresponde aos critérios de busca."
-                        }
-                      </TableCell>
+                      <TableHead className="min-w-[140px]">Número da Solicitação</TableHead>
+                      <TableHead className="min-w-[120px]">Paciente</TableHead>
+                      <TableHead className="min-w-[120px]">Convênio</TableHead>
+                      <TableHead className="min-w-[100px]">Data</TableHead>
+                      <TableHead className="min-w-[90px]">Status</TableHead>
+                      <TableHead className="w-[60px]">Ações</TableHead>
                     </TableRow>
-                  ) : (
-                    filteredAngioplasties.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.requestNumber}</TableCell>
-                        <TableCell>{item.patientName}</TableCell>
-                        <TableCell>{item.insuranceName}</TableCell>
-                        <TableCell>{formatDate(item.createdAt)}</TableCell>
-                        <TableCell>{getStatusBadge()}</TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredAngioplasties.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                          {angioplasties.length === 0 
+                            ? "Nenhuma solicitação encontrada. Crie sua primeira solicitação."
+                            : "Nenhuma solicitação corresponde aos critérios de busca."
+                          }
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      filteredAngioplasties.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.requestNumber}</TableCell>
+                          <TableCell>{item.patientName}</TableCell>
+                          <TableCell>{item.insuranceName}</TableCell>
+                          <TableCell>{formatDate(item.createdAt)}</TableCell>
+                          <TableCell>{getStatusBadge(item.status)}</TableCell>
+                          <TableCell>
+                            <AngioplastyRequestActions 
+                              request={item} 
+                              onRequestUpdated={loadAngioplasties}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>

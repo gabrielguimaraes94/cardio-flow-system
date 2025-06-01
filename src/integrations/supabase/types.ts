@@ -280,6 +280,9 @@ export type Database = {
       }
       angioplasty_requests: {
         Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           clinic_id: string
           coronary_angiography: string
           created_at: string
@@ -292,10 +295,14 @@ export type Database = {
           patient_name: string
           proposed_treatment: string
           request_number: string
+          status: Database["public"]["Enums"]["angioplasty_status"]
           surgical_team: Json
           tuss_procedures: Json
         }
         Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           clinic_id: string
           coronary_angiography: string
           created_at?: string
@@ -308,10 +315,14 @@ export type Database = {
           patient_name: string
           proposed_treatment: string
           request_number: string
+          status?: Database["public"]["Enums"]["angioplasty_status"]
           surgical_team: Json
           tuss_procedures?: Json
         }
         Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           clinic_id?: string
           coronary_angiography?: string
           created_at?: string
@@ -324,6 +335,7 @@ export type Database = {
           patient_name?: string
           proposed_treatment?: string
           request_number?: string
+          status?: Database["public"]["Enums"]["angioplasty_status"]
           surgical_team?: Json
           tuss_procedures?: Json
         }
@@ -982,6 +994,7 @@ export type Database = {
       }
     }
     Enums: {
+      angioplasty_status: "active" | "cancelled"
       user_role:
         | "admin"
         | "doctor"
@@ -1104,6 +1117,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      angioplasty_status: ["active", "cancelled"],
       user_role: [
         "admin",
         "doctor",

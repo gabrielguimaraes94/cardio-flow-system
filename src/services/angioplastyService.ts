@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 import { Json } from '@/integrations/supabase/types';
@@ -37,6 +38,8 @@ export interface SurgicalTeam {
   anesthesiologist: Doctor | null;
 }
 
+export type AngioplastyStatus = 'active' | 'cancelled';
+
 export interface AngioplastyRequest {
   id: string;
   patientId: string;
@@ -50,8 +53,12 @@ export interface AngioplastyRequest {
   tussProcedures: TussCode[];
   materials: MaterialWithQuantity[];
   surgicalTeam: SurgicalTeam;
+  status: AngioplastyStatus;
   createdAt: string;
   createdBy: string;
+  cancelledAt?: string;
+  cancelledBy?: string;
+  cancellationReason?: string;
 }
 
 // Interface para representar os dados exatos enviados ao Supabase
@@ -71,7 +78,7 @@ interface AngioplastyRequestInsert {
 }
 
 export const angioplastyService = {
-  async saveRequest(data: Omit<AngioplastyRequest, 'id' | 'createdAt'>): Promise<{ id: string } | null> {
+  async saveRequest(data: Omit<AngioplastyRequest, 'id' | 'createdAt' | 'status' | 'cancelledAt' | 'cancelledBy' | 'cancellationReason'>): Promise<{ id: string } | null> {
     try {
       console.log('🔍 Dados recebidos para salvamento:', data);
       
@@ -137,12 +144,18 @@ export const angioplastyService = {
     }
   },
 
-  async getAllRequests(): Promise<AngioplastyRequest[]> {
+  async getAllRequests(statusFilter?: AngioplastyStatus): Promise<AngioplastyRequest[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('angioplasty_requests')
         .select('*')
         .order('created_at', { ascending: false });
+      
+      if (statusFilter) {
+        query = query.eq('status', statusFilter);
+      }
+      
+      const { data, error } = await query;
       
       if (error) {
         console.error('Supabase error fetching all requests:', error);
@@ -163,12 +176,40 @@ export const angioplastyService = {
         tussProcedures: (item.tuss_procedures as unknown) as TussCode[],
         materials: (item.materials as unknown) as MaterialWithQuantity[],
         surgicalTeam: (item.surgical_team as unknown) as SurgicalTeam,
+        status: item.status as AngioplastyStatus,
         createdAt: item.created_at,
-        createdBy: item.created_by
+        createdBy: item.created_by,
+        cancelledAt: item.cancelled_at,
+        cancelledBy: item.cancelled_by,
+        cancellationReason: item.cancellation_reason
       })) : [];
     } catch (error) {
       console.error('Error fetching all angioplasty requests:', error);
       return [];
+    }
+  },
+
+  async cancelRequest(requestId: string, cancelledBy: string, reason?: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('angioplasty_requests')
+        .update({
+          status: 'cancelled' as AngioplastyStatus,
+          cancelled_at: new Date().toISOString(),
+          cancelled_by: cancelledBy,
+          cancellation_reason: reason || 'Solicitação cancelada'
+        })
+        .eq('id', requestId);
+      
+      if (error) {
+        console.error('Erro ao cancelar solicitação:', error);
+        throw error;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error cancelling angioplasty request:', error);
+      return false;
     }
   },
 
@@ -199,8 +240,12 @@ export const angioplastyService = {
         tussProcedures: (item.tuss_procedures as unknown) as TussCode[],
         materials: (item.materials as unknown) as MaterialWithQuantity[],
         surgicalTeam: (item.surgical_team as unknown) as SurgicalTeam,
+        status: item.status as AngioplastyStatus,
         createdAt: item.created_at,
-        createdBy: item.created_by
+        createdBy: item.created_by,
+        cancelledAt: item.cancelled_at,
+        cancelledBy: item.cancelled_by,
+        cancellationReason: item.cancellation_reason
       })) : [];
     } catch (error) {
       console.error('Error fetching angioplasty requests:', error);
