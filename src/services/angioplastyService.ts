@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 import { Json } from '@/integrations/supabase/types';
@@ -82,6 +83,21 @@ export const angioplastyService = {
         throw new Error('ID do convênio inválido');
       }
       
+      // Verificar se o convênio existe no banco de dados
+      const { data: insuranceExists, error: insuranceError } = await supabase
+        .from('insurance_companies')
+        .select('id, company_name')
+        .eq('id', data.insuranceId)
+        .single();
+        
+      if (insuranceError || !insuranceExists) {
+        console.error('❌ Convênio não encontrado no banco de dados:', data.insuranceId);
+        console.error('❌ Erro ao buscar convênio:', insuranceError);
+        throw new Error('Convênio não encontrado');
+      }
+      
+      console.log('✅ Convênio encontrado:', insuranceExists);
+      
       // Converter para o formato esperado pelo Supabase
       const insertData: AngioplastyRequestInsert = {
         patient_id: data.patientId,
@@ -108,6 +124,8 @@ export const angioplastyService = {
       
       if (error) {
         console.error('❌ Erro do Supabase ao salvar solicitação:', error);
+        console.error('❌ Código do erro:', error.code);
+        console.error('❌ Mensagem do erro:', error.message);
         console.error('❌ Detalhes do erro:', error.details);
         throw error;
       }

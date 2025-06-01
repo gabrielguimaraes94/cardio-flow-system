@@ -86,6 +86,10 @@ export const PDFActions: React.FC<PDFActionsProps> = ({ data, contentRef }) => {
           errorMessage = "Erro de validação: ID do convênio inválido. Tente selecionar o convênio novamente.";
         } else if (error.message.includes('ID do convênio inválido')) {
           errorMessage = "ID do convênio inválido. Tente selecionar o convênio novamente.";
+        } else if (error.message.includes('Convênio não encontrado')) {
+          errorMessage = "Convênio selecionado não foi encontrado. Tente selecionar outro convênio.";
+        } else if (error.message.includes('foreign key constraint')) {
+          errorMessage = "Erro de referência: dados do convênio ou paciente não encontrados. Verifique os dados selecionados.";
         }
       }
       
