@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 import { Json } from '@/integrations/supabase/types';
@@ -135,6 +134,41 @@ export const angioplastyService = {
     } catch (error) {
       console.error('❌ Erro geral ao salvar solicitação de angioplastia:', error);
       return null;
+    }
+  },
+
+  async getAllRequests(): Promise<AngioplastyRequest[]> {
+    try {
+      const { data, error } = await supabase
+        .from('angioplasty_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Supabase error fetching all requests:', error);
+        throw error;
+      }
+      
+      // Converter de snake_case para camelCase e fazer os casts de tipo adequados
+      return data ? data.map(item => ({
+        id: item.id,
+        patientId: item.patient_id,
+        patientName: item.patient_name,
+        insuranceId: item.insurance_id,
+        insuranceName: item.insurance_name,
+        clinicId: item.clinic_id,
+        requestNumber: item.request_number,
+        coronaryAngiography: item.coronary_angiography,
+        proposedTreatment: item.proposed_treatment,
+        tussProcedures: (item.tuss_procedures as unknown) as TussCode[],
+        materials: (item.materials as unknown) as MaterialWithQuantity[],
+        surgicalTeam: (item.surgical_team as unknown) as SurgicalTeam,
+        createdAt: item.created_at,
+        createdBy: item.created_by
+      })) : [];
+    } catch (error) {
+      console.error('Error fetching all angioplasty requests:', error);
+      return [];
     }
   },
 
