@@ -7,6 +7,7 @@ import { MoreHorizontal, Eye, X } from 'lucide-react';
 import { AngioplastyRequest, angioplastyService } from '@/services/angioplastyService';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface AngioplastyRequestActionsProps {
   request: AngioplastyRequest;
@@ -21,6 +22,7 @@ export const AngioplastyRequestActions: React.FC<AngioplastyRequestActionsProps>
   const [isCancelling, setIsCancelling] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const handleCancel = async () => {
     if (!user) {
@@ -63,11 +65,7 @@ export const AngioplastyRequestActions: React.FC<AngioplastyRequestActionsProps>
   };
 
   const handleView = () => {
-    // Por enquanto, apenas mostra uma mensagem. Futuramente pode navegar para uma página de detalhes
-    toast({
-      title: "Visualizar solicitação",
-      description: `Visualizando solicitação ${request.requestNumber}`,
-    });
+    navigate(`/angioplasty/view/${request.id}`);
   };
 
   return (
