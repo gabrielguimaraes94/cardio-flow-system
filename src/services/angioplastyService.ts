@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 import { Json } from '@/integrations/supabase/types';
@@ -74,6 +73,15 @@ interface AngioplastyRequestInsert {
 export const angioplastyService = {
   async saveRequest(data: Omit<AngioplastyRequest, 'id' | 'createdAt'>): Promise<{ id: string } | null> {
     try {
+      console.log('🔍 Dados recebidos para salvamento:', data);
+      
+      // Validar se insurance_id é um UUID válido
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(data.insuranceId)) {
+        console.error('❌ insurance_id não é um UUID válido:', data.insuranceId);
+        throw new Error('ID do convênio inválido');
+      }
+      
       // Converter para o formato esperado pelo Supabase
       const insertData: AngioplastyRequestInsert = {
         patient_id: data.patientId,
@@ -90,6 +98,8 @@ export const angioplastyService = {
         created_by: data.createdBy
       };
       
+      console.log('📤 Dados preparados para inserção:', insertData);
+      
       const { data: result, error } = await supabase
         .from('angioplasty_requests')
         .insert(insertData)
@@ -97,13 +107,15 @@ export const angioplastyService = {
         .single();
       
       if (error) {
-        console.error('Supabase error saving request:', error);
+        console.error('❌ Erro do Supabase ao salvar solicitação:', error);
+        console.error('❌ Detalhes do erro:', error.details);
         throw error;
       }
       
+      console.log('✅ Solicitação salva com sucesso:', result);
       return result;
     } catch (error) {
-      console.error('Error saving angioplasty request:', error);
+      console.error('❌ Erro geral ao salvar solicitação de angioplastia:', error);
       return null;
     }
   },

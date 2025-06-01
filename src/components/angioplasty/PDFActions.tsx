@@ -41,6 +41,11 @@ export const PDFActions: React.FC<PDFActionsProps> = ({ data, contentRef }) => {
       return;
     }
 
+    console.log('🚀 Iniciando salvamento da solicitação...');
+    console.log('📋 Dados do paciente:', data.patient);
+    console.log('🏥 Dados do convênio:', data.insurance);
+    console.log('🏢 Dados da clínica:', data.clinic);
+
     setIsSaving(true);
     try {
       const requestData: Omit<AngioplastyRequest, 'id' | 'createdAt'> = {
@@ -58,9 +63,12 @@ export const PDFActions: React.FC<PDFActionsProps> = ({ data, contentRef }) => {
         createdBy: user.id
       };
 
+      console.log('📦 Dados preparados para salvamento:', requestData);
+
       const result = await angioplastyService.saveRequest(requestData);
 
       if (result) {
+        console.log('✅ Solicitação salva com sucesso!');
         toast({
           title: "Solicitação salva",
           description: "A solicitação foi salva com sucesso no histórico do paciente."
@@ -69,10 +77,21 @@ export const PDFActions: React.FC<PDFActionsProps> = ({ data, contentRef }) => {
         throw new Error("Falha ao salvar solicitação");
       }
     } catch (error) {
-      console.error('Error saving request:', error);
+      console.error('❌ Erro detalhado ao salvar:', error);
+      
+      let errorMessage = "Não foi possível salvar a solicitação. Por favor, tente novamente.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('UUID') || error.message.includes('uuid')) {
+          errorMessage = "Erro de validação: ID do convênio inválido. Tente selecionar o convênio novamente.";
+        } else if (error.message.includes('ID do convênio inválido')) {
+          errorMessage = "ID do convênio inválido. Tente selecionar o convênio novamente.";
+        }
+      }
+      
       toast({
         title: "Erro ao salvar",
-        description: "Não foi possível salvar a solicitação. Por favor, tente novamente.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
