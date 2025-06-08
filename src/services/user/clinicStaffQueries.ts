@@ -1,12 +1,15 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { fetchProfilesByIds } from './profileService';
+import { fetchProfilesByIds, fetchAllProfilesByIds, debugCurrentUser } from './profileService';
 
 // Buscar todos os funcionários de uma clínica
 export const fetchClinicStaff = async (clinicId: string) => {
   try {
     console.log('=== FETCHCLINICSTAFF ===');
     console.log('Buscando funcionários para clínica:', clinicId);
+    
+    // Debug inicial do usuário
+    await debugCurrentUser();
     
     // 1. Buscar todos os registros de clinic_staff da clínica
     const { data: staffData, error: staffError } = await supabase
@@ -22,18 +25,29 @@ export const fetchClinicStaff = async (clinicId: string) => {
     }
     
     console.log('Registros de clinic_staff encontrados:', staffData?.length || 0);
+    console.log('Dados dos registros de staff:', staffData);
     
     if (!staffData || staffData.length === 0) {
       console.log('Nenhum funcionário encontrado para a clínica:', clinicId);
       return [];
     }
     
-    // 2. Buscar os dados dos usuários usando a função específica
+    // 2. Buscar os dados dos usuários usando diferentes métodos
     const userIds = staffData.map(staff => staff.user_id);
     console.log('IDs dos usuários para buscar profiles:', userIds);
     
-    const profilesData = await fetchProfilesByIds(userIds);
-    console.log('Profiles retornados pela função específica:', profilesData.length);
+    // Tentar primeiro a busca em lote
+    console.log('Tentando busca em lote...');
+    let profilesData = await fetchAllProfilesByIds(userIds);
+    
+    // Se não funcionou, tentar busca individual
+    if (profilesData.length === 0 && userIds.length > 0) {
+      console.log('Busca em lote falhou, tentando busca individual...');
+      profilesData = await fetchProfilesByIds(userIds);
+    }
+    
+    console.log('Profiles retornados:', profilesData.length);
+    console.log('Dados dos profiles:', profilesData);
     
     // 3. Combinar os dados
     const combinedData = staffData.map((staffRecord) => {
@@ -41,6 +55,9 @@ export const fetchClinicStaff = async (clinicId: string) => {
       
       if (!profile) {
         console.warn('Profile não encontrado para user_id:', staffRecord.user_id);
+        console.warn('Dados do staff record:', staffRecord);
+        console.warn('Profiles disponíveis:', profilesData.map(p => p.id));
+        
         return {
           id: staffRecord.id,
           user: {
@@ -58,6 +75,12 @@ export const fetchClinicStaff = async (clinicId: string) => {
           isAdmin: staffRecord.is_admin
         };
       }
+      
+      console.log('Combinando dados:', {
+        staffRecord: staffRecord.id,
+        profile: profile.id,
+        userMatch: staffRecord.user_id === profile.id
+      });
       
       return {
         id: staffRecord.id,
@@ -78,7 +101,7 @@ export const fetchClinicStaff = async (clinicId: string) => {
     });
     
     console.log('Funcionários válidos processados:', combinedData.length);
-    console.log('Dados finais:', combinedData);
+    console.log('Dados finais combinados:', combinedData);
     
     return combinedData;
     
