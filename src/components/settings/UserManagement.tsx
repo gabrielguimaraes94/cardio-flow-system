@@ -42,7 +42,7 @@ export const UserManagement = () => {
       return;
     }
 
-    console.log('=== USEEFFECT LOADSTAFF ===');
+    console.log('=== CARREGANDO TODOS OS FUNCIONÁRIOS DA CLÍNICA ===');
     console.log('selectedClinic mudou:', selectedClinic.id);
 
     setIsLoading(true);
@@ -51,7 +51,8 @@ export const UserManagement = () => {
       console.log('Clínica selecionada:', selectedClinic.id);
       
       const staffData = await fetchClinicStaff(selectedClinic.id);
-      console.log('Staff carregado:', staffData);
+      console.log('Staff carregado da API:', staffData);
+      console.log('Quantidade de funcionários encontrados:', staffData.length);
       setStaff(staffData);
     } catch (error) {
       console.error('Erro ao carregar funcionários:', error);

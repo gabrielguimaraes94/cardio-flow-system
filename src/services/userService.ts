@@ -169,13 +169,13 @@ export const removeClinicStaff = async (staffId: string, adminUserId: string): P
   }
 };
 
-// Buscar todos os funcionários de uma clínica - VERSÃO CORRIGIDA
+// Buscar todos os funcionários de uma clínica - VERSÃO CORRIGIDA PARA TRAZER TODOS OS FUNCIONÁRIOS
 export const fetchClinicStaff = async (clinicId: string) => {
   try {
     console.log('=== FETCHCLINICSTAFF ===');
     console.log('Buscando funcionários para clínica:', clinicId);
     
-    // Buscar todos os funcionários ativos da clínica com join otimizado
+    // Buscar TODOS os funcionários ativos da clínica, não apenas o usuário logado
     const { data: staffData, error: staffError } = await supabase
       .from('clinic_staff')
       .select(`
