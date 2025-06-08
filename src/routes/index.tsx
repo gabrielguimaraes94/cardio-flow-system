@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { GuestRoute } from './GuestRoute';
@@ -26,6 +27,10 @@ import Reports from '@/pages/Reports';
 import Schedule from '@/pages/Schedule';
 import Settings from '@/pages/Settings';
 import AngioplastySearch from '@/pages/AngioplastySearch';
+
+// Insurance Routes
+import { InsuranceList } from '@/pages/insurance/InsuranceList';
+import { InsuranceForm } from '@/pages/insurance/InsuranceForm';
 
 // Admin Routes
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
@@ -105,6 +110,32 @@ export const AppRoutes: React.FC = () => {
         element={
           <PrivateRoute>
             <AngioplastySearch />
+          </PrivateRoute>
+        } 
+      />
+
+      {/* Insurance Routes */}
+      <Route 
+        path="/insurance" 
+        element={
+          <PrivateRoute>
+            <InsuranceList />
+          </PrivateRoute>
+        } 
+      />
+      <Route 
+        path="/insurance/new" 
+        element={
+          <PrivateRoute>
+            <InsuranceForm />
+          </PrivateRoute>
+        } 
+      />
+      <Route 
+        path="/insurance/:id" 
+        element={
+          <PrivateRoute>
+            <InsuranceForm />
           </PrivateRoute>
         } 
       />
