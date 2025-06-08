@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile } from '@/types/profile';
 
@@ -159,33 +160,64 @@ export const removeClinicStaff = async (staffId: string, adminUserId: string): P
   }
 };
 
-// Buscar todos os funcionários de uma clínica
+// Buscar todos os funcionários de uma clínica - VERSÃO CORRIGIDA
 export const fetchClinicStaff = async (clinicId: string) => {
   try {
+    console.log('=== FETCHCLINICSTAFF ===');
+    console.log('Buscando funcionários para clínica:', clinicId);
+    
     const { data: staffData, error: staffError } = await supabase
       .from('clinic_staff')
-      .select('*, profiles:user_id(*)')
+      .select(`
+        id,
+        user_id,
+        clinic_id,
+        role,
+        is_admin,
+        active,
+        created_at,
+        updated_at,
+        profiles:user_id(*)
+      `)
       .eq('clinic_id', clinicId)
       .eq('active', true);
     
-    if (staffError) throw staffError;
+    if (staffError) {
+      console.error('Erro ao buscar staff:', staffError);
+      throw staffError;
+    }
     
-    return staffData.map((staff: any) => ({
-      id: staff.id,
-      user: {
-        id: staff.profiles.id,
-        firstName: staff.profiles.first_name,
-        lastName: staff.profiles.last_name,
-        email: staff.profiles.email,
-        phone: staff.profiles.phone,
-        crm: staff.profiles.crm,
-        title: staff.profiles.title || '',
-        bio: staff.profiles.bio || '',
-        role: staff.profiles.role
-      },
-      role: staff.role,
-      isAdmin: staff.is_admin
-    }));
+    console.log('Dados brutos do staff:', staffData);
+    
+    // Filtrar registros onde profiles é null e mapear os válidos
+    const validStaff = staffData
+      .filter((staff: any) => {
+        const hasProfile = staff.profiles !== null;
+        if (!hasProfile) {
+          console.warn(`⚠️ Staff ${staff.id} tem profiles null - usuário pode ter sido deletado`);
+        }
+        return hasProfile;
+      })
+      .map((staff: any) => ({
+        id: staff.id,
+        user: {
+          id: staff.profiles.id,
+          firstName: staff.profiles.first_name || '',
+          lastName: staff.profiles.last_name || '',
+          email: staff.profiles.email || '',
+          phone: staff.profiles.phone || null,
+          crm: staff.profiles.crm || '',
+          title: staff.profiles.title || '',
+          bio: staff.profiles.bio || '',
+          role: staff.profiles.role || 'staff'
+        },
+        role: staff.role,
+        isAdmin: staff.is_admin
+      }));
+    
+    console.log('Staff processado:', validStaff);
+    return validStaff;
+    
   } catch (error) {
     console.error('Error fetching clinic staff:', error);
     throw error;

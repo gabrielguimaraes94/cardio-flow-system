@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Pencil, Trash, Loader2, UserCheck, UserPlus, UserSearch, AlertTriangle, Mail, Phone, User, Briefcase } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -103,39 +103,50 @@ export const UserManagement = () => {
     },
   });
 
-  // Buscar funcionários da clínica selecionada
-  useEffect(() => {
-    const loadStaff = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        if (!selectedClinic?.id) {
-          setStaffMembers([]);
-          setIsLoading(false);
-          return;
-        }
-        
-        console.log('Loading staff for clinic:', selectedClinic?.id);
-        
-        const staffData = await fetchClinicStaff(selectedClinic.id);
-        setStaffMembers(staffData);
-        
-      } catch (error) {
-        console.error('Failed to load staff:', error);
-        setError('Falha ao carregar funcionários');
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar os funcionários.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Função otimizada para buscar funcionários - usando useCallback para evitar re-criações
+  const loadStaff = useCallback(async () => {
+    if (!selectedClinic?.id) {
+      console.log('Nenhuma clínica selecionada');
+      setStaffMembers([]);
+      setIsLoading(false);
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      console.log('=== CARREGANDO STAFF ===');
+      console.log('Clínica selecionada:', selectedClinic?.id);
+      
+      const staffData = await fetchClinicStaff(selectedClinic.id);
+      
+      console.log('Staff carregado:', staffData);
+      setStaffMembers(staffData);
+      
+    } catch (error) {
+      console.error('=== ERRO AO CARREGAR STAFF ===');
+      console.error('Erro:', error);
+      
+      setError('Falha ao carregar funcionários');
+      
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os funcionários. Verifique o console para mais detalhes.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedClinic?.id, toast]);
 
+  // Buscar funcionários da clínica selecionada - usando useCallback otimizado
+  useEffect(() => {
+    console.log('=== USEEFFECT LOADSTAFF ===');
+    console.log('selectedClinic mudou:', selectedClinic?.id);
+    
     loadStaff();
-  }, [selectedClinic, toast]);
+  }, [loadStaff]);
 
   // Listen for clinic change events
   useEffect(() => {
@@ -287,9 +298,8 @@ export const UserManagement = () => {
     try {
       await addClinicStaff(selectedClinic.id, searchResult.id, values.role, values.isAdmin);
       
-      // Reload staff list
-      const staffData = await fetchClinicStaff(selectedClinic.id);
-      setStaffMembers(staffData);
+      // Reload staff list usando a função otimizada
+      await loadStaff();
       
       toast({
         title: "Sucesso",
@@ -413,9 +423,8 @@ export const UserManagement = () => {
       // Associate with the clinic
       await addClinicStaff(selectedClinic.id, authData.user.id, values.role, values.isAdmin);
       
-      // Reload staff list
-      const staffData = await fetchClinicStaff(selectedClinic.id);
-      setStaffMembers(staffData);
+      // Reload staff list usando a função otimizada
+      await loadStaff();
       
       toast({
         title: "Sucesso",
