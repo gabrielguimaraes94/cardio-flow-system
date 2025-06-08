@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { UserProfile } from '@/types/profile';
@@ -10,7 +11,7 @@ type AdminData = {
   password: string;
   phone: string | null;
   role: 'clinic_admin';
-  crm?: string; // Make crm optional
+  crm?: string;
 };
 
 type ClinicData = {
@@ -19,16 +20,14 @@ type ClinicData = {
   address: string;
   phone: string;
   email: string;
-  tradingName?: string; // New field for trading name
-  cnpj?: string; // New field for CNPJ
+  tradingName?: string;
+  cnpj?: string;
 };
 
-// Interface para o retorno da função create_clinic
 interface CreateClinicResponse {
   id: string;
 }
 
-// Parâmetros para a função create_clinic
 type CreateClinicParams = {
   p_name: string;
   p_city: string;
@@ -36,11 +35,10 @@ type CreateClinicParams = {
   p_phone: string;
   p_email: string;
   p_created_by: string;
-  p_trading_name?: string; // New field for trading name
-  p_cnpj?: string; // New field for CNPJ
+  p_trading_name?: string;
+  p_cnpj?: string;
 }
 
-// Parâmetros para a função add_clinic_staff
 type AddClinicStaffParams = {
   p_user_id: string;
   p_clinic_id: string;
@@ -48,7 +46,6 @@ type AddClinicStaffParams = {
   p_role: string;
 }
 
-// Interfaces para retorno dos dados de todas as clínicas e usuários
 export interface AdminClinic {
   id: string;
   name: string;
@@ -77,7 +74,6 @@ export const getAllClinics = async (
       .from('clinics')
       .select('*');
     
-    // Aplicar filtros se fornecidos
     if (filters) {
       if (filters.active !== undefined) {
         query = query.eq('active', filters.active);
@@ -111,7 +107,6 @@ export const getAllClinics = async (
   }
 };
 
-// Obter todos os usuários para o painel de administração
 export const getAllUsers = async (
   filters?: { role?: Database['public']['Enums']['user_role']; createdAfter?: string; createdBefore?: string; name?: string }
 ): Promise<AdminUser[]> => {
@@ -120,7 +115,6 @@ export const getAllUsers = async (
       .from('profiles')
       .select('*');
     
-    // Aplicar filtros se fornecidos
     if (filters) {
       if (filters.role) {
         query = query.eq('role', filters.role);
@@ -162,7 +156,6 @@ export const getAllUsers = async (
   }
 };
 
-// Verifica se um usuário é administrador global
 export const isGlobalAdmin = async (userId: string): Promise<boolean> => {
   try {
     console.log('Verificando se usuário é admin global:', userId);
@@ -178,7 +171,6 @@ export const isGlobalAdmin = async (userId: string): Promise<boolean> => {
       throw error;
     }
     
-    // O usuário é um administrador global se tiver a role 'admin'
     const isAdmin = data?.role === 'admin';
     console.log('Usuário é admin global?', isAdmin, 'Role:', data?.role);
     
@@ -189,7 +181,6 @@ export const isGlobalAdmin = async (userId: string): Promise<boolean> => {
   }
 };
 
-// Verifica se um usuário é administrador de uma clínica específica
 export const isClinicAdmin = async (userId: string, clinicId: string): Promise<boolean> => {
   try {
     const { data, error } = await supabase
@@ -216,7 +207,6 @@ export const registerClinic = async ({
   clinic: ClinicData;
 }): Promise<void> => {
   try {
-    // 1. Primeiro verificamos se o usuário já existe para evitar o erro de limite de taxa
     const { data: existingUser } = await supabase
       .from('profiles')
       .select('id, email')
@@ -226,11 +216,9 @@ export const registerClinic = async ({
     let userId: string;
     
     if (existingUser) {
-      // Se o usuário já existe, usamos seu ID
       console.log('Usuário já existe, usando ID existente:', existingUser.id);
       userId = existingUser.id;
     } else {
-      // Caso contrário, criamos um novo usuário
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: admin.email,
         password: admin.password,
@@ -238,13 +226,12 @@ export const registerClinic = async ({
           data: {
             first_name: admin.firstName,
             last_name: admin.lastName,
-            crm: admin.crm || '', // Use crm if provided or empty string
+            crm: admin.crm || '',
           },
         },
       });
 
       if (authError) {
-        // Se o erro for de limite de taxa, exibimos uma mensagem mais amigável
         if (authError.status === 429) {
           throw new Error('Limite de cadastros excedido. Por favor, aguarde alguns segundos antes de tentar novamente.');
         }
@@ -254,25 +241,22 @@ export const registerClinic = async ({
       if (!authData.user) throw new Error('Falha ao criar usuário');
       userId = authData.user.id;
       
-      // Aguardamos um momento para garantir que o perfil foi criado pelo trigger
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    // 2. Atualizar o perfil do usuário com os dados adicionais
     const { error: profileError } = await supabase
       .from('profiles')
       .update({
         first_name: admin.firstName,
         last_name: admin.lastName,
-        crm: admin.crm || '', // Use crm if provided or empty string
+        crm: admin.crm || '',
         phone: admin.phone,
-        role: admin.role // Ensure admin.role is 'clinic_admin'
+        role: admin.role
       })
       .eq('id', userId);
 
     if (profileError) throw profileError;
 
-    // 3. Criar a clínica usando RPC com os novos campos
     const { data: clinicData, error: clinicError } = await supabase
       .rpc('create_clinic', { 
         p_name: clinic.name,
@@ -281,8 +265,8 @@ export const registerClinic = async ({
         p_phone: clinic.phone,
         p_email: clinic.email,
         p_created_by: userId,
-        p_trading_name: clinic.tradingName, // Pass the trading name
-        p_cnpj: clinic.cnpj // Pass the CNPJ
+        p_trading_name: clinic.tradingName,
+        p_cnpj: clinic.cnpj
       });
 
     if (clinicError) {
@@ -290,15 +274,12 @@ export const registerClinic = async ({
       throw clinicError;
     }
 
-    // Vamos verificar se a clínica foi realmente criada
     if (!clinicData) {
       throw new Error('A clínica não foi criada. Verifique se a função RPC está configurada corretamente.');
     }
 
-    // Fix the type issue by properly handling the JSON response
     let clinicId: string;
     
-    // Check if clinicData is an object with an id property
     if (
       typeof clinicData === 'object' && 
       clinicData !== null && 
@@ -312,7 +293,6 @@ export const registerClinic = async ({
 
     console.log('Clínica criada com ID:', clinicId);
 
-    // 4. Associar o usuário à clínica como administrador
     const { error: staffError } = await supabase
       .rpc('add_clinic_staff', {
         p_user_id: userId,
@@ -333,7 +313,6 @@ export const registerClinic = async ({
   }
 };
 
-// Atualizar o status de uma clínica (ativar/desativar)
 export const updateClinicStatus = async (clinicId: string, active: boolean): Promise<void> => {
   try {
     const { error } = await supabase
@@ -348,17 +327,115 @@ export const updateClinicStatus = async (clinicId: string, active: boolean): Pro
   }
 };
 
-// Excluir uma clínica
+// Função para deletar clínica completamente (com cascata)
 export const deleteClinic = async (clinicId: string): Promise<void> => {
   try {
-    const { error } = await supabase
+    console.log('Iniciando exclusão completa da clínica:', clinicId);
+    
+    // 1. Primeiro deletar todos os staff da clínica
+    const { error: staffError } = await supabase
+      .from('clinic_staff')
+      .delete()
+      .eq('clinic_id', clinicId);
+    
+    if (staffError) {
+      console.error('Erro ao deletar staff da clínica:', staffError);
+      throw staffError;
+    }
+    
+    // 2. Deletar pacientes da clínica
+    const { error: patientsError } = await supabase
+      .from('patients')
+      .delete()
+      .eq('clinic_id', clinicId);
+    
+    if (patientsError) {
+      console.error('Erro ao deletar pacientes da clínica:', patientsError);
+      throw patientsError;
+    }
+    
+    // 3. Deletar solicitações de angioplastia da clínica
+    const { error: angioplastyError } = await supabase
+      .from('angioplasty_requests')
+      .delete()
+      .eq('clinic_id', clinicId);
+    
+    if (angioplastyError) {
+      console.error('Erro ao deletar solicitações de angioplastia:', angioplastyError);
+      throw angioplastyError;
+    }
+    
+    // 4. Deletar convênios da clínica
+    const { error: insuranceError } = await supabase
+      .from('insurance_companies')
+      .delete()
+      .eq('clinic_id', clinicId);
+    
+    if (insuranceError) {
+      console.error('Erro ao deletar convênios da clínica:', insuranceError);
+      throw insuranceError;
+    }
+    
+    // 5. Por último, deletar a clínica
+    const { error: clinicError } = await supabase
       .from('clinics')
       .delete()
       .eq('id', clinicId);
     
-    if (error) throw error;
+    if (clinicError) {
+      console.error('Erro ao deletar clínica:', clinicError);
+      throw clinicError;
+    }
+    
+    console.log('Clínica deletada completamente com sucesso');
   } catch (error) {
     console.error('Erro ao excluir clínica:', error);
+    throw error;
+  }
+};
+
+// Função para deletar usuário completamente
+export const deleteUser = async (userId: string): Promise<void> => {
+  try {
+    console.log('Iniciando exclusão completa do usuário:', userId);
+    
+    // 1. Deletar relações com clínicas (staff)
+    const { error: staffError } = await supabase
+      .from('clinic_staff')
+      .delete()
+      .eq('user_id', userId);
+    
+    if (staffError) {
+      console.error('Erro ao deletar relações de staff:', staffError);
+      throw staffError;
+    }
+    
+    // 2. Atualizar registros criados pelo usuário para não quebrar foreign keys
+    // Aqui você pode decidir se quer transferir ownership ou apenas marcar como null
+    const { error: clinicsError } = await supabase
+      .from('clinics')
+      .update({ created_by: null })
+      .eq('created_by', userId);
+    
+    if (clinicsError) {
+      console.error('Erro ao atualizar clínicas criadas pelo usuário:', clinicsError);
+      // Não fazer throw aqui, pois pode não ter criado clínicas
+    }
+    
+    // 3. Deletar o perfil do usuário
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+    
+    if (profileError) {
+      console.error('Erro ao deletar perfil do usuário:', profileError);
+      throw profileError;
+    }
+    
+    console.log('Usuário deletado completamente com sucesso');
+  } catch (error) {
+    console.error('Erro ao excluir usuário:', error);
     throw error;
   }
 };

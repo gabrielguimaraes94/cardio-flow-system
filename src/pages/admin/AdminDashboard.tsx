@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -26,6 +25,7 @@ export const AdminDashboard = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [adminChecked, setAdminChecked] = useState(false);
+  const [activeTab, setActiveTab] = useState('register');
   
   // Estado para dados
   const [clinics, setClinics] = useState<AdminClinic[]>([]);
@@ -155,6 +155,17 @@ export const AdminDashboard = () => {
     }));
   };
 
+  // Nova função para lidar com sucesso no cadastro de clínica
+  const handleClinicRegistrationSuccess = async () => {
+    console.log('Clínica cadastrada com sucesso, trocando para aba de gerenciar clínicas');
+    await fetchData(); // Recarregar dados
+    setActiveTab('clinics'); // Trocar para aba de gerenciar clínicas
+    toast({
+      title: "Clínica cadastrada!",
+      description: "A clínica foi cadastrada com sucesso. Agora você pode visualizá-la na lista.",
+    });
+  };
+
   if (isLoading || authLoading) {
     return (
       <AdminLayout>
@@ -176,7 +187,7 @@ export const AdminDashboard = () => {
           </p>
         </div>
         
-        <Tabs defaultValue="register" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-1 md:grid-cols-3 mb-6">
             <TabsTrigger value="register">Cadastrar Nova Clínica</TabsTrigger>
             <TabsTrigger value="clinics">Gerenciar Clínicas</TabsTrigger>
@@ -184,7 +195,7 @@ export const AdminDashboard = () => {
           </TabsList>
           
           <TabsContent value="register">
-            <RegisterTab onSuccess={fetchData} />
+            <RegisterTab onSuccess={handleClinicRegistrationSuccess} />
           </TabsContent>
           
           <TabsContent value="clinics">
