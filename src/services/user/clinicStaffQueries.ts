@@ -52,7 +52,7 @@ export const fetchClinicStaff = async (clinicId: string) => {
             crm: '',
             title: '',
             bio: '',
-            role: 'staff'
+            role: 'staff' as const
           },
           role: staffRecord.role,
           isAdmin: staffRecord.is_admin
