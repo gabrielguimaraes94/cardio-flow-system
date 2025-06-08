@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { UserDialog } from './UserDialog';
 import { UserProfile } from '@/types/profile';
-import { fetchClinicStaff, checkUserExists, addClinicStaff, removeClinicStaff } from '@/services/userService';
+import { fetchClinicStaff, addClinicStaff, removeClinicStaff } from '@/services/userService';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -254,8 +254,8 @@ export const UserManagement = () => {
           description: "Informações do usuário atualizadas com sucesso!"
         });
       } else {
-        // Criando novo usuário
-        console.log('Criando novo usuário');
+        // Criando novo usuário - APENAS NO PERFIL, SEM AUTH
+        console.log('Criando novo usuário apenas no perfil');
         
         // Verificar se email já existe
         const { data: existingUser } = await supabase
@@ -273,44 +273,32 @@ export const UserManagement = () => {
           return;
         }
 
-        // Criar usuário no Auth
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email: userData.email,
-          password: '123456temp', // Senha temporária
-          email_confirm: true,
-          user_metadata: {
+        // Criar usuário diretamente na tabela profiles com um UUID gerado
+        const newUserId = crypto.randomUUID();
+        
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: newUserId,
             first_name: userData.firstName,
-            last_name: userData.lastName
-          }
-        });
-
-        if (authError) throw authError;
-
-        if (authData.user) {
-          // Atualizar perfil criado automaticamente pelo trigger
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .update({
-              first_name: userData.firstName,
-              last_name: userData.lastName,
-              crm: userData.crm,
-              phone: userData.phone,
-              title: userData.title,
-              bio: userData.bio,
-              role: userData.role
-            })
-            .eq('id', authData.user.id);
-
-          if (profileError) throw profileError;
-
-          // Adicionar como funcionário da clínica
-          await addClinicStaff(selectedClinic.id, authData.user.id, 'doctor', false);
-
-          toast({
-            title: "Usuário criado",
-            description: "Usuário criado e adicionado como funcionário!"
+            last_name: userData.lastName,
+            email: userData.email,
+            crm: userData.crm,
+            phone: userData.phone,
+            title: userData.title,
+            bio: userData.bio,
+            role: userData.role
           });
-        }
+
+        if (profileError) throw profileError;
+
+        // Adicionar como funcionário da clínica
+        await addClinicStaff(selectedClinic.id, newUserId, userData.role, false);
+
+        toast({
+          title: "Usuário criado",
+          description: "Usuário criado e adicionado como funcionário com sucesso!"
+        });
       }
 
       // Recarregar lista e fechar modal

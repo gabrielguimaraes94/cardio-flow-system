@@ -175,7 +175,7 @@ export const fetchClinicStaff = async (clinicId: string) => {
     console.log('=== FETCHCLINICSTAFF ===');
     console.log('Buscando funcionários para clínica:', clinicId);
     
-    // Buscar todos os funcionários ativos da clínica
+    // Buscar todos os funcionários ativos da clínica com join otimizado
     const { data: staffData, error: staffError } = await supabase
       .from('clinic_staff')
       .select(`
@@ -187,7 +187,17 @@ export const fetchClinicStaff = async (clinicId: string) => {
         active,
         created_at,
         updated_at,
-        profiles:user_id(*)
+        profiles!inner(
+          id,
+          first_name,
+          last_name,
+          email,
+          phone,
+          crm,
+          title,
+          bio,
+          role
+        )
       `)
       .eq('clinic_id', clinicId)
       .eq('active', true);
@@ -204,7 +214,7 @@ export const fetchClinicStaff = async (clinicId: string) => {
       return [];
     }
     
-    // Filtrar registros onde profiles é null e mapear os válidos
+    // Mapear os dados retornados
     const validStaff = staffData
       .filter((staff: any) => {
         const hasProfile = staff.profiles !== null;
@@ -245,12 +255,22 @@ export const fetchUsersForSelection = async (clinicId: string): Promise<UserProf
     console.log('=== FETCH USERS FOR SELECTION ===');
     console.log('Buscando usuários para seleção na clínica:', clinicId);
     
-    // Buscar todos os funcionários ativos da clínica
+    // Buscar todos os funcionários ativos da clínica usando join inner
     const { data: staffData, error: staffError } = await supabase
       .from('clinic_staff')
       .select(`
         user_id,
-        profiles:user_id(*)
+        profiles!inner(
+          id,
+          first_name,
+          last_name,
+          email,
+          phone,
+          crm,
+          title,
+          bio,
+          role
+        )
       `)
       .eq('clinic_id', clinicId)
       .eq('active', true);
