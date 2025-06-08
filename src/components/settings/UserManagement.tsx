@@ -314,7 +314,7 @@ export const UserManagement = () => {
     if (!selectedClinic) return;
     
     try {
-      // Check if email already exists
+      // Check if email already exists FIRST
       const { data: existingUser } = await supabase
         .from('profiles')
         .select('id, email')
@@ -374,7 +374,22 @@ export const UserManagement = () => {
         },
       });
       
-      if (authError) throw authError;
+      if (authError) {
+        // Handle specific auth errors
+        if (authError.message === 'User already registered') {
+          toast({
+            title: "Usuário já existe",
+            description: "Este email já possui uma conta. Use a aba 'Buscar Existente'.",
+            variant: "destructive",
+          });
+          
+          // Switch to search tab and pre-fill the email
+          setCurrentTab('search');
+          emailSearchForm.setValue('email', values.email);
+          return;
+        }
+        throw authError;
+      }
       
       if (!authData.user) {
         throw new Error("Falha ao criar usuário");
@@ -412,11 +427,33 @@ export const UserManagement = () => {
       
     } catch (error) {
       console.error('Error creating user:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível criar o usuário.",
-        variant: "destructive",
-      });
+      
+      // More specific error handling
+      if (error instanceof Error) {
+        if (error.message.includes('already registered') || error.message.includes('User already registered')) {
+          toast({
+            title: "Email já cadastrado",
+            description: "Este email já possui uma conta. Use a aba 'Buscar Existente'.",
+            variant: "destructive",
+          });
+          
+          // Switch to search tab and pre-fill the email
+          setCurrentTab('search');
+          emailSearchForm.setValue('email', values.email);
+        } else {
+          toast({
+            title: "Erro",
+            description: "Não foi possível criar o usuário: " + error.message,
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Erro",
+          description: "Não foi possível criar o usuário.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
