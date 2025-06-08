@@ -100,27 +100,31 @@ export const fetchClinicStaff = async (clinicId: string) => {
       return [];
     }
     
-    // Mapear os dados para o formato esperado - com INNER JOIN não há registros null
-    const mappedStaff = staffData.map((staffRecord: any) => {
-      return {
-        id: staffRecord.id,
-        user: {
-          id: staffRecord.user.id,
-          firstName: staffRecord.user.first_name || '',
-          lastName: staffRecord.user.last_name || '',
-          email: staffRecord.user.email || '',
-          phone: staffRecord.user.phone || null,
-          crm: staffRecord.user.crm || '',
-          title: staffRecord.user.title || '',
-          bio: staffRecord.user.bio || '',
-          role: staffRecord.user.role || 'staff'
-        },
-        role: staffRecord.role,
-        isAdmin: staffRecord.is_admin
-      };
-    });
+    // Filtrar apenas registros com usuários válidos e mapear os dados
+    const mappedStaff = staffData
+      .filter((staffRecord: any) => staffRecord.user !== null) // Filter out null users
+      .map((staffRecord: any) => {
+        return {
+          id: staffRecord.id,
+          user: {
+            id: staffRecord.user.id,
+            firstName: staffRecord.user.first_name || '',
+            lastName: staffRecord.user.last_name || '',
+            email: staffRecord.user.email || '',
+            phone: staffRecord.user.phone || null,
+            crm: staffRecord.user.crm || '',
+            title: staffRecord.user.title || '',
+            bio: staffRecord.user.bio || '',
+            role: staffRecord.user.role || 'staff'
+          },
+          role: staffRecord.role,
+          isAdmin: staffRecord.is_admin
+        };
+      });
     
-    console.log('Funcionários processados:', mappedStaff.length);
+    console.log('Funcionários válidos processados:', mappedStaff.length);
+    console.log('Funcionários com usuários nulos filtrados:', (staffData?.length || 0) - mappedStaff.length);
+    
     return mappedStaff;
     
   } catch (error) {
