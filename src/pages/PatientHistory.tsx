@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Calendar, User } from 'lucide-react';
+import { ArrowLeft, Calendar, User, FileText, Activity, Heart } from 'lucide-react';
 import { usePatient } from '@/contexts/PatientContext';
 import { patientService } from '@/services/patientService';
 import { anamnesisService } from '@/services/anamnesisService';
@@ -19,7 +19,7 @@ interface HistoryRecord {
   date: string;
   doctor: string;
   type: 'anamnesis' | 'catheterization' | 'angioplasty';
-  title?: string;
+  title: string;
   description?: string;
 }
 
@@ -81,7 +81,7 @@ export const PatientHistory: React.FC = () => {
         setAnamnesisRecords(realAnamnesisRecords);
 
         // TODO: Implementar busca real dos dados de cateterismo e angioplastia
-        // Por enquanto, dados mock para cateterismo e angioplastia
+        // Por enquanto, dados mock para demonstração
         const mockCatheterizationRecords: HistoryRecord[] = [
           {
             id: '3',
@@ -138,6 +138,19 @@ export const PatientHistory: React.FC = () => {
     }
   };
 
+  const getRecordIcon = (type: string) => {
+    switch (type) {
+      case 'anamnesis':
+        return <FileText className="h-5 w-5 text-blue-500" />;
+      case 'catheterization':
+        return <Activity className="h-5 w-5 text-green-500" />;
+      case 'angioplasty':
+        return <Heart className="h-5 w-5 text-red-500" />;
+      default:
+        return <FileText className="h-5 w-5 text-gray-500" />;
+    }
+  };
+
   const renderRecordsList = (records: HistoryRecord[], emptyMessage: string) => {
     if (loading) {
       return (
@@ -168,10 +181,17 @@ export const PatientHistory: React.FC = () => {
     return (
       <div className="space-y-4">
         {records.map((record) => (
-          <Card key={record.id} className="cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => handleViewRecord(record)}>
+          <Card 
+            key={record.id} 
+            className="cursor-pointer hover:bg-gray-50 transition-colors" 
+            onClick={() => handleViewRecord(record)}
+          >
             <CardHeader>
-              <CardTitle className="text-lg">{record.title}</CardTitle>
-              <CardDescription className="flex items-center gap-4">
+              <CardTitle className="text-lg flex items-center gap-2">
+                {getRecordIcon(record.type)}
+                {record.title}
+              </CardTitle>
+              <CardDescription className="flex items-center gap-4 text-sm">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   {format(new Date(record.date), 'dd/MM/yyyy', { locale: ptBR })}
@@ -193,7 +213,7 @@ export const PatientHistory: React.FC = () => {
     );
   };
 
-  if (loading || !selectedPatient) {
+  if (loading && !selectedPatient) {
     return (
       <Layout>
         <div className="space-y-6">
@@ -216,18 +236,27 @@ export const PatientHistory: React.FC = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">Histórico - {selectedPatient.name}</h1>
+            <h1 className="text-2xl font-bold">Histórico - {selectedPatient?.name}</h1>
             <p className="text-gray-600">
-              CPF: {selectedPatient.cpf} • {selectedPatient.age} anos
+              CPF: {selectedPatient?.cpf} • {selectedPatient?.age} anos
             </p>
           </div>
         </div>
 
         <Tabs defaultValue="anamnesis" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="anamnesis">Anamnese</TabsTrigger>
-            <TabsTrigger value="catheterization">Cateterismo</TabsTrigger>
-            <TabsTrigger value="angioplasty">Angioplastia</TabsTrigger>
+            <TabsTrigger value="anamnesis" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Anamnese ({anamnesisRecords.length})
+            </TabsTrigger>
+            <TabsTrigger value="catheterization" className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Cateterismo ({catheterizationRecords.length})
+            </TabsTrigger>
+            <TabsTrigger value="angioplasty" className="flex items-center gap-2">
+              <Heart className="h-4 w-4" />
+              Angioplastia ({angioplastyRecords.length})
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="anamnesis" className="mt-6">
