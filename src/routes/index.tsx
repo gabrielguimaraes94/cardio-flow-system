@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { GuestRoute } from './GuestRoute';
@@ -13,23 +14,23 @@ import { AngioplastyCreate } from '@/pages/AngioplastyCreate';
 import { AngioplastyList } from '@/pages/AngioplastyList';
 import { AngioplastyView } from '@/pages/AngioplastyView';
 import Angioplasty from '@/pages/Angioplasty';
-import PatientList from '@/pages/PatientList';
-import PatientForm from '@/pages/PatientForm';
-import PatientHistory from '@/pages/PatientHistory';
-import PatientAnamnesisHistory from '@/pages/PatientAnamnesisHistory';
-import AnamnesisForm from '@/pages/AnamnesisForm';
+import { PatientList } from '@/pages/PatientList';
+import { PatientForm } from '@/pages/PatientForm';
+import { PatientHistory } from '@/pages/PatientHistory';
+import { PatientAnamnesisHistory } from '@/pages/PatientAnamnesisHistory';
+import { AnamnesisForm } from '@/pages/AnamnesisForm';
 import Catheterization from '@/pages/Catheterization';
-import CatheterizationReport from '@/pages/CatheterizationReport';
-import CatheterizationReportList from '@/pages/CatheterizationReportList';
-import CatheterizationTemplateEditor from '@/pages/CatheterizationTemplateEditor';
+import { CatheterizationReport } from '@/pages/CatheterizationReport';
+import { CatheterizationReportList } from '@/pages/CatheterizationReportList';
+import { CatheterizationTemplateEditor } from '@/pages/CatheterizationTemplateEditor';
 import Reports from '@/pages/Reports';
 import Schedule from '@/pages/Schedule';
 import Settings from '@/pages/Settings';
 import AngioplastySearch from '@/pages/AngioplastySearch';
 
 // Admin Routes
-import AdminDashboard from '@/pages/admin/AdminDashboard';
-import AdminLogin from '@/pages/admin/AdminLogin';
+import { AdminDashboard } from '@/pages/admin/AdminDashboard';
+import { AdminLogin } from '@/pages/admin/AdminLogin';
 
 // Special Routes
 import NoAccess from '@/pages/NoAccess';
