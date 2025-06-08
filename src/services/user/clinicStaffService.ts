@@ -125,27 +125,13 @@ export const removeClinicStaff = async (staffId: string, adminUserId: string): P
   }
 };
 
-// Buscar todos os funcionários de uma clínica - VERSÃO MELHORADA COM DEBUGS
+// Buscar todos os funcionários de uma clínica - VERSÃO CORRIGIDA
 export const fetchClinicStaff = async (clinicId: string) => {
   try {
     console.log('=== FETCHCLINICSTAFF ===');
     console.log('Buscando funcionários para clínica:', clinicId);
     
-    // Primeiro, vamos buscar todos os registros de clinic_staff para debug
-    const { data: allStaffData, error: allStaffError } = await supabase
-      .from('clinic_staff')
-      .select('*')
-      .eq('clinic_id', clinicId)
-      .eq('active', true);
-    
-    if (allStaffError) {
-      console.error('Erro ao buscar registros de clinic_staff:', allStaffError);
-      throw allStaffError;
-    }
-    
-    console.log('Todos os registros de clinic_staff:', allStaffData);
-    
-    // Agora fazer a query com LEFT JOIN para ver quais user_ids não têm perfil
+    // Query corrigida - usando alias para o LEFT JOIN
     const { data: staffData, error: staffError } = await supabase
       .from('clinic_staff')
       .select(`
@@ -156,7 +142,7 @@ export const fetchClinicStaff = async (clinicId: string) => {
         is_admin,
         active,
         created_at,
-        user:profiles!fk_clinic_staff_user(
+        profiles!inner (
           id,
           email,
           first_name,
@@ -173,11 +159,11 @@ export const fetchClinicStaff = async (clinicId: string) => {
       .order('created_at', { ascending: false });
     
     if (staffError) {
-      console.error('Erro ao buscar funcionários com profiles:', staffError);
+      console.error('Erro ao buscar funcionários:', staffError);
       throw staffError;
     }
     
-    console.log('Funcionários encontrados com profiles:', staffData?.length || 0);
+    console.log('Funcionários encontrados:', staffData?.length || 0);
     console.log('Dados completos dos funcionários:', staffData);
     
     if (!staffData || staffData.length === 0) {
@@ -185,46 +171,22 @@ export const fetchClinicStaff = async (clinicId: string) => {
       return [];
     }
     
-    // Identificar registros problemáticos
-    const recordsWithoutProfile = staffData.filter((record: any) => record.user === null);
-    const recordsWithProfile = staffData.filter((record: any) => record.user !== null);
-    
-    console.log('Registros SEM perfil:', recordsWithoutProfile.length);
-    console.log('Detalhes dos registros sem perfil:', recordsWithoutProfile);
-    console.log('Registros COM perfil:', recordsWithProfile.length);
-    
-    // Para registros sem perfil, vamos verificar se o user_id existe na tabela profiles
-    for (const record of recordsWithoutProfile) {
-      console.log(`Verificando user_id ${record.user_id} na tabela profiles...`);
+    // Processar os dados retornados
+    const validStaff = staffData.map((staffRecord: any) => {
+      const profile = staffRecord.profiles;
       
-      const { data: profileCheck, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', record.user_id);
-      
-      if (profileError) {
-        console.error(`Erro ao verificar perfil ${record.user_id}:`, profileError);
-      } else if (!profileCheck || profileCheck.length === 0) {
-        console.error(`❌ Perfil não encontrado para user_id: ${record.user_id}`);
-      } else {
-        console.log(`✅ Perfil encontrado para ${record.user_id}:`, profileCheck[0]);
-      }
-    }
-    
-    // Retornar apenas os registros que têm perfil válido
-    const validStaff = recordsWithProfile.map((staffRecord: any) => {
       return {
         id: staffRecord.id,
         user: {
-          id: staffRecord.user.id,
-          firstName: staffRecord.user.first_name || '',
-          lastName: staffRecord.user.last_name || '',
-          email: staffRecord.user.email || '',
-          phone: staffRecord.user.phone || null,
-          crm: staffRecord.user.crm || '',
-          title: staffRecord.user.title || '',
-          bio: staffRecord.user.bio || '',
-          role: staffRecord.user.role || 'staff'
+          id: profile.id,
+          firstName: profile.first_name || '',
+          lastName: profile.last_name || '',
+          email: profile.email || '',
+          phone: profile.phone || null,
+          crm: profile.crm || '',
+          title: profile.title || '',
+          bio: profile.bio || '',
+          role: profile.role || 'staff'
         },
         role: staffRecord.role,
         isAdmin: staffRecord.is_admin
@@ -232,7 +194,6 @@ export const fetchClinicStaff = async (clinicId: string) => {
     });
     
     console.log('Funcionários válidos processados:', validStaff.length);
-    console.log('Funcionários sem perfil ignorados:', recordsWithoutProfile.length);
     
     return validStaff;
     
