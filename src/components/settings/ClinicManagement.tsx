@@ -78,6 +78,25 @@ export const ClinicManagement = () => {
         console.log('=== EDITANDO CLÍNICA EXISTENTE ===');
         console.log('ID da clínica:', clinic.id);
         
+        // Primeiro, verificar se a clínica existe e se temos permissão para editá-la
+        const { data: existingClinic, error: checkError } = await supabase
+          .from('clinics')
+          .select('*')
+          .eq('id', clinic.id)
+          .maybeSingle();
+        
+        if (checkError) {
+          console.error('Erro ao verificar clínica existente:', checkError);
+          throw checkError;
+        }
+        
+        if (!existingClinic) {
+          console.error('Clínica não encontrada com ID:', clinic.id);
+          throw new Error('Clínica não encontrada');
+        }
+        
+        console.log('Clínica existente encontrada:', existingClinic);
+        
         const updateData = {
           name: clinic.name,
           address: clinic.address,
@@ -91,26 +110,25 @@ export const ClinicManagement = () => {
         
         console.log('Dados para atualização:', updateData);
         
-        // Usar uma query mais específica para garantir que os dados sejam retornados
-        const { error, data } = await supabase
+        // Fazer o update sem .single() primeiro para evitar o erro
+        const { error: updateError, data: updateData } = await supabase
           .from('clinics')
           .update(updateData)
           .eq('id', clinic.id)
-          .select('*')
-          .single();
+          .select('*');
         
-        if (error) {
-          console.error('Erro ao atualizar clínica:', error);
-          throw error;
+        if (updateError) {
+          console.error('Erro ao atualizar clínica:', updateError);
+          throw updateError;
         }
         
-        console.log('Clínica atualizada com sucesso:', data);
+        console.log('Update realizado, dados retornados:', updateData);
         
-        // Verificar se realmente atualizou
-        if (data) {
-          console.log('✅ Dados retornados do Supabase após update:', data);
+        // Verificar se a atualização foi bem-sucedida
+        if (!updateData || updateData.length === 0) {
+          console.warn('⚠️ Nenhum dado retornado do update - possível problema de permissão');
           
-          // Fazer uma verificação adicional buscando diretamente
+          // Tentar buscar novamente para verificar se a atualização foi aplicada
           const { data: verificationData, error: verificationError } = await supabase
             .from('clinics')
             .select('*')
@@ -119,11 +137,12 @@ export const ClinicManagement = () => {
             
           if (verificationError) {
             console.error('Erro na verificação:', verificationError);
+            throw new Error('Não foi possível verificar se a atualização foi aplicada');
           } else {
             console.log('✅ Verificação - dados atuais na base:', verificationData);
           }
         } else {
-          console.warn('⚠️ Nenhum dado retornado do update');
+          console.log('✅ Dados retornados do Supabase após update:', updateData[0]);
         }
         
         toast({
