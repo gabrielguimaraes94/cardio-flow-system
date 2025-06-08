@@ -145,22 +145,7 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
       console.log('Nome do arquivo gerado:', fileName);
       console.log('Caminho do arquivo:', filePath);
       
-      // Check if bucket exists first
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-      console.log('Buckets disponíveis:', buckets);
-      
-      if (bucketsError) {
-        console.error('Erro ao listar buckets:', bucketsError);
-        throw bucketsError;
-      }
-      
-      const clinicAssetsBucket = buckets?.find(bucket => bucket.name === 'clinic-assets');
-      if (!clinicAssetsBucket) {
-        console.error('Bucket clinic-assets não encontrado');
-        throw new Error('Bucket clinic-assets não encontrado');
-      }
-      
-      // Upload the file directly to the existing bucket
+      // Upload the file directly to the clinic-assets bucket
       console.log('=== FAZENDO UPLOAD PARA O BUCKET ===');
       const { data, error } = await supabase.storage
         .from('clinic-assets')
