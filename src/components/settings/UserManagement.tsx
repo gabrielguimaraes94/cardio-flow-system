@@ -53,6 +53,26 @@ export const UserManagement = () => {
       const staffData = await fetchClinicStaff(selectedClinic.id);
       console.log('Staff carregado da API:', staffData);
       console.log('Quantidade de funcionários encontrados:', staffData.length);
+      
+      // Verificar se existem registros órfãos na clinic_staff
+      const { data: allStaffRecords } = await supabase
+        .from('clinic_staff')
+        .select('id, user_id')
+        .eq('clinic_id', selectedClinic.id)
+        .eq('active', true);
+      
+      const totalStaffRecords = allStaffRecords?.length || 0;
+      const validStaffRecords = staffData.length;
+      
+      if (totalStaffRecords > validStaffRecords) {
+        console.warn(`⚠️ ATENÇÃO: Existem ${totalStaffRecords - validStaffRecords} registros órfãos na clinic_staff (registros sem profile correspondente)`);
+        toast({
+          title: "Registros órfãos detectados",
+          description: `Existem ${totalStaffRecords - validStaffRecords} funcionários com registros incompletos que não aparecem na lista.`,
+          variant: "destructive"
+        });
+      }
+      
       setStaff(staffData);
     } catch (error) {
       console.error('Erro ao carregar funcionários:', error);
