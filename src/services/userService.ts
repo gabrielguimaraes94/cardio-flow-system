@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile } from '@/types/profile';
 
@@ -87,7 +86,7 @@ export const checkUserExists = async (email: string, crm: string): Promise<UserP
   }
 };
 
-// Adicionar ou associar um funcionário a uma clínica
+// Adicionar ou associar um funcionário a uma clínica usando a função RPC
 export const addClinicStaff = async (
   clinicId: string, 
   userId: string, 
@@ -95,21 +94,19 @@ export const addClinicStaff = async (
   isAdmin: boolean
 ): Promise<string> => {
   try {
+    // Use the RPC function which handles permissions properly
     const { data, error } = await supabase
-      .from('clinic_staff')
-      .insert({
-        clinic_id: clinicId,
-        user_id: userId,
-        role: role,
-        is_admin: isAdmin,
-        active: true
-      })
-      .select('id')
-      .single();
+      .rpc('add_clinic_staff', {
+        p_user_id: userId,
+        p_clinic_id: clinicId,
+        p_is_admin: isAdmin,
+        p_role: role
+      });
     
     if (error) throw error;
     
-    return data.id;
+    // Return success indicator since RPC returns boolean
+    return 'success';
   } catch (error) {
     console.error('Error adding clinic staff:', error);
     throw error;
