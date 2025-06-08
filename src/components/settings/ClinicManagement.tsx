@@ -91,11 +91,13 @@ export const ClinicManagement = () => {
         
         console.log('Dados para atualização:', updateData);
         
+        // Usar uma query mais específica para garantir que os dados sejam retornados
         const { error, data } = await supabase
           .from('clinics')
           .update(updateData)
           .eq('id', clinic.id)
-          .select();
+          .select('*')
+          .single();
         
         if (error) {
           console.error('Erro ao atualizar clínica:', error);
@@ -103,6 +105,26 @@ export const ClinicManagement = () => {
         }
         
         console.log('Clínica atualizada com sucesso:', data);
+        
+        // Verificar se realmente atualizou
+        if (data) {
+          console.log('✅ Dados retornados do Supabase após update:', data);
+          
+          // Fazer uma verificação adicional buscando diretamente
+          const { data: verificationData, error: verificationError } = await supabase
+            .from('clinics')
+            .select('*')
+            .eq('id', clinic.id)
+            .single();
+            
+          if (verificationError) {
+            console.error('Erro na verificação:', verificationError);
+          } else {
+            console.log('✅ Verificação - dados atuais na base:', verificationData);
+          }
+        } else {
+          console.warn('⚠️ Nenhum dado retornado do update');
+        }
         
         toast({
           title: "Clínica atualizada",
@@ -128,7 +150,8 @@ export const ClinicManagement = () => {
         const { error, data } = await supabase
           .from('clinics')
           .insert(insertData)
-          .select();
+          .select('*')
+          .single();
         
         if (error) {
           console.error('Erro ao criar clínica:', error);
@@ -143,8 +166,10 @@ export const ClinicManagement = () => {
         });
       }
       
-      // Atualizar a lista de clínicas no contexto
+      // Forçar atualização da lista de clínicas no contexto
+      console.log('=== ATUALIZANDO LISTA DE CLÍNICAS ===');
       await refetchClinics();
+      console.log('=== LISTA DE CLÍNICAS ATUALIZADA ===');
       
     } catch (error) {
       console.error('Erro ao salvar clínica:', error);
