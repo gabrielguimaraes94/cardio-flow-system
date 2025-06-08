@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useToast } from '@/hooks/use-toast';
 import { Clinic } from '@/types/clinic';
@@ -11,11 +12,12 @@ interface ClinicCardProps {
   id: string;
   name: string;
   city: string;
+  logo_url?: string;
   isSelected: boolean;
   onSelect: () => void;
 }
 
-const ClinicCard: React.FC<ClinicCardProps> = ({ name, city, isSelected, onSelect }) => {
+const ClinicCard: React.FC<ClinicCardProps> = ({ name, city, logo_url, isSelected, onSelect }) => {
   return (
     <div 
       className={`flex items-center justify-between p-3 rounded-md cursor-pointer
@@ -23,9 +25,12 @@ const ClinicCard: React.FC<ClinicCardProps> = ({ name, city, isSelected, onSelec
       onClick={onSelect}
     >
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-cardio-500 flex items-center justify-center">
-          <span className="text-white font-medium">{name.charAt(0)}</span>
-        </div>
+        <Avatar className="h-10 w-10">
+          <AvatarImage src={logo_url} alt={`${name} Logo`} />
+          <AvatarFallback className="bg-cardio-500 text-white">
+            {name.charAt(0)}
+          </AvatarFallback>
+        </Avatar>
         <div>
           <div className="font-medium">{name}</div>
           <div className="text-xs text-gray-500">{city}</div>
@@ -111,11 +116,12 @@ export const ClinicSwitcher: React.FC = () => {
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="ghost" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full bg-cardio-500 flex items-center justify-center">
-            <span className="text-white font-medium">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={selectedClinic.logo_url} alt={`${selectedClinic.name} Logo`} />
+            <AvatarFallback className="bg-cardio-500 text-white">
               {selectedClinic.name?.charAt(0) || '?'}
-            </span>
-          </div>
+            </AvatarFallback>
+          </Avatar>
           <div className="text-left">
             <div className="font-medium text-sm">{selectedClinic.name || 'Clínica sem nome'}</div>
             <div className="text-xs text-gray-500">{selectedClinic.city || ''}</div>
@@ -138,6 +144,7 @@ export const ClinicSwitcher: React.FC = () => {
                   id={clinic.id}
                   name={clinic.name}
                   city={clinic.city}
+                  logo_url={clinic.logo_url}
                   isSelected={clinic.id === selectedClinic?.id} 
                   onSelect={() => handleSelectClinic(clinic.id)}
                 />
