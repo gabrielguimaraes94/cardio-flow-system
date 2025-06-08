@@ -30,6 +30,23 @@ export const ProceduresAndMaterialsForm: React.FC<ProceduresAndMaterialsFormProp
   onUpdateMaterialQuantity,
   setSurgicalTeam,
 }) => {
+  // Convert SurgicalTeam to SurgicalTeamData format
+  const surgicalTeamData = {
+    surgeon: surgicalTeam.surgeon,
+    cardiologist: null, // SurgicalTeam doesn't have cardiologist, so set to null
+    anesthesiologist: surgicalTeam.anesthesiologist,
+    nurses: [], // SurgicalTeam doesn't have nurses array, so set to empty
+  };
+
+  const handleTeamChange = (teamData: any) => {
+    // Convert back to SurgicalTeam format
+    setSurgicalTeam({
+      surgeon: teamData.surgeon,
+      assistant: surgicalTeam.assistant, // Keep existing assistant
+      anesthesiologist: teamData.anesthesiologist,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -60,8 +77,8 @@ export const ProceduresAndMaterialsForm: React.FC<ProceduresAndMaterialsFormProp
         <CardContent className="pt-6">
           <h3 className="text-lg font-medium mb-4">Equipe Cirúrgica</h3>
           <SurgicalTeamSelector
-            surgicalTeam={surgicalTeam}
-            onTeamChange={setSurgicalTeam}
+            value={surgicalTeamData}
+            onChange={handleTeamChange}
           />
         </CardContent>
       </Card>
