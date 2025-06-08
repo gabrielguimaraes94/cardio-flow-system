@@ -78,7 +78,26 @@ export const ClinicManagement = () => {
         console.log('=== EDITANDO CLÍNICA EXISTENTE ===');
         console.log('ID da clínica:', clinic.id);
         
-        const updateData = {
+        // Verificar se a clínica existe antes de tentar atualizar
+        const { data: existingClinic, error: checkError } = await supabase
+          .from('clinics')
+          .select('id, name')
+          .eq('id', clinic.id)
+          .maybeSingle();
+        
+        if (checkError) {
+          console.error('Erro ao verificar clínica existente:', checkError);
+          throw checkError;
+        }
+        
+        if (!existingClinic) {
+          console.error('Clínica não encontrada para atualização');
+          throw new Error('Clínica não encontrada');
+        }
+        
+        console.log('Clínica encontrada:', existingClinic);
+        
+        const clinicUpdateData = {
           name: clinic.name,
           address: clinic.address,
           city: clinic.city,
@@ -89,20 +108,27 @@ export const ClinicManagement = () => {
           updated_at: new Date().toISOString()
         };
         
-        console.log('Dados para atualização:', updateData);
+        console.log('Dados para atualização:', clinicUpdateData);
         
-        const { error, data } = await supabase
+        const { error: updateError, data: updatedData } = await supabase
           .from('clinics')
-          .update(updateData)
+          .update(clinicUpdateData)
           .eq('id', clinic.id)
           .select();
         
-        if (error) {
-          console.error('Erro ao atualizar clínica:', error);
-          throw error;
+        if (updateError) {
+          console.error('Erro ao atualizar clínica:', updateError);
+          throw updateError;
         }
         
-        console.log('Clínica atualizada com sucesso:', data);
+        console.log('Clínica atualizada com sucesso:', updatedData);
+        
+        // Verificar se a atualização foi bem-sucedida
+        if (updatedData && updatedData.length > 0) {
+          console.log('✅ Atualização confirmada:', updatedData[0]);
+        } else {
+          console.warn('⚠️ Nenhum dado retornado da atualização');
+        }
         
         toast({
           title: "Clínica atualizada",
@@ -112,7 +138,7 @@ export const ClinicManagement = () => {
         // Adicionar nova clínica
         console.log('=== ADICIONANDO NOVA CLÍNICA ===');
         
-        const insertData = {
+        const clinicInsertData = {
           name: clinic.name,
           address: clinic.address,
           city: clinic.city,
@@ -123,19 +149,19 @@ export const ClinicManagement = () => {
           created_by: user.id
         };
         
-        console.log('Dados para inserção:', insertData);
+        console.log('Dados para inserção:', clinicInsertData);
         
-        const { error, data } = await supabase
+        const { error: insertError, data: insertedData } = await supabase
           .from('clinics')
-          .insert(insertData)
+          .insert(clinicInsertData)
           .select();
         
-        if (error) {
-          console.error('Erro ao criar clínica:', error);
-          throw error;
+        if (insertError) {
+          console.error('Erro ao criar clínica:', insertError);
+          throw insertError;
         }
         
-        console.log('Clínica criada com sucesso:', data);
+        console.log('Clínica criada com sucesso:', insertedData);
         
         toast({
           title: "Clínica adicionada",
