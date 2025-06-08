@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { UserDialog } from './UserDialog';
 import { UserProfile } from '@/types/profile';
-import { fetchClinicStaff, addClinicStaff, removeClinicStaff } from '@/services/user/clinicStaffService';
+import { fetchClinicStaff, addClinicStaff, removeClinicStaff, checkUserIsClinicAdmin } from '@/services/user/clinicStaffService';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,6 +33,24 @@ export const UserManagement = () => {
   const [searchEmail, setSearchEmail] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [foundUser, setFoundUser] = useState<UserProfile | null>(null);
+  const [currentUserIsAdmin, setCurrentUserIsAdmin] = useState(false);
+
+  // Verificar se o usuário atual é admin da clínica
+  const checkIfCurrentUserIsAdmin = useCallback(async () => {
+    if (!selectedClinic?.id || !user?.id) {
+      setCurrentUserIsAdmin(false);
+      return;
+    }
+
+    try {
+      const isAdmin = await checkUserIsClinicAdmin(user.id, selectedClinic.id);
+      setCurrentUserIsAdmin(isAdmin);
+      console.log('Usuário atual é admin?', isAdmin);
+    } catch (error) {
+      console.error('Erro ao verificar se usuário é admin:', error);
+      setCurrentUserIsAdmin(false);
+    }
+  }, [selectedClinic?.id, user?.id]);
 
   // Função para carregar funcionários com useCallback para evitar re-renders
   const loadStaff = useCallback(async () => {
@@ -66,10 +84,11 @@ export const UserManagement = () => {
     }
   }, [selectedClinic?.id, toast]);
 
-  // Carregar funcionários quando a clínica mudar
+  // Carregar funcionários e verificar permissões quando a clínica mudar
   useEffect(() => {
     loadStaff();
-  }, [loadStaff]);
+    checkIfCurrentUserIsAdmin();
+  }, [loadStaff, checkIfCurrentUserIsAdmin]);
 
   // Filtrar funcionários por termo de busca
   useEffect(() => {
@@ -316,20 +335,34 @@ export const UserManagement = () => {
       return;
     }
 
+    // Verificar se o usuário atual é admin
+    if (!currentUserIsAdmin) {
+      toast({
+        title: "Acesso negado",
+        description: "Apenas administradores podem remover funcionários",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      const success = await removeClinicStaff(staffMember.id, user.id);
+      console.log('=== INICIANDO REMOÇÃO DE FUNCIONÁRIO ===');
+      console.log('Staff a ser removido:', staffMember);
+      console.log('Usuário que está removendo:', user.id);
+
+      const result = await removeClinicStaff(staffMember.id, user.id);
       
-      if (success) {
+      if (result.success) {
         toast({
           title: "Funcionário removido",
-          description: "Funcionário removido da clínica com sucesso!"
+          description: result.message
         });
         
         await loadStaff();
       } else {
         toast({
           title: "Erro",
-          description: "Não foi possível remover o funcionário",
+          description: result.message,
           variant: "destructive"
         });
       }
@@ -363,6 +396,11 @@ export const UserManagement = () => {
             <CardTitle>Gestão de Usuários</CardTitle>
             <CardDescription>
               Gerencie os funcionários da clínica {selectedClinic.name}.
+              {currentUserIsAdmin && (
+                <span className="block text-sm text-green-600 mt-1">
+                  ✓ Você tem permissões de administrador nesta clínica
+                </span>
+              )}
             </CardDescription>
           </div>
           <Button onClick={handleCreateNewUser}>
@@ -430,40 +468,56 @@ export const UserManagement = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredStaff.map((staffMember) => (
-              <div key={staffMember.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <h3 className="font-medium">
-                        {staffMember.user.firstName} {staffMember.user.lastName}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">{staffMember.user.email}</p>
-                      {staffMember.user.crm && (
-                        <p className="text-sm text-muted-foreground">CRM: {staffMember.user.crm}</p>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <Badge variant="outline">{staffMember.role}</Badge>
-                      {staffMember.isAdmin && <Badge variant="default">Admin</Badge>}
+            {filteredStaff.map((staffMember) => {
+              const isCurrentUser = staffMember.user.id === user?.id;
+              const canRemove = currentUserIsAdmin && !isCurrentUser;
+              
+              return (
+                <div key={staffMember.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <h3 className="font-medium">
+                          {staffMember.user.firstName} {staffMember.user.lastName}
+                          {isCurrentUser && (
+                            <span className="text-sm text-blue-600 ml-2">(Você)</span>
+                          )}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">{staffMember.user.email}</p>
+                        {staffMember.user.crm && (
+                          <p className="text-sm text-muted-foreground">CRM: {staffMember.user.crm}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge variant="outline">{staffMember.role}</Badge>
+                        {staffMember.isAdmin && <Badge variant="default">Admin</Badge>}
+                      </div>
                     </div>
                   </div>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => handleEditUser(staffMember)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleRemoveUser(staffMember)}
+                      className={canRemove ? "text-red-600 hover:text-red-700" : "text-gray-400 cursor-not-allowed"}
+                      disabled={!canRemove}
+                      title={
+                        !currentUserIsAdmin 
+                          ? "Apenas administradores podem remover funcionários"
+                          : isCurrentUser 
+                          ? "Você não pode remover a si mesmo"
+                          : "Remover funcionário"
+                      }
+                    >
+                      <UserX className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => handleEditUser(staffMember)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => handleRemoveUser(staffMember)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <UserX className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>

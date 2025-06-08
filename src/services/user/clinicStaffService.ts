@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 // Adicionar ou associar um funcionário a uma clínica usando a função RPC
@@ -37,21 +36,91 @@ export const addClinicStaff = async (
   }
 };
 
-// Remover um funcionário (soft delete)
-export const removeClinicStaff = async (staffId: string, adminUserId: string): Promise<boolean> => {
+// Verificar se o usuário atual é admin da clínica
+export const checkUserIsClinicAdmin = async (userId: string, clinicId: string): Promise<boolean> => {
   try {
+    console.log('=== VERIFICANDO SE USUÁRIO É ADMIN ===');
+    console.log('userId:', userId);
+    console.log('clinicId:', clinicId);
+
+    const { data, error } = await supabase
+      .from('clinic_staff')
+      .select('is_admin')
+      .eq('user_id', userId)
+      .eq('clinic_id', clinicId)
+      .eq('active', true)
+      .single();
+
+    if (error) {
+      console.error('Erro ao verificar se usuário é admin:', error);
+      return false;
+    }
+
+    const isAdmin = data?.is_admin || false;
+    console.log('Usuário é admin?', isAdmin);
+    return isAdmin;
+  } catch (error) {
+    console.error('Erro ao verificar permissões de admin:', error);
+    return false;
+  }
+};
+
+// Remover um funcionário (soft delete) - apenas admins podem remover outros funcionários
+export const removeClinicStaff = async (staffId: string, adminUserId: string): Promise<{ success: boolean; message: string }> => {
+  try {
+    console.log('=== REMOVENDO FUNCIONÁRIO ===');
+    console.log('staffId:', staffId);
+    console.log('adminUserId:', adminUserId);
+
+    // Primeiro, buscar informações do funcionário que será removido
+    const { data: staffToRemove, error: staffError } = await supabase
+      .from('clinic_staff')
+      .select('user_id, clinic_id')
+      .eq('id', staffId)
+      .eq('active', true)
+      .single();
+
+    if (staffError || !staffToRemove) {
+      console.error('Funcionário não encontrado:', staffError);
+      return { success: false, message: 'Funcionário não encontrado' };
+    }
+
+    // Verificar se o admin está tentando se remover
+    if (staffToRemove.user_id === adminUserId) {
+      console.log('❌ Admin tentando se auto-remover');
+      return { success: false, message: 'Você não pode remover a si mesmo da clínica' };
+    }
+
+    // Verificar se o usuário atual é admin da clínica
+    const isAdmin = await checkUserIsClinicAdmin(adminUserId, staffToRemove.clinic_id);
+    
+    if (!isAdmin) {
+      console.log('❌ Usuário não é admin da clínica');
+      return { success: false, message: 'Apenas administradores podem remover funcionários' };
+    }
+
+    // Usar a função RPC para remover o funcionário
     const { data, error } = await supabase
       .rpc('remove_clinic_staff', {
         staff_id: staffId,
         admin_user_id: adminUserId
       });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Erro ao remover funcionário via RPC:', error);
+      throw error;
+    }
     
-    return data || false;
+    if (data) {
+      console.log('✅ Funcionário removido com sucesso');
+      return { success: true, message: 'Funcionário removido com sucesso' };
+    } else {
+      console.log('❌ Falha ao remover funcionário');
+      return { success: false, message: 'Falha ao remover funcionário' };
+    }
   } catch (error) {
     console.error('Error removing clinic staff:', error);
-    throw error;
+    return { success: false, message: 'Erro ao remover funcionário' };
   }
 };
 
