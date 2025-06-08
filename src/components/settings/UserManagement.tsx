@@ -208,18 +208,26 @@ export const UserManagement = () => {
       setUserAlreadyInClinic(false);
       setSearchResult(null);
       
-      // Search for user by email
+      console.log('=== SEARCHING USER ===');
+      console.log('Email sendo buscado:', values.email.trim().toLowerCase());
+      
+      // Search for user by email with more detailed logging
       const { data: userData, error: userError } = await supabase
         .from('profiles')
         .select('*')
         .eq('email', values.email.trim().toLowerCase())
         .maybeSingle();
       
+      console.log('Resultado da busca:', userData);
+      console.log('Erro da busca:', userError);
+      
       if (userError && userError.code !== 'PGRST116') {
+        console.error('Erro na busca:', userError);
         throw userError;
       }
       
       if (!userData) {
+        console.log('Nenhum usuário encontrado com o email:', values.email);
         // No user found with that email
         toast({
           title: "Usuário não encontrado",
@@ -232,17 +240,22 @@ export const UserManagement = () => {
         return;
       }
       
+      console.log('Usuário encontrado:', userData);
+      
       // Check if the user is already in this clinic
       const isAlreadyStaff = staffMembers.some(staff => 
         staff.user.id === userData.id
       );
       
+      console.log('Usuário já é staff?', isAlreadyStaff);
+      console.log('Staff members atuais:', staffMembers.map(s => ({ id: s.user.id, email: s.user.email })));
+      
       if (isAlreadyStaff) {
         setUserAlreadyInClinic(true);
         setSearchResult({
           id: userData.id,
-          firstName: userData.first_name,
-          lastName: userData.last_name,
+          firstName: userData.first_name || '',
+          lastName: userData.last_name || '',
           email: userData.email,
           phone: userData.phone || null,
           crm: userData.crm || '',
@@ -262,8 +275,8 @@ export const UserManagement = () => {
       // User found and not in clinic yet
       setSearchResult({
         id: userData.id,
-        firstName: userData.first_name,
-        lastName: userData.last_name,
+        firstName: userData.first_name || '',
+        lastName: userData.last_name || '',
         email: userData.email,
         phone: userData.phone || null,
         crm: userData.crm || '',
@@ -278,6 +291,11 @@ export const UserManagement = () => {
               userData.role === 'nurse' ? 'nurse' : 
               userData.role === 'receptionist' ? 'receptionist' : 'staff',
         isAdmin: false
+      });
+      
+      toast({
+        title: "Usuário encontrado",
+        description: `Usuário ${userData.first_name} ${userData.last_name} encontrado!`,
       });
       
     } catch (error) {
@@ -324,17 +342,29 @@ export const UserManagement = () => {
     if (!selectedClinic) return;
     
     try {
-      // Check if email already exists FIRST
-      const { data: existingUser } = await supabase
+      console.log('=== CREATING NEW USER ===');
+      console.log('Email a ser criado:', values.email.trim().toLowerCase());
+      
+      // Check if email already exists FIRST with more specific query
+      const { data: existingUser, error: checkError } = await supabase
         .from('profiles')
-        .select('id, email')
+        .select('id, email, first_name, last_name')
         .eq('email', values.email.trim().toLowerCase())
         .maybeSingle();
         
+      console.log('Verificação de usuário existente:', existingUser);
+      console.log('Erro na verificação:', checkError);
+        
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Erro ao verificar usuário existente:', checkError);
+        throw checkError;
+      }
+        
       if (existingUser) {
+        console.log('Email já existe no sistema:', existingUser);
         toast({
           title: "Email já cadastrado",
-          description: "Este email já está em uso. Por favor, use a opção de buscar usuário existente.",
+          description: `Este email já está em uso por ${existingUser.first_name} ${existingUser.last_name}. Use a opção de buscar usuário existente.`,
           variant: "destructive",
         });
         
@@ -372,6 +402,8 @@ export const UserManagement = () => {
       
       const password = generatePassword();
       
+      console.log('Criando usuário no Auth...');
+      
       // Create the user in Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: values.email.trim().toLowerCase(),
@@ -384,9 +416,13 @@ export const UserManagement = () => {
         },
       });
       
+      console.log('Resultado da criação Auth:', authData);
+      console.log('Erro Auth:', authError);
+      
       if (authError) {
         // Handle specific auth errors
-        if (authError.message === 'User already registered') {
+        if (authError.message === 'User already registered' || authError.message.includes('already registered')) {
+          console.log('Usuário já registrado no Auth');
           toast({
             title: "Usuário já existe",
             description: "Este email já possui uma conta. Use a aba 'Buscar Existente'.",
@@ -405,6 +441,8 @@ export const UserManagement = () => {
         throw new Error("Falha ao criar usuário");
       }
       
+      console.log('Usuário criado no Auth, atualizando perfil...');
+      
       // Update the profile with additional data
       const { error: profileError } = await supabase
         .from('profiles')
@@ -418,10 +456,17 @@ export const UserManagement = () => {
         })
         .eq('id', authData.user.id);
         
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Erro ao atualizar perfil:', profileError);
+        throw profileError;
+      }
+      
+      console.log('Perfil atualizado, associando à clínica...');
       
       // Associate with the clinic
       await addClinicStaff(selectedClinic.id, authData.user.id, values.role, values.isAdmin);
+      
+      console.log('Usuário associado à clínica, recarregando lista...');
       
       // Reload staff list usando a função otimizada
       await loadStaff();
