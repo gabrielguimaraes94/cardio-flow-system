@@ -2,18 +2,43 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Clinic } from '@/types/clinic';
 
+interface UserClinicData {
+  clinic_id: string;
+  clinic_name: string;
+  clinic_city: string;
+  clinic_address: string;
+  clinic_phone: string;
+  clinic_email: string;
+  clinic_logo_url: string | null;
+  clinic_active: boolean;
+  is_admin: boolean;
+  staff_id: string | null;
+  staff_role: string;
+  staff_active: boolean;
+}
+
 /**
  * Service for handling clinic operations
  */
 export const clinicService = {
   /**
-   * Fetch clinics where the user has access (as owner or staff)
+   * Fetch clinics where the user has access (as owner or staff) using the optimized function
    */
-  async getUserClinics(): Promise<Clinic[]> {
+  async getUserClinics(): Promise<{
+    clinics: Clinic[];
+    userClinics: Array<{
+      id: string;
+      name: string;
+      city: string;
+      logo?: string;
+      staffId: string;
+      is_admin: boolean;
+    }>;
+  }> {
     try {
       const { data: session } = await supabase.auth.getSession();
       if (!session.session?.user) {
-        return [];
+        return { clinics: [], userClinics: [] };
       }
 
       const userId = session.session.user.id;
@@ -25,8 +50,12 @@ export const clinicService = {
 
       if (error) throw error;
       
-      // Transform the result to match our Clinic interface
-      const clinics: Clinic[] = data ? data.map((item: any) => ({
+      if (!data || data.length === 0) {
+        return { clinics: [], userClinics: [] };
+      }
+
+      // Transform the result to match our interfaces
+      const clinics: Clinic[] = data.map((item: UserClinicData) => ({
         id: item.clinic_id,
         name: item.clinic_name,
         city: item.clinic_city,
@@ -34,10 +63,19 @@ export const clinicService = {
         phone: item.clinic_phone,
         email: item.clinic_email,
         logo_url: item.clinic_logo_url,
-        active: true
-      })) : [];
+        active: item.clinic_active
+      }));
+
+      const userClinics = data.map((item: UserClinicData) => ({
+        id: item.clinic_id,
+        name: item.clinic_name,
+        city: item.clinic_city,
+        logo: item.clinic_logo_url || undefined,
+        staffId: item.staff_id || 'global-admin',
+        is_admin: item.is_admin
+      }));
       
-      return clinics;
+      return { clinics, userClinics };
     } catch (error) {
       console.error('Error fetching user clinics:', error);
       throw error;

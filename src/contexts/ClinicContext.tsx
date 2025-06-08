@@ -1,9 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { clinicService } from '@/services/clinicService';
 import { Clinic } from '@/types/clinic';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useUserClinics } from '@/hooks/useUserClinics';
 
 interface ClinicContextType {
   selectedClinic: Clinic | null;
@@ -59,108 +58,60 @@ export const useClinic = () => {
 
 export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
-  const [clinics, setClinics] = useState<Clinic[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const { clinics, loading, error, refetch } = useUserClinics();
   const { toast } = useToast();
-  const { user, isLoading: authLoading } = useAuth();
 
   // Função para validar se uma clínica ainda existe na lista atual
   const validateStoredClinic = (storedClinicId: string, availableClinics: Clinic[]): Clinic | null => {
     const clinic = availableClinics.find(c => c.id === storedClinicId);
     if (!clinic) {
-      console.log('Clínica armazenada não encontrada na lista atual, removendo do localStorage');
+      console.log('ClinicContext: Clínica armazenada não encontrada na lista atual, removendo do localStorage');
       safeLocalStorage.removeItem('selectedClinicId');
       return null;
     }
     return clinic;
   };
 
-  const fetchClinics = async () => {
-    if (!user || authLoading) {
-      setClinics([]);
-      setSelectedClinic(null);
-      setLoading(false);
-      setError(null);
+  // Auto-select clinic logic when clinics are loaded
+  useEffect(() => {
+    if (loading || clinics.length === 0) return;
+
+    // Se já há uma clínica selecionada válida, não faz nada
+    if (selectedClinic && clinics.find(c => c.id === selectedClinic.id)) {
       return;
     }
-    
-    try {
-      setLoading(true);
-      setError(null);
-      
-      console.log('🔄 Buscando clínicas do usuário...');
-      const clinicsData = await clinicService.getUserClinics();
-      console.log('📋 Clínicas retornadas:', clinicsData);
-      
-      if (clinicsData && clinicsData.length > 0) {
-        setClinics(clinicsData);
-        
-        // Verifica se já existe uma clínica selecionada no localStorage
-        const storedClinicId = safeLocalStorage.getItem('selectedClinicId');
-        
-        if (storedClinicId) {
-          // Valida se a clínica armazenada ainda existe na lista atual
-          const validClinic = validateStoredClinic(storedClinicId, clinicsData);
-          
-          if (validClinic) {
-            console.log('✅ Restaurando clínica válida do localStorage:', validClinic.name);
-            console.log('🏥 Dados completos da clínica:', validClinic);
-            console.log('🖼️ Logo URL da clínica:', validClinic.logo_url);
-            // Use os dados completos da clínica sem modificações
-            handleSetSelectedClinic(validClinic);
-          } else {
-            console.log('❌ Clínica do localStorage inválida, selecionando primeira da lista');
-            const firstClinic = clinicsData[0];
-            console.log('🏥 Primeira clínica selecionada:', firstClinic);
-            console.log('🖼️ Logo URL da primeira clínica:', firstClinic.logo_url);
-            handleSetSelectedClinic(firstClinic);
-          }
-        } else {
-          console.log('⚠️ Nenhuma clínica no localStorage, selecionando primeira da lista');
-          const firstClinic = clinicsData[0];
-          console.log('🏥 Primeira clínica selecionada:', firstClinic);
-          console.log('🖼️ Logo URL da primeira clínica:', firstClinic.logo_url);
-          handleSetSelectedClinic(firstClinic);
-        }
-      } else {
-        console.log('❌ Nenhuma clínica encontrada para o usuário');
-        setClinics([]);
-        setSelectedClinic(null);
-        safeLocalStorage.removeItem('selectedClinicId');
-      }
-    } catch (error) {
-      console.error("Error fetching clinics:", error);
-      setError('Erro ao carregar clínicas');
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar as clínicas.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  // Fetch clinics when user changes
-  useEffect(() => {
-    if (!authLoading) {
-      fetchClinics();
+    console.log('ClinicContext: Processando seleção automática de clínica');
+    
+    // Verifica se já existe uma clínica selecionada no localStorage
+    const storedClinicId = safeLocalStorage.getItem('selectedClinicId');
+    
+    if (storedClinicId) {
+      // Valida se a clínica armazenada ainda existe na lista atual
+      const validClinic = validateStoredClinic(storedClinicId, clinics);
+      
+      if (validClinic) {
+        console.log('ClinicContext: ✅ Restaurando clínica válida do localStorage:', validClinic.name);
+        handleSetSelectedClinic(validClinic);
+      } else {
+        console.log('ClinicContext: ❌ Clínica do localStorage inválida, selecionando primeira da lista');
+        handleSetSelectedClinic(clinics[0]);
+      }
+    } else {
+      console.log('ClinicContext: ⚠️ Nenhuma clínica no localStorage, selecionando primeira da lista');
+      handleSetSelectedClinic(clinics[0]);
     }
-  }, [user, authLoading]);
+  }, [clinics, loading]);
 
   const handleSetSelectedClinic = (clinic: Clinic | null) => {
     // Evita loops desnecessários se a clínica já está selecionada
     if (selectedClinic?.id === clinic?.id) {
-      console.log('🔄 Clínica já selecionada, ignorando mudança');
+      console.log('ClinicContext: 🔄 Clínica já selecionada, ignorando mudança');
       return;
     }
     
-    console.log('🔄 Alterando clínica selecionada para:', clinic?.name || 'nenhuma');
-    console.log('🏥 Dados completos da clínica sendo selecionada:', clinic);
-    console.log('🖼️ Logo URL da clínica sendo selecionada:', clinic?.logo_url);
+    console.log('ClinicContext: 🔄 Alterando clínica selecionada para:', clinic?.name || 'nenhuma');
     
-    // Preserve TODOS os dados da clínica sem modificações
     setSelectedClinic(clinic);
     
     if (clinic) {
@@ -187,7 +138,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setSelectedClinic: handleSetSelectedClinic,
         clinics,
         loading,
-        refetchClinics: fetchClinics,
+        refetchClinics: refetch,
         error
       }}
     >

@@ -46,23 +46,12 @@ const Index = () => {
       }
 
       // Para usuários normais, verifica clínicas
-      // IMPORTANTE: Só redireciona se realmente não há clínicas carregadas
       if (userClinics.length > 0) {
         console.log("Index: Usuário tem clínicas, redirecionando para dashboard");
         navigate('/dashboard', { replace: true });
       } else {
-        // Aguarda um pouco mais antes de concluir que não há clínicas
-        console.log("Index: Nenhuma clínica encontrada inicialmente, aguardando...");
-        setTimeout(() => {
-          // Verifica novamente após delay
-          if (userClinics.length === 0) {
-            console.log("Index: Confirmado - usuário sem clínicas, redirecionando para no-access");
-            navigate('/no-access', { replace: true });
-          } else {
-            console.log("Index: Clínicas carregadas após delay, redirecionando para dashboard");
-            navigate('/dashboard', { replace: true });
-          }
-        }, 1000);
+        console.log("Index: Usuário sem clínicas, redirecionando para no-access");
+        navigate('/no-access', { replace: true });
       }
     };
 

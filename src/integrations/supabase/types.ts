@@ -961,8 +961,11 @@ export type Database = {
           clinic_phone: string
           clinic_email: string
           clinic_logo_url: string
+          clinic_active: boolean
           is_admin: boolean
           staff_id: string
+          staff_role: string
+          staff_active: boolean
         }[]
       }
       has_role: {

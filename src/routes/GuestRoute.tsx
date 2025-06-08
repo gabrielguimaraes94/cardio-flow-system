@@ -2,6 +2,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStaffClinic } from '@/contexts/StaffClinicContext';
 import { Loader2 } from 'lucide-react';
 
 interface GuestRouteProps {
@@ -9,9 +10,10 @@ interface GuestRouteProps {
 }
 
 export const GuestRoute: React.FC<GuestRouteProps> = ({ children }) => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const { loading: clinicsLoading } = useStaffClinic();
 
-  if (isLoading) {
+  if (authLoading || (user && clinicsLoading)) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-cardio-500 mb-4" />
