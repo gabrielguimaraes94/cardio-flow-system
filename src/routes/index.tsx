@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { GuestRoute } from './GuestRoute';
@@ -148,6 +147,15 @@ export const AppRoutes: React.FC = () => {
         element={
           <PrivateRoute>
             <PatientAnamnesisHistory />
+          </PrivateRoute>
+        } 
+      />
+      {/* Nova rota para criar anamnese de um paciente específico */}
+      <Route 
+        path="/patients/:patientId/anamnesis/new" 
+        element={
+          <PrivateRoute>
+            <AnamnesisForm />
           </PrivateRoute>
         } 
       />
