@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, MapPin, Phone, Mail, Building } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -60,27 +61,61 @@ export const ClinicManagement = () => {
   };
 
   const handleEditClinic = (clinic: any) => {
+    console.log('=== INICIANDO EDIÇÃO DA CLÍNICA ===');
+    console.log('Clínica selecionada para edição:', clinic);
+    console.log('ID da clínica:', clinic.id);
+    console.log('Dados completos da clínica:', JSON.stringify(clinic, null, 2));
+    
     setCurrentClinic(clinic);
     setIsDialogOpen(true);
   };
 
   const handleSaveClinic = async (clinicData: any) => {
     if (!user) {
-      console.error('Usuário não autenticado');
+      console.error('❌ Usuário não autenticado');
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado",
+        variant: "destructive"
+      });
       return;
     }
     
     try {
       console.log('=== INICIANDO SALVAMENTO DA CLÍNICA ===');
-      console.log('Dados recebidos do formulário:', clinicData);
+      console.log('📋 Dados recebidos do formulário:', clinicData);
+      console.log('🏥 Clínica atual (currentClinic):', currentClinic);
+      console.log('👤 Usuário atual:', user.id);
       
       if (currentClinic) {
         // EDITANDO CLÍNICA EXISTENTE
-        console.log('=== EDITANDO CLÍNICA EXISTENTE ===');
-        console.log('ID da clínica:', currentClinic.id);
+        console.log('=== MODO: EDITANDO CLÍNICA EXISTENTE ===');
+        console.log('🆔 ID da clínica a ser editada:', currentClinic.id);
         
-        // MONTAR OBJETO PARA UPDATE (seguindo o fluxo definido)
-        const updateObject = {
+        // Verificar se a clínica existe primeiro
+        console.log('🔍 Verificando se a clínica existe...');
+        const { data: clinicExists, error: checkError } = await supabase
+          .from('clinics')
+          .select('id, name, created_by')
+          .eq('id', currentClinic.id)
+          .single();
+        
+        if (checkError) {
+          console.error('❌ Erro ao verificar clínica:', checkError);
+          throw new Error(`Erro ao verificar clínica: ${checkError.message}`);
+        }
+        
+        if (!clinicExists) {
+          console.error('❌ Clínica não encontrada com ID:', currentClinic.id);
+          throw new Error('Clínica não encontrada');
+        }
+        
+        console.log('✅ Clínica encontrada:', clinicExists);
+        console.log('👥 Created by:', clinicExists.created_by);
+        console.log('👤 Current user:', user.id);
+        
+        // Montar objeto para update
+        const updateData = {
           name: clinicData.name,
           address: clinicData.address,
           city: clinicData.city,
@@ -91,21 +126,28 @@ export const ClinicManagement = () => {
           updated_at: new Date().toISOString()
         };
         
-        console.log('Objeto para update:', updateObject);
+        console.log('📝 Objeto para update:', JSON.stringify(updateData, null, 2));
         
-        // EXECUTAR UPDATE NO SUPABASE
-        const { error, data } = await supabase
+        // Executar update
+        console.log('💾 Executando update...');
+        const { data: updateResult, error: updateError } = await supabase
           .from('clinics')
-          .update(updateObject)
+          .update(updateData)
           .eq('id', currentClinic.id)
           .select();
         
-        if (error) {
-          console.error('Erro no update:', error);
-          throw error;
+        if (updateError) {
+          console.error('❌ Erro no update:', updateError);
+          console.error('Detalhes do erro:', JSON.stringify(updateError, null, 2));
+          throw updateError;
         }
         
-        console.log('✅ Update executado com sucesso:', data);
+        console.log('✅ Update executado com sucesso:', updateResult);
+        
+        if (!updateResult || updateResult.length === 0) {
+          console.error('❌ Update não retornou dados');
+          throw new Error('Update não retornou dados - possível problema de permissão');
+        }
         
         toast({
           title: "Clínica atualizada",
@@ -114,9 +156,9 @@ export const ClinicManagement = () => {
         
       } else {
         // CRIANDO NOVA CLÍNICA
-        console.log('=== CRIANDO NOVA CLÍNICA ===');
+        console.log('=== MODO: CRIANDO NOVA CLÍNICA ===');
         
-        const insertObject = {
+        const insertData = {
           name: clinicData.name,
           address: clinicData.address,
           city: clinicData.city,
@@ -127,19 +169,19 @@ export const ClinicManagement = () => {
           created_by: user.id
         };
         
-        console.log('Objeto para inserção:', insertObject);
+        console.log('📝 Objeto para inserção:', JSON.stringify(insertData, null, 2));
         
-        const { error, data } = await supabase
+        const { data: insertResult, error: insertError } = await supabase
           .from('clinics')
-          .insert(insertObject)
+          .insert(insertData)
           .select();
         
-        if (error) {
-          console.error('Erro na inserção:', error);
-          throw error;
+        if (insertError) {
+          console.error('❌ Erro na inserção:', insertError);
+          throw insertError;
         }
         
-        console.log('✅ Inserção executada com sucesso:', data);
+        console.log('✅ Inserção executada com sucesso:', insertResult);
         
         toast({
           title: "Clínica adicionada",
@@ -147,18 +189,20 @@ export const ClinicManagement = () => {
         });
       }
       
-      // APÓS SUCESSO - ATUALIZAR LISTA E FECHAR MODAL
+      // FINALIZAR PROCESSO
       console.log('=== FINALIZANDO PROCESSO ===');
       await refetchClinics();
       setIsDialogOpen(false);
+      setCurrentClinic(null);
       
     } catch (error) {
       console.error('=== ERRO NO PROCESSO ===');
       console.error('Erro completo:', error);
+      console.error('Stack trace:', error instanceof Error ? error.stack : 'N/A');
       
       toast({
         title: "Erro",
-        description: "Não foi possível salvar a clínica. Tente novamente.",
+        description: error instanceof Error ? error.message : "Não foi possível salvar a clínica. Tente novamente.",
         variant: "destructive"
       });
     }
@@ -269,7 +313,10 @@ export const ClinicManagement = () => {
       </CardContent>
       <ClinicDialog 
         isOpen={isDialogOpen} 
-        onClose={() => setIsDialogOpen(false)} 
+        onClose={() => {
+          setIsDialogOpen(false);
+          setCurrentClinic(null);
+        }} 
         onSave={handleSaveClinic} 
         clinic={currentClinic} 
       />
