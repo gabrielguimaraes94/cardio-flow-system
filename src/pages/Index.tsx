@@ -14,18 +14,28 @@ const Index = () => {
 
   useEffect(() => {
     const handleRedirect = async () => {
+      console.log("Index: Estado atual - authLoading:", authLoading, "user:", !!user, "clinicsLoading:", clinicsLoading, "userClinics.length:", userClinics.length);
+      
       // Se ainda está carregando auth, espera
-      if (authLoading) return;
+      if (authLoading) {
+        console.log("Index: Aguardando carregamento de autenticação...");
+        return;
+      }
       
       // Se não há usuário, mostra login
-      if (!user) return;
+      if (!user) {
+        console.log("Index: Usuário não autenticado, mostrando login");
+        return;
+      }
 
       // Se ainda está carregando clínicas, espera
-      if (clinicsLoading) return;
+      if (clinicsLoading) {
+        console.log("Index: Usuário autenticado, aguardando carregamento de clínicas...");
+        return;
+      }
 
       console.log("Index: Processando redirecionamento para usuário autenticado");
       console.log("Index: userClinics:", userClinics);
-      console.log("Index: userClinics.length:", userClinics.length);
 
       try {
         // Verifica se é admin global (com timeout rápido)

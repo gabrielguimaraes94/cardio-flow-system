@@ -13,6 +13,8 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
   const { user, isLoading: authLoading } = useAuth();
   const { loading: clinicsLoading, userClinics } = useStaffClinic();
 
+  console.log('PrivateRoute: authLoading:', authLoading, 'clinicsLoading:', clinicsLoading, 'userClinics.length:', userClinics.length);
+
   if (authLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
@@ -27,7 +29,9 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
     return <Navigate to="/" replace />;
   }
 
+  // IMPORTANTE: Aguarda o carregamento das clínicas terminar
   if (clinicsLoading) {
+    console.log('PrivateRoute: Aguardando carregamento das clínicas...');
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-cardio-500 mb-4" />
@@ -36,11 +40,12 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
     );
   }
 
-  // Se não tem clínicas após carregamento completo, redireciona para no-access
+  // Só verifica se tem clínicas APÓS o carregamento estar completo
   if (userClinics.length === 0) {
     console.log("PrivateRoute: Redirecionando para no-access - usuário sem clínicas");
     return <Navigate to="/no-access" replace />;
   }
 
+  console.log("PrivateRoute: Usuário autenticado com clínicas, permitindo acesso");
   return <>{children}</>;
 };
