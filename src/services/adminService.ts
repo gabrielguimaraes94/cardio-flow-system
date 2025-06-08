@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { UserProfile } from '@/types/profile';
@@ -332,18 +331,18 @@ export const deleteClinic = async (clinicId: string): Promise<void> => {
   try {
     console.log('Iniciando exclusão completa da clínica:', clinicId);
     
-    // 1. Primeiro deletar todos os staff da clínica
-    const { error: staffError } = await supabase
-      .from('clinic_staff')
+    // 1. Primeiro deletar todas as solicitações de angioplastia da clínica
+    const { error: angioplastyError } = await supabase
+      .from('angioplasty_requests')
       .delete()
       .eq('clinic_id', clinicId);
     
-    if (staffError) {
-      console.error('Erro ao deletar staff da clínica:', staffError);
-      throw staffError;
+    if (angioplastyError) {
+      console.error('Erro ao deletar solicitações de angioplastia:', angioplastyError);
+      throw angioplastyError;
     }
     
-    // 2. Deletar pacientes da clínica
+    // 2. Depois deletar todos os pacientes da clínica
     const { error: patientsError } = await supabase
       .from('patients')
       .delete()
@@ -354,15 +353,15 @@ export const deleteClinic = async (clinicId: string): Promise<void> => {
       throw patientsError;
     }
     
-    // 3. Deletar solicitações de angioplastia da clínica
-    const { error: angioplastyError } = await supabase
-      .from('angioplasty_requests')
+    // 3. Deletar todos os staff da clínica
+    const { error: staffError } = await supabase
+      .from('clinic_staff')
       .delete()
       .eq('clinic_id', clinicId);
     
-    if (angioplastyError) {
-      console.error('Erro ao deletar solicitações de angioplastia:', angioplastyError);
-      throw angioplastyError;
+    if (staffError) {
+      console.error('Erro ao deletar staff da clínica:', staffError);
+      throw staffError;
     }
     
     // 4. Deletar convênios da clínica
