@@ -108,11 +108,7 @@ export const AngioplastyView: React.FC = () => {
       id: request.insuranceId,
       name: request.insuranceName
     },
-    clinic: {
-      ...selectedClinic,
-      email: selectedClinic.email || 'contato@clinica.com', // Fallback if email is missing
-      city: selectedClinic.city || 'São Paulo' // Ensure city is always provided
-    },
+    clinic: selectedClinic,
     tussProcedures: request.tussProcedures,
     materials: request.materials,
     surgicalTeam: request.surgicalTeam,
