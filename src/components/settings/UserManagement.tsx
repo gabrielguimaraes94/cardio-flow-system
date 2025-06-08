@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit, Trash2, UserCheck, UserX } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -8,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { UserDialog } from './UserDialog';
 import { UserProfile } from '@/types/profile';
-import { fetchClinicStaff, addClinicStaff, removeClinicStaff } from '@/services/userService';
+import { fetchClinicStaff, addClinicStaff, removeClinicStaff } from '@/services/user/clinicStaffService';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -104,7 +103,6 @@ export const UserManagement = () => {
       console.log('=== SEARCHING USER ===');
       console.log('Email sendo buscado:', searchEmail);
       
-      // Buscar usuário por email na tabela profiles
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -171,7 +169,6 @@ export const UserManagement = () => {
     }
 
     try {
-      // Verificar se o usuário já é funcionário desta clínica
       const isAlreadyStaff = staff.some(s => s.user.id === foundUser.id);
       if (isAlreadyStaff) {
         toast({
@@ -189,10 +186,7 @@ export const UserManagement = () => {
         description: "Usuário adicionado como funcionário com sucesso!"
       });
       
-      // Recarregar lista
       await loadStaff();
-      
-      // Limpar busca
       setSearchEmail('');
       setFoundUser(null);
       
@@ -232,7 +226,6 @@ export const UserManagement = () => {
       console.log('currentUser:', currentUser);
 
       if (currentUser) {
-        // Editando usuário existente - apenas atualizar perfil
         console.log('Editando usuário existente');
         
         const { error } = await supabase
@@ -256,10 +249,8 @@ export const UserManagement = () => {
           description: "Informações do usuário atualizadas com sucesso!"
         });
       } else {
-        // Criando novo usuário - APENAS NO PERFIL, SEM AUTH
         console.log('Criando novo usuário apenas no perfil');
         
-        // Verificar se email já existe
         const { data: existingUser } = await supabase
           .from('profiles')
           .select('*')
@@ -275,7 +266,6 @@ export const UserManagement = () => {
           return;
         }
 
-        // Criar usuário diretamente na tabela profiles com um UUID gerado
         const newUserId = crypto.randomUUID();
         
         const { error: profileError } = await supabase
@@ -294,7 +284,6 @@ export const UserManagement = () => {
 
         if (profileError) throw profileError;
 
-        // Adicionar como funcionário da clínica
         await addClinicStaff(selectedClinic.id, newUserId, userData.role, false);
 
         toast({
@@ -303,7 +292,6 @@ export const UserManagement = () => {
         });
       }
 
-      // Recarregar lista e fechar modal
       await loadStaff();
       setIsDialogOpen(false);
       setCurrentUser(null);
@@ -337,7 +325,6 @@ export const UserManagement = () => {
           description: "Funcionário removido da clínica com sucesso!"
         });
         
-        // Recarregar lista
         await loadStaff();
       } else {
         toast({
