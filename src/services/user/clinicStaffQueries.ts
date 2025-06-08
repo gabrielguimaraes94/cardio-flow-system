@@ -7,7 +7,7 @@ export const fetchClinicStaff = async (clinicId: string) => {
     console.log('=== FETCHCLINICSTAFF ===');
     console.log('Buscando funcionários para clínica:', clinicId);
     
-    // Query corrigida - usando alias para o LEFT JOIN
+    // Query corrigida - especificando a relação exata para evitar ambiguidade
     const { data: staffData, error: staffError } = await supabase
       .from('clinic_staff')
       .select(`
@@ -18,7 +18,7 @@ export const fetchClinicStaff = async (clinicId: string) => {
         is_admin,
         active,
         created_at,
-        profiles!inner (
+        profiles!clinic_staff_user_id_fkey (
           id,
           email,
           first_name,
