@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, MapPin, Phone, Mail, Building } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -106,13 +105,12 @@ export const ClinicManagement = () => {
         
         console.log('📝 Objeto para update:', JSON.stringify(updateData, null, 2));
         
-        // Executar update DIRETO - sem verificação de existência
+        // Executar update DIRETO - sem verificação de existência e sem .select()
         console.log('💾 Executando update direto...');
-        const { data: updateResult, error: updateError } = await supabase
+        const { error: updateError } = await supabase
           .from('clinics')
           .update(updateData)
-          .eq('id', currentClinic.id)
-          .select();
+          .eq('id', currentClinic.id);
         
         if (updateError) {
           console.error('❌ Erro no update:', updateError);
@@ -120,12 +118,7 @@ export const ClinicManagement = () => {
           throw updateError;
         }
         
-        console.log('✅ Update executado com sucesso:', updateResult);
-        
-        if (!updateResult || updateResult.length === 0) {
-          console.error('❌ Update não retornou dados');
-          throw new Error('Update não retornou dados - possível problema de permissão ou ID incorreto');
-        }
+        console.log('✅ Update executado com sucesso');
         
         toast({
           title: "Clínica atualizada",
