@@ -49,10 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsLoading(false);
           }
           
-          toast({
-            title: "Desconectado",
-            description: "Você foi desconectado com sucesso.",
-          });
+          console.log('User signed out - redirecting to home');
         } else if (event === 'USER_UPDATED') {
           if (mounted) {
             setSession(currentSession);
@@ -111,24 +108,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signOut = async () => {
-    console.log('Signing out...');
-    setIsLoading(true);
+    console.log('🚪 Starting logout process...');
+    
     try {
+      setIsLoading(true);
+      
+      // Clear local state first
+      setUser(null);
+      setSession(null);
+      
+      // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
+      
       if (error) {
-        console.error('Error signing out:', error);
+        console.error('❌ Error during logout:', error);
         toast({
-          title: "Erro ao desconectar",
-          description: error.message,
+          title: "Erro ao sair",
+          description: "Não foi possível desconectar. Tente novamente.",
           variant: "destructive",
         });
-      } else {
-        console.log('Successfully signed out');
-        setUser(null);
-        setSession(null);
+        return;
       }
+      
+      console.log('✅ Successfully signed out from Supabase');
+      
+      // Clear any additional local storage items if needed
+      localStorage.removeItem('cardioflow-auth');
+      
+      // Force redirect to home page
+      window.location.href = '/';
+      
     } catch (error) {
-      console.error('Exception during signOut:', error);
+      console.error('❌ Exception during logout:', error);
+      toast({
+        title: "Erro ao sair",
+        description: "Ocorreu um erro inesperado ao tentar sair.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }

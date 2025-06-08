@@ -16,15 +16,11 @@ import {
   useSidebar
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
   const { state } = useSidebar();
   const { signOut } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
 
   const menuItems = [
     { title: "Dashboard", url: "/dashboard", icon: Heart },
@@ -38,20 +34,11 @@ export const Sidebar: React.FC = () => {
   ];
 
   const handleLogout = async () => {
+    console.log('🚪 Logout button clicked');
     try {
       await signOut();
-      navigate('/');
-      toast({
-        title: "Logout realizado com sucesso",
-        description: "Você foi desconectado com segurança.",
-      });
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao sair",
-        description: "Não foi possível desconectar. Tente novamente.",
-      });
+      console.error('❌ Error in handleLogout:', error);
     }
   };
 
