@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, MapPin, Phone, Mail, Building } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -65,103 +64,82 @@ export const ClinicManagement = () => {
     setIsDialogOpen(true);
   };
 
-  const handleSaveClinic = async (clinic: any) => {
-    if (!user) return;
+  const handleSaveClinic = async (clinicData: any) => {
+    if (!user) {
+      console.error('Usuário não autenticado');
+      return;
+    }
     
     try {
       console.log('=== INICIANDO SALVAMENTO DA CLÍNICA ===');
-      console.log('Dados da clínica recebidos:', clinic);
-      console.log('Logo URL recebida:', clinic.logo_url);
+      console.log('Dados recebidos do formulário:', clinicData);
       
       if (currentClinic) {
-        // Editar clínica existente
+        // EDITANDO CLÍNICA EXISTENTE
         console.log('=== EDITANDO CLÍNICA EXISTENTE ===');
-        console.log('ID da clínica:', clinic.id);
+        console.log('ID da clínica:', currentClinic.id);
         
-        // Verificar se a clínica existe antes de tentar atualizar
-        const { data: existingClinic, error: checkError } = await supabase
-          .from('clinics')
-          .select('id, name')
-          .eq('id', clinic.id)
-          .maybeSingle();
-        
-        if (checkError) {
-          console.error('Erro ao verificar clínica existente:', checkError);
-          throw checkError;
-        }
-        
-        if (!existingClinic) {
-          console.error('Clínica não encontrada para atualização');
-          throw new Error('Clínica não encontrada');
-        }
-        
-        console.log('Clínica encontrada:', existingClinic);
-        
-        const clinicUpdateData = {
-          name: clinic.name,
-          address: clinic.address,
-          city: clinic.city,
-          phone: clinic.phone,
-          email: clinic.email,
-          active: clinic.active,
-          logo_url: clinic.logo_url || null,
+        // MONTAR OBJETO PARA UPDATE (seguindo o fluxo definido)
+        const updateObject = {
+          name: clinicData.name,
+          address: clinicData.address,
+          city: clinicData.city,
+          phone: clinicData.phone,
+          email: clinicData.email,
+          active: clinicData.active,
+          logo_url: clinicData.logo_url || currentClinic.logo_url || null,
           updated_at: new Date().toISOString()
         };
         
-        console.log('Dados para atualização:', clinicUpdateData);
+        console.log('Objeto para update:', updateObject);
         
-        const { error: updateError, data: updatedData } = await supabase
+        // EXECUTAR UPDATE NO SUPABASE
+        const { error, data } = await supabase
           .from('clinics')
-          .update(clinicUpdateData)
-          .eq('id', clinic.id)
+          .update(updateObject)
+          .eq('id', currentClinic.id)
           .select();
         
-        if (updateError) {
-          console.error('Erro ao atualizar clínica:', updateError);
-          throw updateError;
+        if (error) {
+          console.error('Erro no update:', error);
+          throw error;
         }
         
-        console.log('Clínica atualizada com sucesso:', updatedData);
-        
-        // Verificar se a atualização foi bem-sucedida
-        if (updatedData && updatedData.length > 0) {
-          console.log('✅ Atualização confirmada:', updatedData[0]);
-        } else {
-          console.warn('⚠️ Nenhum dado retornado da atualização');
-        }
+        console.log('✅ Update executado com sucesso:', data);
         
         toast({
           title: "Clínica atualizada",
           description: "As informações da clínica foram atualizadas com sucesso."
         });
-      } else {
-        // Adicionar nova clínica
-        console.log('=== ADICIONANDO NOVA CLÍNICA ===');
         
-        const clinicInsertData = {
-          name: clinic.name,
-          address: clinic.address,
-          city: clinic.city,
-          phone: clinic.phone,
-          email: clinic.email,
-          active: clinic.active,
-          logo_url: clinic.logo_url || null,
+      } else {
+        // CRIANDO NOVA CLÍNICA
+        console.log('=== CRIANDO NOVA CLÍNICA ===');
+        
+        const insertObject = {
+          name: clinicData.name,
+          address: clinicData.address,
+          city: clinicData.city,
+          phone: clinicData.phone,
+          email: clinicData.email,
+          active: clinicData.active,
+          logo_url: clinicData.logo_url || null,
           created_by: user.id
         };
         
-        console.log('Dados para inserção:', clinicInsertData);
+        console.log('Objeto para inserção:', insertObject);
         
-        const { error: insertError, data: insertedData } = await supabase
+        const { error, data } = await supabase
           .from('clinics')
-          .insert(clinicInsertData)
+          .insert(insertObject)
           .select();
         
-        if (insertError) {
-          console.error('Erro ao criar clínica:', insertError);
-          throw insertError;
+        if (error) {
+          console.error('Erro na inserção:', error);
+          throw error;
         }
         
-        console.log('Clínica criada com sucesso:', insertedData);
+        console.log('✅ Inserção executada com sucesso:', data);
         
         toast({
           title: "Clínica adicionada",
@@ -169,19 +147,21 @@ export const ClinicManagement = () => {
         });
       }
       
-      // Atualizar a lista de clínicas no contexto
+      // APÓS SUCESSO - ATUALIZAR LISTA E FECHAR MODAL
+      console.log('=== FINALIZANDO PROCESSO ===');
       await refetchClinics();
+      setIsDialogOpen(false);
       
     } catch (error) {
-      console.error('Erro ao salvar clínica:', error);
+      console.error('=== ERRO NO PROCESSO ===');
+      console.error('Erro completo:', error);
+      
       toast({
         title: "Erro",
-        description: "Não foi possível salvar a clínica.",
+        description: "Não foi possível salvar a clínica. Tente novamente.",
         variant: "destructive"
       });
     }
-    
-    setIsDialogOpen(false);
   };
 
   return (
