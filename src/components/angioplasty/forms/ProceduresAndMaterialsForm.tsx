@@ -61,7 +61,7 @@ export const ProceduresAndMaterialsForm: React.FC<ProceduresAndMaterialsFormProp
           <h3 className="text-lg font-medium mb-4">Equipe Cirúrgica</h3>
           <SurgicalTeamSelector
             surgicalTeam={surgicalTeam}
-            setSurgicalTeam={setSurgicalTeam}
+            onTeamChange={setSurgicalTeam}
           />
         </CardContent>
       </Card>
