@@ -74,40 +74,58 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     if (isLoading || clinics.length === 0) return;
 
-    // Se já há uma clínica selecionada válida, não faz nada
-    if (selectedClinic && clinics.find(c => c.id === selectedClinic.id)) {
-      return;
-    }
-
     console.log('ClinicContext: Processando seleção automática de clínica');
     
     // Verifica se já existe uma clínica selecionada no localStorage
     const storedClinicId = safeLocalStorage.getItem('selectedClinicId');
     
     if (storedClinicId) {
-      // Valida se a clínica armazenada ainda existe na lista atual
-      const validClinic = validateStoredClinic(storedClinicId, clinics);
+      // Busca a clínica atualizada na lista atual (isso garante dados atualizados)
+      const updatedClinic = clinics.find(c => c.id === storedClinicId);
       
-      if (validClinic) {
-        console.log('ClinicContext: ✅ Restaurando clínica válida do localStorage:', validClinic.name);
-        handleSetSelectedClinic(validClinic);
+      if (updatedClinic) {
+        // Se a clínica existe na lista, usa os dados atualizados
+        console.log('ClinicContext: ✅ Atualizando clínica selecionada com dados mais recentes:', updatedClinic.name);
+        handleSetSelectedClinic(updatedClinic);
       } else {
-        console.log('ClinicContext: ❌ Clínica do localStorage inválida, selecionando primeira da lista');
+        console.log('ClinicContext: ❌ Clínica do localStorage não encontrada, selecionando primeira da lista');
         handleSetSelectedClinic(clinics[0]);
       }
     } else {
       console.log('ClinicContext: ⚠️ Nenhuma clínica no localStorage, selecionando primeira da lista');
       handleSetSelectedClinic(clinics[0]);
     }
-  }, [clinics, isLoading]);
+  }, [clinics, isLoading]); // Dependência em clinics garante que sempre use dados atualizados
+
+  // Efeito adicional para atualizar a clínica selecionada quando os dados das clínicas mudam
+  useEffect(() => {
+    if (selectedClinic && clinics.length > 0) {
+      // Busca a versão atualizada da clínica selecionada
+      const updatedSelectedClinic = clinics.find(c => c.id === selectedClinic.id);
+      
+      if (updatedSelectedClinic) {
+        // Verifica se houve mudanças nos dados
+        const hasChanges = JSON.stringify(selectedClinic) !== JSON.stringify(updatedSelectedClinic);
+        
+        if (hasChanges) {
+          console.log('ClinicContext: 🔄 Dados da clínica selecionada foram atualizados:', updatedSelectedClinic.name);
+          setSelectedClinic(updatedSelectedClinic);
+          
+          // Dispatch event para notificar outros componentes
+          try {
+            const event = new CustomEvent('clinicChanged', { 
+              detail: { clinicId: updatedSelectedClinic.id, clinicName: updatedSelectedClinic.name } 
+            });
+            window.dispatchEvent(event);
+          } catch (error) {
+            console.warn('Failed to dispatch clinic change event:', error);
+          }
+        }
+      }
+    }
+  }, [clinics, selectedClinic]);
 
   const handleSetSelectedClinic = (clinic: Clinic | null) => {
-    // Evita loops desnecessários se a clínica já está selecionada
-    if (selectedClinic?.id === clinic?.id) {
-      console.log('ClinicContext: 🔄 Clínica já selecionada, ignorando mudança');
-      return;
-    }
-    
     console.log('ClinicContext: 🔄 Alterando clínica selecionada para:', clinic?.name || 'nenhuma');
     
     setSelectedClinic(clinic);
