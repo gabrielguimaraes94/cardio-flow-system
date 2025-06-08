@@ -33,12 +33,17 @@ export const PatientHistory: React.FC = () => {
   const [catheterizationRecords, setCatheterizationRecords] = useState<HistoryRecord[]>([]);
   const [angioplastyRecords, setAngioplastyRecords] = useState<HistoryRecord[]>([]);
 
+  console.log('PatientHistory: Iniciando componente com patientId:', patientId);
+  console.log('PatientHistory: selectedPatient atual:', selectedPatient);
+
   // Carrega dados do paciente se não estiver já selecionado
   useEffect(() => {
     const fetchPatientData = async () => {
       if (patientId && (!selectedPatient || selectedPatient.id !== patientId)) {
+        console.log('PatientHistory: Buscando dados do paciente...');
         try {
           const { patient } = await patientService.getPatientById(patientId);
+          console.log('PatientHistory: Paciente encontrado:', patient);
           if (patient) {
             setSelectedPatient({
               ...patient,
@@ -46,7 +51,7 @@ export const PatientHistory: React.FC = () => {
             });
           }
         } catch (error) {
-          console.error('Erro ao buscar dados do paciente:', error);
+          console.error('PatientHistory: Erro ao buscar dados do paciente:', error);
           toast({
             title: "Erro",
             description: "Não foi possível carregar os dados do paciente.",
@@ -62,12 +67,20 @@ export const PatientHistory: React.FC = () => {
   // Carrega histórico dos exames
   useEffect(() => {
     const fetchHistory = async () => {
-      if (!patientId) return;
+      if (!patientId) {
+        console.log('PatientHistory: Sem patientId, encerrando loading');
+        setLoading(false);
+        return;
+      }
 
+      console.log('PatientHistory: Iniciando busca do histórico para patientId:', patientId);
       setLoading(true);
+      
       try {
         // Buscar anamneses reais do banco de dados
+        console.log('PatientHistory: Buscando anamneses...');
         const { anamnesis } = await anamnesisService.getPatientAnamnesis(patientId);
+        console.log('PatientHistory: Anamneses encontradas:', anamnesis);
         
         const realAnamnesisRecords: HistoryRecord[] = anamnesis.map((item) => ({
           id: item.id,
@@ -78,6 +91,7 @@ export const PatientHistory: React.FC = () => {
           description: `Avaliação realizada em ${format(new Date(item.created_at), 'dd/MM/yyyy', { locale: ptBR })}`
         }));
 
+        console.log('PatientHistory: Anamneses processadas:', realAnamnesisRecords);
         setAnamnesisRecords(realAnamnesisRecords);
 
         // TODO: Implementar busca real dos dados de cateterismo e angioplastia
@@ -104,16 +118,18 @@ export const PatientHistory: React.FC = () => {
           }
         ];
 
+        console.log('PatientHistory: Definindo dados mock para cateterismo e angioplastia');
         setCatheterizationRecords(mockCatheterizationRecords);
         setAngioplastyRecords(mockAngioplastyRecords);
       } catch (error) {
-        console.error('Erro ao buscar histórico:', error);
+        console.error('PatientHistory: Erro ao buscar histórico:', error);
         toast({
           title: "Erro",
           description: "Não foi possível carregar o histórico do paciente.",
           variant: "destructive"
         });
       } finally {
+        console.log('PatientHistory: Finalizando loading');
         setLoading(false);
       }
     };
@@ -152,6 +168,8 @@ export const PatientHistory: React.FC = () => {
   };
 
   const renderRecordsList = (records: HistoryRecord[], emptyMessage: string) => {
+    console.log('PatientHistory: Renderizando lista com', records.length, 'registros. Loading:', loading);
+    
     if (loading) {
       return (
         <div className="space-y-4">
@@ -213,11 +231,24 @@ export const PatientHistory: React.FC = () => {
     );
   };
 
-  if (loading && !selectedPatient) {
+  // Corrigindo a condição de loading - mostra skeleton apenas se ainda está carregando E não tem paciente
+  if (loading) {
     return (
       <Layout>
         <div className="space-y-6">
-          <Skeleton className="h-8 w-64" />
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleBack}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <Skeleton className="h-8 w-64 mb-2" />
+              <Skeleton className="h-4 w-48" />
+            </div>
+          </div>
           <Skeleton className="h-[400px] w-full" />
         </div>
       </Layout>
@@ -236,9 +267,13 @@ export const PatientHistory: React.FC = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">Histórico - {selectedPatient?.name}</h1>
+            <h1 className="text-2xl font-bold">Histórico - {selectedPatient?.name || 'Carregando...'}</h1>
             <p className="text-gray-600">
-              CPF: {selectedPatient?.cpf} • {selectedPatient?.age} anos
+              {selectedPatient ? (
+                <>CPF: {selectedPatient.cpf} • {selectedPatient.age} anos</>
+              ) : (
+                'Carregando dados do paciente...'
+              )}
             </p>
           </div>
         </div>
