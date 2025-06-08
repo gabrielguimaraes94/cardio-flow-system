@@ -95,6 +95,12 @@ export const addClinicStaff = async (
   isAdmin: boolean
 ): Promise<string> => {
   try {
+    console.log('=== ADICIONANDO FUNCIONÁRIO ===');
+    console.log('clinicId:', clinicId);
+    console.log('userId:', userId);
+    console.log('role:', role);
+    console.log('isAdmin:', isAdmin);
+
     // Use the RPC function which handles permissions properly
     const { data, error } = await supabase
       .rpc('add_clinic_staff', {
@@ -104,9 +110,12 @@ export const addClinicStaff = async (
         p_role: role
       });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Erro ao adicionar funcionário via RPC:', error);
+      throw error;
+    }
     
-    // Return success indicator since RPC returns boolean
+    console.log('✅ Funcionário adicionado com sucesso via RPC');
     return 'success';
   } catch (error) {
     console.error('Error adding clinic staff:', error);
@@ -166,6 +175,7 @@ export const fetchClinicStaff = async (clinicId: string) => {
     console.log('=== FETCHCLINICSTAFF ===');
     console.log('Buscando funcionários para clínica:', clinicId);
     
+    // Buscar todos os funcionários ativos da clínica
     const { data: staffData, error: staffError } = await supabase
       .from('clinic_staff')
       .select(`
@@ -188,6 +198,11 @@ export const fetchClinicStaff = async (clinicId: string) => {
     }
     
     console.log('Dados brutos do staff:', staffData);
+    
+    if (!staffData || staffData.length === 0) {
+      console.log('Nenhum funcionário encontrado para a clínica:', clinicId);
+      return [];
+    }
     
     // Filtrar registros onde profiles é null e mapear os válidos
     const validStaff = staffData
@@ -220,6 +235,56 @@ export const fetchClinicStaff = async (clinicId: string) => {
     
   } catch (error) {
     console.error('Error fetching clinic staff:', error);
+    throw error;
+  }
+};
+
+// Nova função para buscar usuários para seleção (ex: equipe cirúrgica)
+export const fetchUsersForSelection = async (clinicId: string): Promise<UserProfile[]> => {
+  try {
+    console.log('=== FETCH USERS FOR SELECTION ===');
+    console.log('Buscando usuários para seleção na clínica:', clinicId);
+    
+    // Buscar todos os funcionários ativos da clínica
+    const { data: staffData, error: staffError } = await supabase
+      .from('clinic_staff')
+      .select(`
+        user_id,
+        profiles:user_id(*)
+      `)
+      .eq('clinic_id', clinicId)
+      .eq('active', true);
+    
+    if (staffError) {
+      console.error('Erro ao buscar staff para seleção:', staffError);
+      throw staffError;
+    }
+    
+    if (!staffData || staffData.length === 0) {
+      console.log('Nenhum funcionário encontrado para seleção na clínica:', clinicId);
+      return [];
+    }
+    
+    // Filtrar e mapear usuários válidos
+    const users = staffData
+      .filter((staff: any) => staff.profiles !== null)
+      .map((staff: any) => ({
+        id: staff.profiles.id,
+        firstName: staff.profiles.first_name || '',
+        lastName: staff.profiles.last_name || '',
+        email: staff.profiles.email || '',
+        phone: staff.profiles.phone || null,
+        crm: staff.profiles.crm || '',
+        title: staff.profiles.title || '',
+        bio: staff.profiles.bio || '',
+        role: staff.profiles.role || 'staff'
+      }));
+    
+    console.log('Usuários para seleção:', users);
+    return users;
+    
+  } catch (error) {
+    console.error('Error fetching users for selection:', error);
     throw error;
   }
 };

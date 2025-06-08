@@ -1,182 +1,150 @@
 
-import React, { useState, useEffect } from 'react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
-
-interface Doctor {
-  id: string;
-  name: string;
-  crm: string;
-}
-
-interface SurgicalTeam {
-  surgeon: Doctor | null;
-  assistant: Doctor | null;
-  anesthesiologist: Doctor | null;
-}
+import React, { useEffect, useState } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { UserProfile } from '@/types/profile';
+import { SurgicalTeam } from '@/types/angioplasty-request';
+import { fetchUsersForSelection } from '@/services/userService';
+import { useClinic } from '@/contexts/ClinicContext';
 
 interface SurgicalTeamSelectorProps {
   surgicalTeam: SurgicalTeam;
-  setSurgicalTeam: React.Dispatch<React.SetStateAction<SurgicalTeam>>;
+  onTeamChange: (team: SurgicalTeam) => void;
 }
 
-export const SurgicalTeamSelector: React.FC<SurgicalTeamSelectorProps> = ({ 
+export const SurgicalTeamSelector: React.FC<SurgicalTeamSelectorProps> = ({
   surgicalTeam,
-  setSurgicalTeam
+  onTeamChange,
 }) => {
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const { selectedClinic } = useClinic();
+  const [availableUsers, setAvailableUsers] = useState<UserProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const fetchDoctors = async () => {
-      setLoading(true);
+    const loadUsers = async () => {
+      if (!selectedClinic?.id) return;
+
+      setIsLoading(true);
       try {
-        // Fetch doctors from profiles with role 'doctor'
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, crm')
-          .eq('role', 'doctor');
-
-        if (error) throw error;
-
-        if (data) {
-          const formattedDoctors = data.map(doc => ({
-            id: doc.id,
-            name: `${doc.first_name} ${doc.last_name}`,
-            crm: doc.crm
-          }));
-          setDoctors(formattedDoctors);
-        }
+        console.log('=== CARREGANDO USUÁRIOS PARA EQUIPE CIRÚRGICA ===');
+        console.log('Clínica selecionada:', selectedClinic.id);
+        
+        const users = await fetchUsersForSelection(selectedClinic.id);
+        console.log('Usuários carregados para seleção:', users);
+        setAvailableUsers(users);
       } catch (error) {
-        console.error('Error fetching doctors:', error);
+        console.error('Erro ao carregar usuários para seleção:', error);
+        setAvailableUsers([]);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
-    fetchDoctors();
-  }, []);
+    loadUsers();
+  }, [selectedClinic?.id]);
 
-  const filteredDoctors = searchTerm 
-    ? doctors.filter(doc => 
-        doc.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        doc.crm.includes(searchTerm)
-      )
-    : doctors;
-
-  const handleDoctorSelect = (role: keyof SurgicalTeam, doctorId: string) => {
-    const selectedDoctor = doctors.find(doc => doc.id === doctorId) || null;
-    setSurgicalTeam(prev => ({
-      ...prev,
-      [role]: selectedDoctor
-    }));
+  const handleMemberChange = (role: keyof SurgicalTeam, userId: string) => {
+    const selectedUser = availableUsers.find(user => user.id === userId) || null;
+    onTeamChange({
+      ...surgicalTeam,
+      [role]: selectedUser,
+    });
   };
 
+  const formatUserOption = (user: UserProfile) => {
+    const parts = [user.firstName, user.lastName];
+    if (user.crm) parts.push(`(CRM: ${user.crm})`);
+    return parts.join(' ');
+  };
+
+  if (!selectedClinic) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-center text-muted-foreground">
+            Selecione uma clínica para escolher a equipe cirúrgica.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <Input
-        placeholder="Filtrar médicos por nome ou CRM"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="mb-2"
-      />
-      
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <label htmlFor="surgeon" className="text-sm font-medium">Cirurgião</label>
-          <Select 
-            value={surgicalTeam.surgeon?.id || ""} 
-            onValueChange={(value) => handleDoctorSelect('surgeon', value)}
-          >
-            <SelectTrigger id="surgeon">
-              <SelectValue placeholder="Selecione o cirurgião" />
-            </SelectTrigger>
-            <SelectContent>
-              {loading ? (
-                <div className="p-2 text-center text-sm text-muted-foreground">
-                  Carregando médicos...
-                </div>
-              ) : filteredDoctors.length === 0 ? (
-                <div className="p-2 text-center text-sm text-muted-foreground">
-                  Nenhum médico encontrado
-                </div>
-              ) : (
-                filteredDoctors.map((doctor) => (
-                  <SelectItem key={doctor.id} value={doctor.id}>
-                    {doctor.name} - {doctor.crm}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
-        </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Equipe Cirúrgica</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <p className="text-center text-muted-foreground">Carregando profissionais...</p>
+        ) : availableUsers.length === 0 ? (
+          <p className="text-center text-muted-foreground">
+            Nenhum profissional disponível. Cadastre funcionários na clínica primeiro.
+          </p>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="surgeon">Cirurgião Principal</Label>
+              <Select
+                value={surgicalTeam.surgeon?.id || ''}
+                onValueChange={(value) => handleMemberChange('surgeon', value)}
+              >
+                <SelectTrigger id="surgeon">
+                  <SelectValue placeholder="Selecione o cirurgião principal" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableUsers.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {formatUserOption(user)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="space-y-2">
-          <label htmlFor="assistant" className="text-sm font-medium">Auxiliar</label>
-          <Select 
-            value={surgicalTeam.assistant?.id || ""} 
-            onValueChange={(value) => handleDoctorSelect('assistant', value)}
-          >
-            <SelectTrigger id="assistant">
-              <SelectValue placeholder="Selecione o auxiliar" />
-            </SelectTrigger>
-            <SelectContent>
-              {loading ? (
-                <div className="p-2 text-center text-sm text-muted-foreground">
-                  Carregando médicos...
-                </div>
-              ) : filteredDoctors.length === 0 ? (
-                <div className="p-2 text-center text-sm text-muted-foreground">
-                  Nenhum médico encontrado
-                </div>
-              ) : (
-                filteredDoctors.map((doctor) => (
-                  <SelectItem key={doctor.id} value={doctor.id}>
-                    {doctor.name} - {doctor.crm}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="assistant">Assistente</Label>
+              <Select
+                value={surgicalTeam.assistant?.id || ''}
+                onValueChange={(value) => handleMemberChange('assistant', value)}
+              >
+                <SelectTrigger id="assistant">
+                  <SelectValue placeholder="Selecione o assistente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nenhum assistente</SelectItem>
+                  {availableUsers.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {formatUserOption(user)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="space-y-2">
-          <label htmlFor="anesthesiologist" className="text-sm font-medium">Anestesista</label>
-          <Select 
-            value={surgicalTeam.anesthesiologist?.id || ""} 
-            onValueChange={(value) => handleDoctorSelect('anesthesiologist', value)}
-          >
-            <SelectTrigger id="anesthesiologist">
-              <SelectValue placeholder="Selecione o anestesista" />
-            </SelectTrigger>
-            <SelectContent>
-              {loading ? (
-                <div className="p-2 text-center text-sm text-muted-foreground">
-                  Carregando médicos...
-                </div>
-              ) : filteredDoctors.length === 0 ? (
-                <div className="p-2 text-center text-sm text-muted-foreground">
-                  Nenhum médico encontrado
-                </div>
-              ) : (
-                filteredDoctors.map((doctor) => (
-                  <SelectItem key={doctor.id} value={doctor.id}>
-                    {doctor.name} - {doctor.crm}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-    </div>
+            <div className="space-y-2">
+              <Label htmlFor="anesthesiologist">Anestesista</Label>
+              <Select
+                value={surgicalTeam.anesthesiologist?.id || ''}
+                onValueChange={(value) => handleMemberChange('anesthesiologist', value)}
+              >
+                <SelectTrigger id="anesthesiologist">
+                  <SelectValue placeholder="Selecione o anestesista" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nenhum anestesista</SelectItem>
+                  {availableUsers.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {formatUserOption(user)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 };

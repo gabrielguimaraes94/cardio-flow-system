@@ -1,623 +1,438 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Pencil, Trash, Loader2, UserCheck, UserPlus, UserSearch, AlertTriangle, Mail, Phone, User, Briefcase } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, UserCheck, UserX } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { UserDialog } from './UserDialog';
-import { useClinic } from '@/contexts/ClinicContext';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  fetchUsers, 
-  fetchClinicStaff,
-  checkUserExists,
-  addClinicStaff,
-  removeClinicStaff
-} from '@/services/userService';
+import { UserDialog } from './UserDialog';
 import { UserProfile } from '@/types/profile';
+import { fetchClinicStaff, checkUserExists, addClinicStaff, removeClinicStaff } from '@/services/userService';
+import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Separator } from '@/components/ui/separator';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-// Schema para busca por email
-const emailSearchSchema = z.object({
-  email: z.string().email('Email inválido').min(1, 'Email é obrigatório'),
-});
-
-// Schema para adicionar um usuário à clínica
-const addToClinicSchema = z.object({
-  role: z.enum(['doctor', 'nurse', 'receptionist', 'staff'], {
-    required_error: "Selecione uma função",
-  }),
-  isAdmin: z.boolean().default(false),
-});
-
-// Schema para criar um novo usuário
-const newUserSchema = z.object({
-  firstName: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
-  lastName: z.string().min(2, 'Sobrenome deve ter pelo menos 2 caracteres'),
-  email: z.string().email('Email inválido'),
-  role: z.enum(['doctor', 'nurse', 'receptionist', 'staff'], {
-    required_error: "Selecione uma função",
-  }),
-  phone: z.string().optional(),
-  crm: z.string().optional(),
-  isAdmin: z.boolean().default(false),
-});
+interface ClinicStaff {
+  id: string;
+  user: UserProfile;
+  role: string;
+  isAdmin: boolean;
+}
 
 export const UserManagement = () => {
   const { selectedClinic } = useClinic();
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const [staffMembers, setStaffMembers] = useState<any[]>([]);
+  const [staff, setStaff] = useState<ClinicStaff[]>([]);
+  const [filteredStaff, setFilteredStaff] = useState<ClinicStaff[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
-  const [currentTab, setCurrentTab] = useState<'search' | 'create'>('search');
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [searchEmail, setSearchEmail] = useState('');
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResult, setSearchResult] = useState<UserProfile | null>(null);
-  const [userAlreadyInClinic, setUserAlreadyInClinic] = useState(false);
-  
-  // Form para busca por email
-  const emailSearchForm = useForm<z.infer<typeof emailSearchSchema>>({
-    resolver: zodResolver(emailSearchSchema),
-    defaultValues: {
-      email: '',
-    },
-  });
+  const [foundUser, setFoundUser] = useState<UserProfile | null>(null);
 
-  // Form para adicionar usuário existente à clínica
-  const addToClinicForm = useForm<z.infer<typeof addToClinicSchema>>({
-    resolver: zodResolver(addToClinicSchema),
-    defaultValues: {
-      role: 'doctor',
-      isAdmin: false,
-    },
-  });
-
-  // Form para criar novo usuário
-  const newUserForm = useForm<z.infer<typeof newUserSchema>>({
-    resolver: zodResolver(newUserSchema),
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      email: '',
-      role: 'doctor',
-      phone: '',
-      crm: '',
-      isAdmin: false,
-    },
-  });
-
-  // Função otimizada para buscar funcionários - usando useCallback para evitar re-criações
+  // Função para carregar funcionários com useCallback para evitar re-renders
   const loadStaff = useCallback(async () => {
     if (!selectedClinic?.id) {
       console.log('Nenhuma clínica selecionada');
-      setStaffMembers([]);
-      setIsLoading(false);
       return;
     }
-    
+
+    console.log('=== USEEFFECT LOADSTAFF ===');
+    console.log('selectedClinic mudou:', selectedClinic.id);
+
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      setError(null);
-      
       console.log('=== CARREGANDO STAFF ===');
-      console.log('Clínica selecionada:', selectedClinic?.id);
+      console.log('Clínica selecionada:', selectedClinic.id);
       
       const staffData = await fetchClinicStaff(selectedClinic.id);
-      
       console.log('Staff carregado:', staffData);
-      setStaffMembers(staffData);
-      
+      setStaff(staffData);
     } catch (error) {
-      console.error('=== ERRO AO CARREGAR STAFF ===');
-      console.error('Erro:', error);
-      
-      setError('Falha ao carregar funcionários');
-      
+      console.error('Erro ao carregar funcionários:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar os funcionários. Verifique o console para mais detalhes.",
-        variant: "destructive",
+        description: "Falha ao carregar funcionários",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
   }, [selectedClinic?.id, toast]);
 
-  // Buscar funcionários da clínica selecionada - usando useCallback otimizado
+  // Carregar funcionários quando a clínica mudar
   useEffect(() => {
-    console.log('=== USEEFFECT LOADSTAFF ===');
-    console.log('selectedClinic mudou:', selectedClinic?.id);
-    
     loadStaff();
   }, [loadStaff]);
 
-  // Listen for clinic change events
+  // Filtrar funcionários por termo de busca
   useEffect(() => {
-    const handleClinicChange = () => {
-      setSearchTerm('');
-    };
-
-    window.addEventListener('clinicChanged', handleClinicChange);
-    return () => {
-      window.removeEventListener('clinicChanged', handleClinicChange);
-    };
-  }, []);
-
-  const filteredStaff = staffMembers.filter(staff => 
-    `${staff.user.firstName} ${staff.user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    staff.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (staff.user.crm && staff.user.crm.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const getRoleName = (role: string): string => {
-    const roleNames: Record<string, string> = {
-      admin: 'Administrador',
-      clinic_admin: 'Admin. Clínica',
-      doctor: 'Médico',
-      nurse: 'Enfermeiro',
-      receptionist: 'Recepção',
-      staff: 'Equipe',
-    };
-    return roleNames[role] || role;
-  };
-
-  const getRoleColor = (role: string): string => {
-    const roleColors: Record<string, string> = {
-      admin: 'bg-red-100 text-red-800',
-      clinic_admin: 'bg-purple-100 text-purple-800',
-      doctor: 'bg-blue-100 text-blue-800',
-      nurse: 'bg-green-100 text-green-800',
-      receptionist: 'bg-yellow-100 text-yellow-800',
-      staff: 'bg-gray-100 text-gray-800'
-    };
-    return roleColors[role] || '';
-  };
-
-  const handleOpenAddUserDialog = () => {
-    setIsAddUserDialogOpen(true);
-    setCurrentTab('search');
-    setSearchResult(null);
-    setUserAlreadyInClinic(false);
-    emailSearchForm.reset();
-    newUserForm.reset();
-    addToClinicForm.reset({ role: 'doctor', isAdmin: false });
-  };
-
-  const handleSearchUser = async (values: z.infer<typeof emailSearchSchema>) => {
-    if (!selectedClinic) return;
+    if (searchTerm === '') {
+      setFilteredStaff(staff);
+      return;
+    }
     
-    try {
-      setIsSearching(true);
-      setUserAlreadyInClinic(false);
-      setSearchResult(null);
-      
-      console.log('=== SEARCHING USER ===');
-      console.log('Email sendo buscado:', values.email.trim().toLowerCase());
-      
-      // Search for user by email with more detailed logging
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('email', values.email.trim().toLowerCase())
-        .maybeSingle();
-      
-      console.log('Resultado da busca:', userData);
-      console.log('Erro da busca:', userError);
-      
-      if (userError && userError.code !== 'PGRST116') {
-        console.error('Erro na busca:', userError);
-        throw userError;
-      }
-      
-      if (!userData) {
-        console.log('Nenhum usuário encontrado com o email:', values.email);
-        // No user found with that email
-        toast({
-          title: "Usuário não encontrado",
-          description: "Nenhum usuário encontrado com esse email. Você pode criar um novo usuário.",
-        });
-        
-        // Pre-fill the new user form with the email
-        newUserForm.setValue('email', values.email.trim().toLowerCase());
-        setCurrentTab('create');
-        return;
-      }
-      
-      console.log('Usuário encontrado:', userData);
-      
-      // Check if the user is already in this clinic
-      const isAlreadyStaff = staffMembers.some(staff => 
-        staff.user.id === userData.id
-      );
-      
-      console.log('Usuário já é staff?', isAlreadyStaff);
-      console.log('Staff members atuais:', staffMembers.map(s => ({ id: s.user.id, email: s.user.email })));
-      
-      if (isAlreadyStaff) {
-        setUserAlreadyInClinic(true);
-        setSearchResult({
-          id: userData.id,
-          firstName: userData.first_name || '',
-          lastName: userData.last_name || '',
-          email: userData.email,
-          phone: userData.phone || null,
-          crm: userData.crm || '',
-          title: userData.title || '',
-          bio: userData.bio || '',
-          role: userData.role
-        });
-        
-        toast({
-          title: "Usuário já associado",
-          description: "Este usuário já está associado a esta clínica.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // User found and not in clinic yet
-      setSearchResult({
-        id: userData.id,
-        firstName: userData.first_name || '',
-        lastName: userData.last_name || '',
-        email: userData.email,
-        phone: userData.phone || null,
-        crm: userData.crm || '',
-        title: userData.title || '',
-        bio: userData.bio || '',
-        role: userData.role
-      });
-      
-      // Reset the add to clinic form
-      addToClinicForm.reset({ 
-        role: userData.role === 'doctor' ? 'doctor' : 
-              userData.role === 'nurse' ? 'nurse' : 
-              userData.role === 'receptionist' ? 'receptionist' : 'staff',
-        isAdmin: false
-      });
-      
-      toast({
-        title: "Usuário encontrado",
-        description: `Usuário ${userData.first_name} ${userData.last_name} encontrado!`,
-      });
-      
-    } catch (error) {
-      console.error('Error searching user:', error);
+    const filtered = staff.filter(staffMember => 
+      staffMember.user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      staffMember.user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      staffMember.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      staffMember.user.crm.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    setFilteredStaff(filtered);
+  }, [searchTerm, staff]);
+
+  const handleSearchUser = async () => {
+    if (!searchEmail.trim()) {
       toast({
         title: "Erro",
-        description: "Falha ao buscar usuário.",
-        variant: "destructive",
+        description: "Digite um email para buscar",
+        variant: "destructive"
       });
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      console.log('=== SEARCHING USER ===');
+      console.log('Email sendo buscado:', searchEmail);
+      
+      // Buscar usuário por email na tabela profiles
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('email', searchEmail.trim())
+        .single();
+      
+      console.log('Resultado da busca:', data);
+      console.log('Erro da busca:', error);
+      
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      
+      if (data) {
+        const userProfile: UserProfile = {
+          id: data.id,
+          firstName: data.first_name,
+          lastName: data.last_name,
+          email: data.email,
+          phone: data.phone,
+          crm: data.crm,
+          title: data.title || '',
+          bio: data.bio || '',
+          role: data.role
+        };
+        
+        console.log('Usuário encontrado:', userProfile);
+        setFoundUser(userProfile);
+        
+        toast({
+          title: "Usuário encontrado",
+          description: `${userProfile.firstName} ${userProfile.lastName} encontrado!`
+        });
+      } else {
+        console.log('Nenhum usuário encontrado com o email:', searchEmail);
+        setFoundUser(null);
+        toast({
+          title: "Usuário não encontrado",
+          description: "Nenhum usuário encontrado com este email. Você pode criar um novo usuário.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao buscar usuário:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao buscar usuário",
+        variant: "destructive"
+      });
+      setFoundUser(null);
     } finally {
       setIsSearching(false);
     }
   };
-  
-  const handleAddExistingUserToClinic = async (values: z.infer<typeof addToClinicSchema>) => {
-    if (!searchResult || !selectedClinic) return;
-    
-    try {
-      await addClinicStaff(selectedClinic.id, searchResult.id, values.role, values.isAdmin);
-      
-      // Reload staff list usando a função otimizada
-      await loadStaff();
-      
-      toast({
-        title: "Sucesso",
-        description: "Funcionário adicionado com sucesso!",
-      });
-      
-      setIsAddUserDialogOpen(false);
-      setSearchResult(null);
-      emailSearchForm.reset();
-      
-    } catch (error) {
-      console.error('Error adding staff member:', error);
+
+  const handleAddFoundUser = async () => {
+    if (!foundUser || !selectedClinic?.id || !user?.id) {
       toast({
         title: "Erro",
-        description: "Não foi possível adicionar o funcionário.",
-        variant: "destructive",
+        description: "Dados insuficientes para adicionar usuário",
+        variant: "destructive"
       });
+      return;
     }
-  };
-  
-  const handleCreateNewUser = async (values: z.infer<typeof newUserSchema>) => {
-    if (!selectedClinic) return;
-    
+
     try {
-      console.log('=== CREATING NEW USER ===');
-      console.log('Email a ser criado:', values.email.trim().toLowerCase());
-      
-      // Check if email already exists FIRST with more specific query
-      const { data: existingUser, error: checkError } = await supabase
-        .from('profiles')
-        .select('id, email, first_name, last_name')
-        .eq('email', values.email.trim().toLowerCase())
-        .maybeSingle();
-        
-      console.log('Verificação de usuário existente:', existingUser);
-      console.log('Erro na verificação:', checkError);
-        
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Erro ao verificar usuário existente:', checkError);
-        throw checkError;
-      }
-        
-      if (existingUser) {
-        console.log('Email já existe no sistema:', existingUser);
+      // Verificar se o usuário já é funcionário desta clínica
+      const isAlreadyStaff = staff.some(s => s.user.id === foundUser.id);
+      if (isAlreadyStaff) {
         toast({
-          title: "Email já cadastrado",
-          description: `Este email já está em uso por ${existingUser.first_name} ${existingUser.last_name}. Use a opção de buscar usuário existente.`,
-          variant: "destructive",
+          title: "Usuário já é funcionário",
+          description: "Este usuário já é funcionário desta clínica",
+          variant: "destructive"
         });
-        
-        // Switch to search tab and pre-fill the email
-        setCurrentTab('search');
-        emailSearchForm.setValue('email', values.email);
         return;
       }
-      
-      // Gerar senha aleatória segura
-      const generatePassword = () => {
-        const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-        const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        const numbers = '0123456789';
-        const symbols = '!@#$%^&*()_+';
-        
-        const getRandomChar = (str: string) => str[Math.floor(Math.random() * str.length)];
-        
-        let password = '';
-        // Pelo menos um de cada categoria
-        password += getRandomChar(lowercase);
-        password += getRandomChar(uppercase);
-        password += getRandomChar(numbers);
-        password += getRandomChar(symbols);
-        
-        // Completa até 10 caracteres
-        for (let i = 0; i < 6; i++) {
-          const allChars = lowercase + uppercase + numbers + symbols;
-          password += getRandomChar(allChars);
-        }
-        
-        // Embaralha a senha
-        return password.split('').sort(() => 0.5 - Math.random()).join('');
-      };
-      
-      const password = generatePassword();
-      
-      console.log('Criando usuário no Auth...');
-      
-      // Create the user in Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: values.email.trim().toLowerCase(),
-        password: password,
-        options: {
-          data: {
-            first_name: values.firstName.trim(),
-            last_name: values.lastName.trim(),
-          },
-        },
-      });
-      
-      console.log('Resultado da criação Auth:', authData);
-      console.log('Erro Auth:', authError);
-      
-      if (authError) {
-        // Handle specific auth errors
-        if (authError.message === 'User already registered' || authError.message.includes('already registered')) {
-          console.log('Usuário já registrado no Auth');
-          toast({
-            title: "Usuário já existe",
-            description: "Este email já possui uma conta. Use a aba 'Buscar Existente'.",
-            variant: "destructive",
-          });
-          
-          // Switch to search tab and pre-fill the email
-          setCurrentTab('search');
-          emailSearchForm.setValue('email', values.email);
-          return;
-        }
-        throw authError;
-      }
-      
-      if (!authData.user) {
-        throw new Error("Falha ao criar usuário");
-      }
-      
-      console.log('Usuário criado no Auth, atualizando perfil...');
-      
-      // Update the profile with additional data
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          first_name: values.firstName.trim(),
-          last_name: values.lastName.trim(),
-          email: values.email.trim().toLowerCase(),
-          phone: values.phone?.trim() || null,
-          crm: values.crm?.trim() || '',
-          role: values.role
-        })
-        .eq('id', authData.user.id);
-        
-      if (profileError) {
-        console.error('Erro ao atualizar perfil:', profileError);
-        throw profileError;
-      }
-      
-      console.log('Perfil atualizado, associando à clínica...');
-      
-      // Associate with the clinic
-      await addClinicStaff(selectedClinic.id, authData.user.id, values.role, values.isAdmin);
-      
-      console.log('Usuário associado à clínica, recarregando lista...');
-      
-      // Reload staff list usando a função otimizada
-      await loadStaff();
+
+      await addClinicStaff(selectedClinic.id, foundUser.id, 'doctor', false);
       
       toast({
-        title: "Sucesso",
-        description: "Novo funcionário criado e associado à clínica!",
+        title: "Funcionário adicionado",
+        description: "Usuário adicionado como funcionário com sucesso!"
       });
       
-      setIsAddUserDialogOpen(false);
-      newUserForm.reset();
+      // Recarregar lista
+      await loadStaff();
+      
+      // Limpar busca
+      setSearchEmail('');
+      setFoundUser(null);
       
     } catch (error) {
-      console.error('Error creating user:', error);
-      
-      // More specific error handling
-      if (error instanceof Error) {
-        if (error.message.includes('already registered') || error.message.includes('User already registered')) {
-          toast({
-            title: "Email já cadastrado",
-            description: "Este email já possui uma conta. Use a aba 'Buscar Existente'.",
-            variant: "destructive",
-          });
-          
-          // Switch to search tab and pre-fill the email
-          setCurrentTab('search');
-          emailSearchForm.setValue('email', values.email);
-        } else {
-          toast({
-            title: "Erro",
-            description: "Não foi possível criar o usuário: " + error.message,
-            variant: "destructive",
-          });
-        }
-      } else {
-        toast({
-          title: "Erro",
-          description: "Não foi possível criar o usuário.",
-          variant: "destructive",
-        });
-      }
+      console.error('Erro ao adicionar funcionário:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao adicionar funcionário",
+        variant: "destructive"
+      });
     }
   };
 
-  const handleEditUser = (staffMember: any) => {
+  const handleCreateNewUser = () => {
+    setCurrentUser(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleEditUser = (staffMember: ClinicStaff) => {
     setCurrentUser(staffMember.user);
     setIsDialogOpen(true);
   };
 
   const handleSaveUser = async (userData: UserProfile) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({
-          first_name: userData.firstName.trim(),
-          last_name: userData.lastName.trim(),
-          email: userData.email.trim().toLowerCase(),
-          crm: userData.crm?.trim() || '',
-          phone: userData.phone?.trim() || null,
-          title: userData.title?.trim() || '',
-          bio: userData.bio?.trim() || '',
-          role: userData.role
-        })
-        .eq('id', userData.id);
-      
-      if (error) throw error;
-      
-      // Update the local staff list
-      setStaffMembers(staffMembers.map(staff => 
-        staff.user.id === userData.id 
-          ? { ...staff, user: userData } 
-          : staff
-      ));
-      
+    if (!selectedClinic?.id || !user?.id) {
       toast({
-        title: "Sucesso",
-        description: "Usuário atualizado com sucesso!",
+        title: "Erro", 
+        description: "Clínica não selecionada ou usuário não autenticado",
+        variant: "destructive"
       });
-      
+      return;
+    }
+
+    try {
+      console.log('=== SALVANDO USUÁRIO ===');
+      console.log('userData:', userData);
+      console.log('currentUser:', currentUser);
+
+      if (currentUser) {
+        // Editando usuário existente - apenas atualizar perfil
+        console.log('Editando usuário existente');
+        
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            first_name: userData.firstName,
+            last_name: userData.lastName,
+            email: userData.email,
+            crm: userData.crm,
+            phone: userData.phone,
+            title: userData.title,
+            bio: userData.bio,
+            role: userData.role
+          })
+          .eq('id', userData.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Usuário atualizado",
+          description: "Informações do usuário atualizadas com sucesso!"
+        });
+      } else {
+        // Criando novo usuário
+        console.log('Criando novo usuário');
+        
+        // Verificar se email já existe
+        const { data: existingUser } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('email', userData.email)
+          .single();
+
+        if (existingUser) {
+          toast({
+            title: "Email já existe",
+            description: "Já existe um usuário com este email",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Criar usuário no Auth
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+          email: userData.email,
+          password: '123456temp', // Senha temporária
+          email_confirm: true,
+          user_metadata: {
+            first_name: userData.firstName,
+            last_name: userData.lastName
+          }
+        });
+
+        if (authError) throw authError;
+
+        if (authData.user) {
+          // Atualizar perfil criado automaticamente pelo trigger
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({
+              first_name: userData.firstName,
+              last_name: userData.lastName,
+              crm: userData.crm,
+              phone: userData.phone,
+              title: userData.title,
+              bio: userData.bio,
+              role: userData.role
+            })
+            .eq('id', authData.user.id);
+
+          if (profileError) throw profileError;
+
+          // Adicionar como funcionário da clínica
+          await addClinicStaff(selectedClinic.id, authData.user.id, 'doctor', false);
+
+          toast({
+            title: "Usuário criado",
+            description: "Usuário criado e adicionado como funcionário!"
+          });
+        }
+      }
+
+      // Recarregar lista e fechar modal
+      await loadStaff();
       setIsDialogOpen(false);
+      setCurrentUser(null);
+
     } catch (error) {
-      console.error('Error saving user:', error);
+      console.error('Erro ao salvar usuário:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível salvar o usuário.",
-        variant: "destructive",
+        description: error instanceof Error ? error.message : "Erro ao salvar usuário",
+        variant: "destructive"
       });
     }
   };
 
-  const handleRemoveStaff = async (staffId: string) => {
-    if (!user) return;
-    
+  const handleRemoveUser = async (staffMember: ClinicStaff) => {
+    if (!user?.id) {
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      const success = await removeClinicStaff(staffId, user.id);
+      const success = await removeClinicStaff(staffMember.id, user.id);
       
       if (success) {
-        // Update the local staff list
-        setStaffMembers(staffMembers.filter(staff => staff.id !== staffId));
-        
         toast({
-          title: "Sucesso",
-          description: "Funcionário removido com sucesso!",
+          title: "Funcionário removido",
+          description: "Funcionário removido da clínica com sucesso!"
         });
+        
+        // Recarregar lista
+        await loadStaff();
       } else {
         toast({
           title: "Erro",
-          description: "Você não tem permissão para remover este funcionário.",
-          variant: "destructive",
+          description: "Não foi possível remover o funcionário",
+          variant: "destructive"
         });
       }
     } catch (error) {
-      console.error('Error removing staff:', error);
+      console.error('Erro ao remover funcionário:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível remover o funcionário.",
-        variant: "destructive",
+        description: "Erro ao remover funcionário",
+        variant: "destructive"
       });
     }
   };
+
+  if (!selectedClinic) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-center text-muted-foreground">
+            Selecione uma clínica para gerenciar usuários.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex justify-between items-center">
           <div>
-            <CardTitle>Gestão de Funcionários</CardTitle>
+            <CardTitle>Gestão de Usuários</CardTitle>
             <CardDescription>
-              {selectedClinic 
-                ? `Gerenciando funcionários da clínica: ${selectedClinic.name}` 
-                : 'Gerencie os funcionários da clínica e suas permissões.'}
+              Gerencie os funcionários da clínica {selectedClinic.name}.
             </CardDescription>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={handleOpenAddUserDialog} 
-              disabled={!selectedClinic}
-              className="bg-cardio-500 hover:bg-cardio-600"
-            >
-              <UserPlus className="mr-2 h-4 w-4" />
-              Adicionar Funcionário
-            </Button>
-          </div>
+          <Button onClick={handleCreateNewUser}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Usuário
+          </Button>
         </div>
       </CardHeader>
+      
       <CardContent>
+        {/* Buscar usuário existente */}
+        <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+          <h3 className="text-sm font-medium mb-3">Adicionar Usuário Existente</h3>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Digite o email do usuário..."
+              value={searchEmail}
+              onChange={(e) => setSearchEmail(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearchUser()}
+            />
+            <Button onClick={handleSearchUser} disabled={isSearching}>
+              <Search className="h-4 w-4 mr-2" />
+              {isSearching ? 'Buscando...' : 'Buscar'}
+            </Button>
+          </div>
+          
+          {foundUser && (
+            <div className="mt-3 p-3 bg-white border rounded flex justify-between items-center">
+              <div>
+                <p className="font-medium">{foundUser.firstName} {foundUser.lastName}</p>
+                <p className="text-sm text-gray-600">{foundUser.email}</p>
+                <p className="text-sm text-gray-600">CRM: {foundUser.crm}</p>
+              </div>
+              <Button onClick={handleAddFoundUser} size="sm">
+                <UserCheck className="h-4 w-4 mr-2" />
+                Adicionar
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Filtro de funcionários */}
         <div className="mb-4">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar funcionários por nome, email ou CRM..."
+              placeholder="Filtrar funcionários..."
               className="pl-8"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -625,473 +440,66 @@ export const UserManagement = () => {
           </div>
         </div>
 
-        <div className="rounded-md border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead className="hidden md:table-cell">Email</TableHead>
-                <TableHead className="hidden md:table-cell">CRM</TableHead>
-                <TableHead className="hidden sm:table-cell">Perfil</TableHead>
-                <TableHead>Cargo na Clínica</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-10">
-                    <div className="flex justify-center items-center">
-                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                      <span>Carregando funcionários...</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : error ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-10 text-red-500">
-                    {error}
-                  </TableCell>
-                </TableRow>
-              ) : filteredStaff.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
-                    {selectedClinic 
-                      ? searchTerm 
-                        ? 'Nenhum funcionário encontrado com esses termos de busca' 
-                        : 'Nenhum funcionário cadastrado nesta clínica'
-                      : 'Selecione uma clínica para ver seus funcionários'}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredStaff.map((staffMember) => {
-                  const isCurrentUser = user && user.id === staffMember.user.id;
-                  
-                  return (
-                    <TableRow key={staffMember.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center">
-                          {isCurrentUser && (
-                            <UserCheck className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                          )}
-                          <span>
-                            {staffMember.user.firstName} {staffMember.user.lastName}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">{staffMember.user.email}</TableCell>
-                      <TableCell className="hidden md:table-cell">{staffMember.user.crm || '-'}</TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge variant="outline" className={getRoleColor(staffMember.user.role)}>
-                          {getRoleName(staffMember.user.role)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={staffMember.isAdmin ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}>
-                          {staffMember.isAdmin ? 'Administrador' : 'Funcionário'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleEditUser(staffMember)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                disabled={isCurrentUser}
-                                title={isCurrentUser ? "Não é possível remover seu próprio perfil" : "Remover funcionário"}
-                              >
-                                <Trash className={`h-4 w-4 ${isCurrentUser ? 'text-gray-300' : 'text-red-500'}`} />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Remover funcionário</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Tem certeza que deseja remover {staffMember.user.firstName} {staffMember.user.lastName} desta clínica?
-                                  <br /><br />
-                                  Esta ação não exclui o usuário do sistema, apenas remove seu acesso a esta clínica.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  className="bg-red-500 hover:bg-red-600" 
-                                  onClick={() => handleRemoveStaff(staffMember.id)}
-                                >
-                                  Remover
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-      
-      {/* Dialog para editar usuário existente */}
-      <UserDialog 
-        isOpen={isDialogOpen} 
-        onClose={() => setIsDialogOpen(false)} 
-        onSave={handleSaveUser} 
-        user={currentUser} 
-      />
-      
-      {/* Dialog para adicionar usuário com tabs para busca e criação */}
-      <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Adicionar Funcionário à Clínica</DialogTitle>
-            <DialogDescription>
-              Busque um usuário existente por email ou cadastre um novo.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <Tabs value={currentTab} onValueChange={(v) => setCurrentTab(v as 'search' | 'create')} className="mt-2">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="search" className="flex items-center gap-2">
-                <UserSearch className="h-4 w-4" />
-                <span>Buscar Existente</span>
-              </TabsTrigger>
-              <TabsTrigger value="create" className="flex items-center gap-2">
-                <UserPlus className="h-4 w-4" />
-                <span>Criar Novo</span>
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="search" className="pt-4 space-y-6">
-              <Form {...emailSearchForm}>
-                <form onSubmit={emailSearchForm.handleSubmit(handleSearchUser)} className="space-y-4">
-                  <FormField
-                    control={emailSearchForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email do Funcionário</FormLabel>
-                        <FormControl>
-                          <div className="flex space-x-2">
-                            <div className="relative flex-1">
-                              <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                              <Input placeholder="email@exemplo.com" className="pl-8" {...field} />
-                            </div>
-                            <Button 
-                              type="submit" 
-                              disabled={isSearching || !emailSearchForm.formState.isValid}
-                            >
-                              {isSearching ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                  Buscando...
-                                </>
-                              ) : (
-                                'Buscar'
-                              )}
-                            </Button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </form>
-              </Form>
-              
-              {/* Resultado da busca por usuário */}
-              {userAlreadyInClinic && (
-                <div className="p-4 border border-yellow-200 bg-yellow-50 rounded-md space-y-2">
-                  <div className="flex items-start">
-                    <AlertTriangle className="h-5 w-5 text-yellow-500 mr-2 mt-0.5 flex-shrink-0" />
+        {/* Lista de funcionários */}
+        {isLoading ? (
+          <div className="text-center py-8">
+            <p>Carregando funcionários...</p>
+          </div>
+        ) : filteredStaff.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">
+              {staff.length === 0 ? 'Nenhum funcionário cadastrado' : 'Nenhum funcionário encontrado'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredStaff.map((staffMember) => (
+              <div key={staffMember.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
                     <div>
-                      <h3 className="font-medium text-yellow-800">Usuário já associado</h3>
-                      <p className="text-sm text-yellow-700">
-                        O usuário <span className="font-medium">{searchResult?.firstName} {searchResult?.lastName}</span> já 
-                        está associado a esta clínica.
-                      </p>
+                      <h3 className="font-medium">
+                        {staffMember.user.firstName} {staffMember.user.lastName}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">{staffMember.user.email}</p>
+                      {staffMember.user.crm && (
+                        <p className="text-sm text-muted-foreground">CRM: {staffMember.user.crm}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Badge variant="outline">{staffMember.role}</Badge>
+                      {staffMember.isAdmin && <Badge variant="default">Admin</Badge>}
                     </div>
                   </div>
                 </div>
-              )}
-              
-              {searchResult && !userAlreadyInClinic && (
-                <div className="space-y-6">
-                  <div className="bg-green-50 border border-green-200 rounded-md p-4">
-                    <div className="flex items-start">
-                      <UserCheck className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <h3 className="font-medium text-green-800 mb-1">Usuário Encontrado</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-gray-500" />
-                            <div>
-                              <p className="text-xs text-gray-500">Nome:</p>
-                              <p className="text-sm font-medium">{searchResult.firstName} {searchResult.lastName}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-4 w-4 text-gray-500" />
-                            <div>
-                              <p className="text-xs text-gray-500">Email:</p>
-                              <p className="text-sm font-medium">{searchResult.email}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Briefcase className="h-4 w-4 text-gray-500" />
-                            <div>
-                              <p className="text-xs text-gray-500">Função no Sistema:</p>
-                              <Badge variant="outline" className={getRoleColor(searchResult.role)}>
-                                {getRoleName(searchResult.role)}
-                              </Badge>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-4 w-4 text-gray-500" />
-                            <div>
-                              <p className="text-xs text-gray-500">Telefone:</p>
-                              <p className="text-sm font-medium">{searchResult.phone || '-'}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div>
-                    <h3 className="text-sm font-medium mb-3">Associar à Clínica</h3>
-                    <Form {...addToClinicForm}>
-                      <form onSubmit={addToClinicForm.handleSubmit(handleAddExistingUserToClinic)} className="space-y-4">
-                        <FormField
-                          control={addToClinicForm.control}
-                          name="role"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Função na Clínica</FormLabel>
-                              <Select 
-                                onValueChange={field.onChange} 
-                                defaultValue={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Selecione uma função" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="doctor">Médico</SelectItem>
-                                  <SelectItem value="nurse">Enfermeiro</SelectItem>
-                                  <SelectItem value="receptionist">Recepção</SelectItem>
-                                  <SelectItem value="staff">Equipe</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={addToClinicForm.control}
-                          name="isAdmin"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                              <div className="space-y-1 leading-none">
-                                <FormLabel>
-                                  Administrador da Clínica
-                                </FormLabel>
-                                <p className="text-sm text-muted-foreground">
-                                  Pode gerenciar funcionários, configurações e dados desta clínica
-                                </p>
-                              </div>
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <div className="flex justify-end mt-6">
-                          <Button 
-                            type="submit" 
-                            className="bg-cardio-500 hover:bg-cardio-600"
-                          >
-                            Associar à Clínica
-                          </Button>
-                        </div>
-                      </form>
-                    </Form>
-                  </div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => handleEditUser(staffMember)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleRemoveUser(staffMember)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <UserX className="h-4 w-4" />
+                  </Button>
                 </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="create" className="pt-4">
-              <Form {...newUserForm}>
-                <form onSubmit={newUserForm.handleSubmit(handleCreateNewUser)} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={newUserForm.control}
-                      name="firstName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nome</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Nome" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={newUserForm.control}
-                      name="lastName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Sobrenome</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Sobrenome" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={newUserForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Email
-                          <span className="text-red-500 ml-1">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="email@exemplo.com" className="pl-8" {...field} />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={newUserForm.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Telefone (opcional)</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Phone className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                              <Input placeholder="(00) 00000-0000" className="pl-8" {...field} />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={newUserForm.control}
-                      name="crm"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>CRM (opcional)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="CRM" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={newUserForm.control}
-                      name="role"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            Função no Sistema
-                            <span className="text-red-500 ml-1">*</span>
-                          </FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione uma função" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="doctor">Médico</SelectItem>
-                              <SelectItem value="nurse">Enfermeiro</SelectItem>
-                              <SelectItem value="receptionist">Recepção</SelectItem>
-                              <SelectItem value="staff">Equipe</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={newUserForm.control}
-                    name="isAdmin"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>
-                            Administrador da Clínica
-                          </FormLabel>
-                          <p className="text-sm text-muted-foreground">
-                            Pode gerenciar funcionários, configurações e dados desta clínica
-                          </p>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="flex justify-end mt-6">
-                    <Button 
-                      type="submit" 
-                      className="bg-cardio-500 hover:bg-cardio-600"
-                    >
-                      Criar & Associar
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </TabsContent>
-          </Tabs>
-        </DialogContent>
-      </Dialog>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+
+      <UserDialog
+        isOpen={isDialogOpen}
+        onClose={() => {
+          setIsDialogOpen(false);
+          setCurrentUser(null);
+        }}
+        onSave={handleSaveUser}
+        user={currentUser}
+      />
     </Card>
   );
 };
-
-export default UserManagement;
