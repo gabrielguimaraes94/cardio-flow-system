@@ -92,28 +92,6 @@ export const ClinicManagement = () => {
         console.log('=== MODO: EDITANDO CLÍNICA EXISTENTE ===');
         console.log('🆔 ID da clínica a ser editada:', currentClinic.id);
         
-        // Verificar se a clínica existe primeiro
-        console.log('🔍 Verificando se a clínica existe...');
-        const { data: clinicExists, error: checkError } = await supabase
-          .from('clinics')
-          .select('id, name, created_by')
-          .eq('id', currentClinic.id)
-          .single();
-        
-        if (checkError) {
-          console.error('❌ Erro ao verificar clínica:', checkError);
-          throw new Error(`Erro ao verificar clínica: ${checkError.message}`);
-        }
-        
-        if (!clinicExists) {
-          console.error('❌ Clínica não encontrada com ID:', currentClinic.id);
-          throw new Error('Clínica não encontrada');
-        }
-        
-        console.log('✅ Clínica encontrada:', clinicExists);
-        console.log('👥 Created by:', clinicExists.created_by);
-        console.log('👤 Current user:', user.id);
-        
         // Montar objeto para update
         const updateData = {
           name: clinicData.name,
@@ -128,8 +106,8 @@ export const ClinicManagement = () => {
         
         console.log('📝 Objeto para update:', JSON.stringify(updateData, null, 2));
         
-        // Executar update
-        console.log('💾 Executando update...');
+        // Executar update DIRETO - sem verificação de existência
+        console.log('💾 Executando update direto...');
         const { data: updateResult, error: updateError } = await supabase
           .from('clinics')
           .update(updateData)
@@ -146,7 +124,7 @@ export const ClinicManagement = () => {
         
         if (!updateResult || updateResult.length === 0) {
           console.error('❌ Update não retornou dados');
-          throw new Error('Update não retornou dados - possível problema de permissão');
+          throw new Error('Update não retornou dados - possível problema de permissão ou ID incorreto');
         }
         
         toast({
