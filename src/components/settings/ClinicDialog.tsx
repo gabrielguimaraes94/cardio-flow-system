@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -168,16 +167,6 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
       
       console.log('=== URL PÚBLICA GERADA ===');
       console.log('URL pública:', publicUrl);
-      
-      // Verify the file was uploaded correctly
-      const { data: fileData, error: fileError } = await supabase.storage
-        .from('clinic-assets')
-        .list('clinic-logos', {
-          limit: 100,
-          offset: 0
-        });
-      
-      console.log('Arquivos na pasta clinic-logos:', fileData);
       
       return publicUrl;
     } catch (error) {
