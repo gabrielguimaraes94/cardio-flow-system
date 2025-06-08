@@ -36,8 +36,10 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
     );
   }
 
-  // Se não tem clínicas, redireciona para no-access
-  if (userClinics.length === 0) {
+  // IMPORTANTE: Só redireciona para no-access se realmente não há clínicas
+  // E se o carregamento foi concluído
+  if (!clinicsLoading && userClinics.length === 0) {
+    console.log("PrivateRoute: Redirecionando para no-access - usuário sem clínicas");
     return <Navigate to="/no-access" replace />;
   }
 

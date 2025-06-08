@@ -24,6 +24,8 @@ const Index = () => {
       if (clinicsLoading) return;
 
       console.log("Index: Processando redirecionamento para usuário autenticado");
+      console.log("Index: userClinics:", userClinics);
+      console.log("Index: userClinics.length:", userClinics.length);
 
       try {
         // Verifica se é admin global (com timeout rápido)
@@ -44,12 +46,23 @@ const Index = () => {
       }
 
       // Para usuários normais, verifica clínicas
+      // IMPORTANTE: Só redireciona se realmente não há clínicas carregadas
       if (userClinics.length > 0) {
         console.log("Index: Usuário tem clínicas, redirecionando para dashboard");
         navigate('/dashboard', { replace: true });
       } else {
-        console.log("Index: Usuário sem clínicas, redirecionando para no-access");
-        navigate('/no-access', { replace: true });
+        // Aguarda um pouco mais antes de concluir que não há clínicas
+        console.log("Index: Nenhuma clínica encontrada inicialmente, aguardando...");
+        setTimeout(() => {
+          // Verifica novamente após delay
+          if (userClinics.length === 0) {
+            console.log("Index: Confirmado - usuário sem clínicas, redirecionando para no-access");
+            navigate('/no-access', { replace: true });
+          } else {
+            console.log("Index: Clínicas carregadas após delay, redirecionando para dashboard");
+            navigate('/dashboard', { replace: true });
+          }
+        }, 1000);
       }
     };
 
