@@ -213,8 +213,50 @@ export const AppRoutes: React.FC = () => {
           </PrivateRoute>
         } 
       />
+      
+      {/* Settings Routes - com sub-rotas */}
       <Route 
         path="/settings" 
+        element={
+          <PrivateRoute>
+            <Settings />
+          </PrivateRoute>
+        } 
+      />
+      <Route 
+        path="/settings/clinics" 
+        element={
+          <PrivateRoute>
+            <Settings />
+          </PrivateRoute>
+        } 
+      />
+      <Route 
+        path="/settings/insurance" 
+        element={
+          <PrivateRoute>
+            <Settings />
+          </PrivateRoute>
+        } 
+      />
+      <Route 
+        path="/settings/tuss" 
+        element={
+          <PrivateRoute>
+            <Settings />
+          </PrivateRoute>
+        } 
+      />
+      <Route 
+        path="/settings/materials" 
+        element={
+          <PrivateRoute>
+            <Settings />
+          </PrivateRoute>
+        } 
+      />
+      <Route 
+        path="/settings/profile" 
         element={
           <PrivateRoute>
             <Settings />
