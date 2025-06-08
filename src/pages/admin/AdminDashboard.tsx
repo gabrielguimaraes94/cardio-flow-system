@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -9,7 +10,7 @@ import {
   getAllUsers, 
   AdminClinic, 
   AdminUser
-} from '@/services/adminService';
+} from '@/services/admin';
 import { Database } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';

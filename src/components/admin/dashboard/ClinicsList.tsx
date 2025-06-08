@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { AdminClinic, updateClinicStatus, deleteClinic } from '@/services/adminService';
+import { AdminClinic, updateClinicStatus, deleteClinic } from '@/services/admin';
 import { Loader2, Search, Trash } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';

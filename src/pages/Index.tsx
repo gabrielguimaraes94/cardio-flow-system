@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { LoginForm } from "../components/auth/LoginForm";
 import { useMe } from "@/hooks/useMe";
-import { isGlobalAdmin } from "@/services/adminService";
+import { isGlobalAdmin } from "@/services/admin";
 import { Loader2 } from "lucide-react";
 
 const Index = () => {

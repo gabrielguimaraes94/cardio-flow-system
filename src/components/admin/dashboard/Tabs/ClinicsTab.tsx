@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClinicsList } from '../ClinicsList';
 import { ClinicFilters } from '../ClinicFilters';
-import { AdminClinic } from '@/services/adminService';
+import { AdminClinic } from '@/services/admin';
 
 interface ClinicsTabProps {
   clinics: AdminClinic[];

@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { registerClinic } from '@/services/adminService';
+import { registerClinic } from '@/services/admin';
 import { useToast } from '@/hooks/use-toast';
 
 // Define the props interface with onSuccess
