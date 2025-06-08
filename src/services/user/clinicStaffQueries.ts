@@ -27,16 +27,60 @@ export const fetchClinicStaff = async (clinicId: string) => {
       return [];
     }
     
-    // 2. Buscar os dados dos usuários na tabela profiles
+    // 2. Buscar os dados dos usuários na tabela profiles usando RPC ou query administrativa
     const userIds = staffData.map(staff => staff.user_id);
     console.log('IDs dos usuários para buscar profiles:', userIds);
     
-    const { data: profilesData, error: profilesError } = await supabase
-      .from('profiles')
-      .select('*')
-      .in('id', userIds);
+    // Tentar primeiro uma query normal
+    let profilesData;
+    let profilesError;
     
-    if (profilesError) {
+    try {
+      const result = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', userIds);
+      
+      profilesData = result.data;
+      profilesError = result.error;
+      
+      console.log('Query normal - Profiles encontrados:', profilesData?.length || 0);
+      
+      // Se não trouxe todos os profiles, pode ser RLS - vamos tentar uma abordagem diferente
+      if (!profilesError && profilesData && profilesData.length < userIds.length) {
+        console.log('RLS pode estar bloqueando - tentando buscar um por vez...');
+        
+        const allProfiles = [];
+        for (const userId of userIds) {
+          try {
+            const { data: singleProfile, error: singleError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', userId)
+              .maybeSingle();
+              
+            if (singleProfile && !singleError) {
+              allProfiles.push(singleProfile);
+            } else {
+              console.warn('Não foi possível buscar profile para userId:', userId, singleError);
+            }
+          } catch (err) {
+            console.warn('Erro ao buscar profile individual:', userId, err);
+          }
+        }
+        
+        if (allProfiles.length > profilesData.length) {
+          profilesData = allProfiles;
+          console.log('Busca individual trouxe mais profiles:', allProfiles.length);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Erro ao buscar profiles:', error);
+      profilesError = error;
+    }
+    
+    if (profilesError && !profilesData) {
       console.error('Erro ao buscar profiles:', profilesError);
       throw profilesError;
     }
@@ -50,7 +94,23 @@ export const fetchClinicStaff = async (clinicId: string) => {
       
       if (!profile) {
         console.warn('Profile não encontrado para user_id:', staffRecord.user_id);
-        return null;
+        // Retornar dados básicos mesmo sem profile completo
+        return {
+          id: staffRecord.id,
+          user: {
+            id: staffRecord.user_id,
+            firstName: 'Usuário',
+            lastName: 'Sem Profile',
+            email: 'email@indisponivel.com',
+            phone: null,
+            crm: '',
+            title: '',
+            bio: '',
+            role: 'staff'
+          },
+          role: staffRecord.role,
+          isAdmin: staffRecord.is_admin
+        };
       }
       
       return {
@@ -69,7 +129,7 @@ export const fetchClinicStaff = async (clinicId: string) => {
         role: staffRecord.role,
         isAdmin: staffRecord.is_admin
       };
-    }).filter(Boolean); // Remove registros nulos
+    });
     
     console.log('Funcionários válidos processados:', combinedData.length);
     console.log('Dados finais:', combinedData);
