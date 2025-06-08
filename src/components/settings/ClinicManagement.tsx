@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Pencil, Trash, MapPin, Phone, Mail, Building } from 'lucide-react';
+import { Plus, Search, Pencil, MapPin, Phone, Mail, Building } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -69,28 +69,40 @@ export const ClinicManagement = () => {
     if (!user) return;
     
     try {
-      console.log('Salvando clínica com logo_url:', clinic.logo_url);
+      console.log('=== INICIANDO SALVAMENTO DA CLÍNICA ===');
+      console.log('Dados da clínica recebidos:', clinic);
+      console.log('Logo URL recebida:', clinic.logo_url);
       
       if (currentClinic) {
         // Editar clínica existente
-        const { error } = await supabase
+        console.log('=== EDITANDO CLÍNICA EXISTENTE ===');
+        console.log('ID da clínica:', clinic.id);
+        
+        const updateData = {
+          name: clinic.name,
+          address: clinic.address,
+          city: clinic.city,
+          phone: clinic.phone,
+          email: clinic.email,
+          active: clinic.active,
+          logo_url: clinic.logo_url || null,
+          updated_at: new Date().toISOString()
+        };
+        
+        console.log('Dados para atualização:', updateData);
+        
+        const { error, data } = await supabase
           .from('clinics')
-          .update({
-            name: clinic.name,
-            address: clinic.address,
-            city: clinic.city,
-            phone: clinic.phone,
-            email: clinic.email,
-            active: clinic.active,
-            logo_url: clinic.logo_url, // Make sure to include logo_url
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', clinic.id);
+          .update(updateData)
+          .eq('id', clinic.id)
+          .select();
         
         if (error) {
           console.error('Erro ao atualizar clínica:', error);
           throw error;
         }
+        
+        console.log('Clínica atualizada com sucesso:', data);
         
         toast({
           title: "Clínica atualizada",
@@ -98,23 +110,32 @@ export const ClinicManagement = () => {
         });
       } else {
         // Adicionar nova clínica
-        const { error } = await supabase
+        console.log('=== ADICIONANDO NOVA CLÍNICA ===');
+        
+        const insertData = {
+          name: clinic.name,
+          address: clinic.address,
+          city: clinic.city,
+          phone: clinic.phone,
+          email: clinic.email,
+          active: clinic.active,
+          logo_url: clinic.logo_url || null,
+          created_by: user.id
+        };
+        
+        console.log('Dados para inserção:', insertData);
+        
+        const { error, data } = await supabase
           .from('clinics')
-          .insert({
-            name: clinic.name,
-            address: clinic.address,
-            city: clinic.city,
-            phone: clinic.phone,
-            email: clinic.email,
-            active: clinic.active,
-            logo_url: clinic.logo_url, // Make sure to include logo_url
-            created_by: user.id
-          });
+          .insert(insertData)
+          .select();
         
         if (error) {
           console.error('Erro ao criar clínica:', error);
           throw error;
         }
+        
+        console.log('Clínica criada com sucesso:', data);
         
         toast({
           title: "Clínica adicionada",
@@ -135,33 +156,6 @@ export const ClinicManagement = () => {
     }
     
     setIsDialogOpen(false);
-  };
-
-  const handleDeleteClinic = async (clinicId: string) => {
-    try {
-      const { error } = await supabase
-        .from('clinics')
-        .delete()
-        .eq('id', clinicId);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Clínica excluída",
-        description: "A clínica foi excluída com sucesso."
-      });
-      
-      // Atualizar a lista de clínicas no contexto
-      await refetchClinics();
-      
-    } catch (error) {
-      console.error('Erro ao excluir clínica:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir a clínica.",
-        variant: "destructive"
-      });
-    }
   };
 
   return (
@@ -213,6 +207,10 @@ export const ClinicManagement = () => {
                               src={clinic.logo_url} 
                               alt={`Logo ${clinic.name}`}
                               className="w-full h-full object-contain"
+                              onError={(e) => {
+                                console.error('Erro ao carregar imagem:', clinic.logo_url);
+                                e.currentTarget.style.display = 'none';
+                              }}
                             />
                           </div>
                         )}
@@ -248,10 +246,6 @@ export const ClinicManagement = () => {
                     <Button variant="ghost" size="sm" onClick={() => handleEditClinic(clinic)}>
                       <Pencil className="h-4 w-4 mr-1" />
                       Editar
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDeleteClinic(clinic.id)}>
-                      <Trash className="h-4 w-4 mr-1" />
-                      Excluir
                     </Button>
                   </div>
                 </Card>

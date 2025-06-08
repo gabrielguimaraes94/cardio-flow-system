@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/form';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Printer, Download, Save } from 'lucide-react';
 
 export interface Clinic {
   id: string;
@@ -74,6 +73,10 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
   useEffect(() => {
     if (isOpen) {
       if (clinic) {
+        console.log('=== CARREGANDO CLÍNICA NO DIALOG ===');
+        console.log('Dados da clínica:', clinic);
+        console.log('Logo URL da clínica:', clinic.logo_url);
+        
         form.reset({
           name: clinic.name,
           address: clinic.address,
@@ -104,28 +107,61 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
     const file = e.target.files?.[0];
     
     if (file) {
+      console.log('=== ARQUIVO SELECIONADO ===');
+      console.log('Nome do arquivo:', file.name);
+      console.log('Tipo do arquivo:', file.type);
+      console.log('Tamanho do arquivo:', file.size);
+      
       setLogo(file);
       
       // Create preview URL for the image
       const fileReader = new FileReader();
       fileReader.onload = () => {
-        setPreviewUrl(fileReader.result as string);
+        const result = fileReader.result as string;
+        console.log('Preview URL criada:', result.substring(0, 100) + '...');
+        setPreviewUrl(result);
       };
       fileReader.readAsDataURL(file);
     }
   };
 
   const uploadLogo = async (): Promise<string | null> => {
-    if (!logo) return form.getValues('logo_url') || null;
+    if (!logo) {
+      const currentUrl = form.getValues('logo_url');
+      console.log('=== SEM NOVO ARQUIVO, MANTENDO URL ATUAL ===');
+      console.log('URL atual:', currentUrl);
+      return currentUrl || null;
+    }
     
     setIsUploading(true);
     try {
+      console.log('=== INICIANDO UPLOAD DO LOGO ===');
+      
       // Create a unique filename for the logo
       const fileExt = logo.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `clinic-logos/${fileName}`;
       
+      console.log('Nome do arquivo gerado:', fileName);
+      console.log('Caminho do arquivo:', filePath);
+      
+      // Check if bucket exists first
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      console.log('Buckets disponíveis:', buckets);
+      
+      if (bucketsError) {
+        console.error('Erro ao listar buckets:', bucketsError);
+        throw bucketsError;
+      }
+      
+      const clinicAssetsBucket = buckets?.find(bucket => bucket.name === 'clinic-assets');
+      if (!clinicAssetsBucket) {
+        console.error('Bucket clinic-assets não encontrado');
+        throw new Error('Bucket clinic-assets não encontrado');
+      }
+      
       // Upload the file directly to the existing bucket
+      console.log('=== FAZENDO UPLOAD PARA O BUCKET ===');
       const { data, error } = await supabase.storage
         .from('clinic-assets')
         .upload(filePath, logo, {
@@ -134,19 +170,34 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
         });
       
       if (error) {
-        console.error('Error uploading file:', error);
+        console.error('Erro detalhado no upload:', error);
         throw error;
       }
+      
+      console.log('Upload realizado com sucesso:', data);
       
       // Get the public URL for the uploaded file
       const { data: { publicUrl } } = supabase.storage
         .from('clinic-assets')
         .getPublicUrl(filePath);
       
-      console.log('Logo uploaded successfully:', publicUrl);
+      console.log('=== URL PÚBLICA GERADA ===');
+      console.log('URL pública:', publicUrl);
+      
+      // Verify the file was uploaded correctly
+      const { data: fileData, error: fileError } = await supabase.storage
+        .from('clinic-assets')
+        .list('clinic-logos', {
+          limit: 100,
+          offset: 0
+        });
+      
+      console.log('Arquivos na pasta clinic-logos:', fileData);
+      
       return publicUrl;
     } catch (error) {
-      console.error('Error uploading logo:', error);
+      console.error('=== ERRO NO UPLOAD ===');
+      console.error('Erro completo:', error);
       toast({
         title: "Erro ao fazer upload do logo",
         description: "Não foi possível fazer o upload da imagem. Por favor, tente novamente.",
@@ -160,17 +211,21 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
 
   const onSubmit = async (data: ClinicFormData) => {
     try {
+      console.log('=== INICIANDO SUBMISSÃO DO FORMULÁRIO ===');
+      console.log('Dados do formulário:', data);
+      
       setIsUploading(true);
       
       // If there's a new logo, upload it first and wait for completion
       let logoUrl = data.logo_url;
       
       if (logo) {
-        console.log('Uploading new logo...');
+        console.log('=== FAZENDO UPLOAD DO NOVO LOGO ===');
         const uploadedUrl = await uploadLogo();
         if (uploadedUrl) {
           logoUrl = uploadedUrl;
-          console.log('Logo upload completed, URL:', logoUrl);
+          console.log('=== LOGO UPLOAD CONCLUÍDO ===');
+          console.log('Nova URL do logo:', logoUrl);
         } else {
           // If upload failed, don't proceed
           toast({
@@ -182,7 +237,8 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
         }
       }
       
-      console.log('Saving clinic with logo_url:', logoUrl);
+      console.log('=== PREPARANDO DADOS PARA SALVAR ===');
+      console.log('URL final do logo:', logoUrl);
       
       // Call onSave with the updated logo URL
       const clinicData: Clinic = {
@@ -196,11 +252,14 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
         logo_url: logoUrl
       };
       
-      console.log('Final clinic data being saved:', clinicData);
+      console.log('=== DADOS FINAIS DA CLÍNICA ===');
+      console.log('Dados completos:', clinicData);
+      
       onSave(clinicData);
       
     } catch (error) {
-      console.error('Error saving clinic:', error);
+      console.error('=== ERRO NA SUBMISSÃO ===');
+      console.error('Erro completo:', error);
       toast({
         title: "Erro ao salvar a clínica",
         description: "Ocorreu um erro ao salvar os dados da clínica.",
@@ -299,6 +358,10 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
                       src={previewUrl} 
                       alt="Logo preview" 
                       className="w-full h-full object-contain"
+                      onError={(e) => {
+                        console.error('Erro ao carregar preview da imagem:', previewUrl);
+                        e.currentTarget.style.display = 'none';
+                      }}
                     />
                   </div>
                 )}
@@ -312,6 +375,11 @@ export const ClinicDialog: React.FC<ClinicDialogProps> = ({ isOpen, onClose, onS
                   <p className="text-xs text-muted-foreground mt-1">
                     Formatos recomendados: PNG, JPG. Tamanho máximo: 5MB.
                   </p>
+                  {form.getValues('logo_url') && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      URL atual: {form.getValues('logo_url')?.substring(0, 50)}...
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
