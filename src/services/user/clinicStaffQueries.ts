@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { fetchProfilesByIds } from './profileService';
 
 // Buscar todos os funcionários de uma clínica
 export const fetchClinicStaff = async (clinicId: string) => {
@@ -27,74 +28,19 @@ export const fetchClinicStaff = async (clinicId: string) => {
       return [];
     }
     
-    // 2. Buscar os dados dos usuários na tabela profiles usando RPC ou query administrativa
+    // 2. Buscar os dados dos usuários usando a função específica
     const userIds = staffData.map(staff => staff.user_id);
     console.log('IDs dos usuários para buscar profiles:', userIds);
     
-    // Tentar primeiro uma query normal
-    let profilesData;
-    let profilesError;
-    
-    try {
-      const result = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', userIds);
-      
-      profilesData = result.data;
-      profilesError = result.error;
-      
-      console.log('Query normal - Profiles encontrados:', profilesData?.length || 0);
-      
-      // Se não trouxe todos os profiles, pode ser RLS - vamos tentar uma abordagem diferente
-      if (!profilesError && profilesData && profilesData.length < userIds.length) {
-        console.log('RLS pode estar bloqueando - tentando buscar um por vez...');
-        
-        const allProfiles = [];
-        for (const userId of userIds) {
-          try {
-            const { data: singleProfile, error: singleError } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', userId)
-              .maybeSingle();
-              
-            if (singleProfile && !singleError) {
-              allProfiles.push(singleProfile);
-            } else {
-              console.warn('Não foi possível buscar profile para userId:', userId, singleError);
-            }
-          } catch (err) {
-            console.warn('Erro ao buscar profile individual:', userId, err);
-          }
-        }
-        
-        if (allProfiles.length > profilesData.length) {
-          profilesData = allProfiles;
-          console.log('Busca individual trouxe mais profiles:', allProfiles.length);
-        }
-      }
-      
-    } catch (error) {
-      console.error('Erro ao buscar profiles:', error);
-      profilesError = error;
-    }
-    
-    if (profilesError && !profilesData) {
-      console.error('Erro ao buscar profiles:', profilesError);
-      throw profilesError;
-    }
-    
-    console.log('Profiles encontrados:', profilesData?.length || 0);
-    console.log('Dados dos profiles:', profilesData);
+    const profilesData = await fetchProfilesByIds(userIds);
+    console.log('Profiles retornados pela função específica:', profilesData.length);
     
     // 3. Combinar os dados
     const combinedData = staffData.map((staffRecord) => {
-      const profile = profilesData?.find(p => p.id === staffRecord.user_id);
+      const profile = profilesData.find(p => p.id === staffRecord.user_id);
       
       if (!profile) {
         console.warn('Profile não encontrado para user_id:', staffRecord.user_id);
-        // Retornar dados básicos mesmo sem profile completo
         return {
           id: staffRecord.id,
           user: {
@@ -117,14 +63,14 @@ export const fetchClinicStaff = async (clinicId: string) => {
         id: staffRecord.id,
         user: {
           id: profile.id,
-          firstName: profile.first_name || '',
-          lastName: profile.last_name || '',
-          email: profile.email || '',
-          phone: profile.phone || null,
-          crm: profile.crm || '',
-          title: profile.title || '',
-          bio: profile.bio || '',
-          role: profile.role || 'staff'
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          email: profile.email,
+          phone: profile.phone,
+          crm: profile.crm,
+          title: profile.title,
+          bio: profile.bio,
+          role: profile.role
         },
         role: staffRecord.role,
         isAdmin: staffRecord.is_admin
