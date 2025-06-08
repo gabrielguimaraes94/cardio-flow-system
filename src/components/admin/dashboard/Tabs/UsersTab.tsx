@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UsersList } from '../UsersList';
 import { UserFilters } from '../UserFilters';
-import { AdminUser } from '@/services/adminService';
+import { AdminUser } from '@/services/admin';
 import { Database } from '@/integrations/supabase/types';
 
 type UserRole = Database["public"]["Enums"]["user_role"];
