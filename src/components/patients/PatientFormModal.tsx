@@ -20,7 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Save, Loader2 } from 'lucide-react';
+import { Save, Loader2, ArrowLeft, ArrowRight } from 'lucide-react';
 
 // Schema de validação do paciente
 const patientSchema = z.object({
@@ -58,6 +58,7 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentTab, setCurrentTab] = useState("personal");
 
   const form = useForm<PatientFormData>({
     resolver: zodResolver(patientSchema),
@@ -78,6 +79,20 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
       state: ''
     }
   });
+
+  const handleNextTab = async () => {
+    // Validar apenas os campos da aba atual (dados pessoais)
+    const personalFields = ['name', 'birthdate', 'gender', 'cpf'] as const;
+    const isPersonalValid = await form.trigger(personalFields);
+    
+    if (isPersonalValid) {
+      setCurrentTab("address");
+    }
+  };
+
+  const handlePreviousTab = () => {
+    setCurrentTab("personal");
+  };
 
   const handleSubmit = async (data: PatientFormData) => {
     if (!selectedClinic || !user) {
@@ -132,7 +147,9 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
         description: "Paciente cadastrado com sucesso!"
       });
 
+      // Limpar formulário e resetar aba
       form.reset();
+      setCurrentTab("personal");
       onOpenChange(false);
       if (onSuccess) onSuccess();
     } catch (error) {
@@ -147,8 +164,15 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
     }
   };
 
+  const handleClose = () => {
+    // Limpar formulário e resetar aba ao fechar
+    form.reset();
+    setCurrentTab("personal");
+    onOpenChange(false);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Novo Paciente</DialogTitle>
@@ -159,7 +183,7 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            <Tabs defaultValue="personal">
+            <Tabs value={currentTab} onValueChange={setCurrentTab}>
               <TabsList className="mb-4">
                 <TabsTrigger value="personal">Dados Pessoais</TabsTrigger>
                 <TabsTrigger value="address">Endereço</TabsTrigger>
@@ -430,28 +454,52 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
             <DialogFooter>
               <Button 
                 variant="outline" 
-                onClick={() => onOpenChange(false)} 
+                onClick={handleClose} 
                 type="button"
               >
                 Cancelar
               </Button>
-              <Button 
-                className="bg-cardio-500 hover:bg-cardio-600" 
-                type="submit" 
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Salvar Paciente
-                  </>
-                )}
-              </Button>
+              
+              {currentTab === "personal" && (
+                <Button 
+                  className="bg-cardio-500 hover:bg-cardio-600" 
+                  type="button"
+                  onClick={handleNextTab}
+                >
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  Próximo
+                </Button>
+              )}
+
+              {currentTab === "address" && (
+                <>
+                  <Button 
+                    variant="outline" 
+                    type="button"
+                    onClick={handlePreviousTab}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Voltar
+                  </Button>
+                  <Button 
+                    className="bg-cardio-500 hover:bg-cardio-600" 
+                    type="submit" 
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Salvar Paciente
+                      </>
+                    )}
+                  </Button>
+                </>
+              )}
             </DialogFooter>
           </form>
         </Form>
