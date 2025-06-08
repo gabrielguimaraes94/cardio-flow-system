@@ -1,8 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Clinic } from '@/types/clinic';
-import { useToast } from '@/hooks/use-toast';
-import { useUserClinics } from '@/hooks/useUserClinics';
+import { useMe } from '@/hooks/useMe';
 
 interface ClinicContextType {
   selectedClinic: Clinic | null;
@@ -58,8 +57,7 @@ export const useClinic = () => {
 
 export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
-  const { clinics, loading, error, refetch } = useUserClinics();
-  const { toast } = useToast();
+  const { clinics, isLoading, error, refetch } = useMe();
 
   // Função para validar se uma clínica ainda existe na lista atual
   const validateStoredClinic = (storedClinicId: string, availableClinics: Clinic[]): Clinic | null => {
@@ -74,7 +72,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Auto-select clinic logic when clinics are loaded
   useEffect(() => {
-    if (loading || clinics.length === 0) return;
+    if (isLoading || clinics.length === 0) return;
 
     // Se já há uma clínica selecionada válida, não faz nada
     if (selectedClinic && clinics.find(c => c.id === selectedClinic.id)) {
@@ -101,7 +99,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.log('ClinicContext: ⚠️ Nenhuma clínica no localStorage, selecionando primeira da lista');
       handleSetSelectedClinic(clinics[0]);
     }
-  }, [clinics, loading]);
+  }, [clinics, isLoading]);
 
   const handleSetSelectedClinic = (clinic: Clinic | null) => {
     // Evita loops desnecessários se a clínica já está selecionada
@@ -137,7 +135,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         selectedClinic,
         setSelectedClinic: handleSetSelectedClinic,
         clinics,
-        loading,
+        loading: isLoading,
         refetchClinics: refetch,
         error
       }}

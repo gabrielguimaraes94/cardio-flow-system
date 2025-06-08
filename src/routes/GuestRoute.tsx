@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useStaffClinic } from '@/contexts/StaffClinicContext';
+import { useMe } from '@/hooks/useMe';
 import { Loader2 } from 'lucide-react';
 
 interface GuestRouteProps {
@@ -10,13 +9,12 @@ interface GuestRouteProps {
 }
 
 export const GuestRoute: React.FC<GuestRouteProps> = ({ children }) => {
-  const { user, isLoading: authLoading } = useAuth();
-  const { loading: clinicsLoading } = useStaffClinic();
+  const { user, isLoading } = useMe();
 
-  console.log('GuestRoute: authLoading:', authLoading, 'user:', !!user, 'clinicsLoading:', clinicsLoading);
+  console.log('GuestRoute: isLoading:', isLoading, 'user:', !!user);
 
-  // Aguarda verificação de autenticação
-  if (authLoading) {
+  // Aguarda verificação completa
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-cardio-500 mb-4" />
@@ -29,17 +27,6 @@ export const GuestRoute: React.FC<GuestRouteProps> = ({ children }) => {
   if (!user) {
     console.log('GuestRoute: Usuário não autenticado, mostrando página guest');
     return <>{children}</>;
-  }
-
-  // Se há usuário, aguarda o carregamento das clínicas antes de redirecionar
-  if (clinicsLoading) {
-    console.log('GuestRoute: Usuário autenticado, aguardando carregamento das clínicas...');
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-cardio-500 mb-4" />
-        <div className="text-cardio-500 text-xl">Verificando autenticação...</div>
-      </div>
-    );
   }
 
   // Usuário autenticado, redireciona para dashboard

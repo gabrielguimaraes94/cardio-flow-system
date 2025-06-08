@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext } from 'react';
-import { useUserClinics } from '@/hooks/useUserClinics';
+import { useMe } from '@/hooks/useMe';
 
 interface StaffClinicContextType {
   userClinics: {
@@ -32,14 +32,14 @@ export const useStaffClinic = () => {
 };
 
 export const StaffClinicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { userClinics, loading, error, refetch } = useUserClinics();
+  const { userClinics, isLoading, error, refetch } = useMe();
 
   return (
     <StaffClinicContext.Provider
       value={{
         userClinics,
         fetchUserClinics: refetch,
-        loading,
+        loading: isLoading,
         error
       }}
     >

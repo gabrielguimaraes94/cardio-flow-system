@@ -2,35 +2,27 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { LoginForm } from "../components/auth/LoginForm";
-import { useAuth } from "@/contexts/AuthContext";
-import { useStaffClinic } from "@/contexts/StaffClinicContext";
+import { useMe } from "@/hooks/useMe";
 import { isGlobalAdmin } from "@/services/adminService";
 import { Loader2 } from "lucide-react";
 
 const Index = () => {
-  const { user, isLoading: authLoading } = useAuth();
-  const { loading: clinicsLoading, userClinics } = useStaffClinic();
+  const { user, userClinics, isLoading } = useMe();
   const navigate = useNavigate();
 
   useEffect(() => {
     const handleRedirect = async () => {
-      console.log("Index: Estado atual - authLoading:", authLoading, "user:", !!user, "clinicsLoading:", clinicsLoading, "userClinics.length:", userClinics.length);
+      console.log("Index: Estado atual - isLoading:", isLoading, "user:", !!user, "userClinics.length:", userClinics.length);
       
-      // Se ainda está carregando auth, espera
-      if (authLoading) {
-        console.log("Index: Aguardando carregamento de autenticação...");
+      // Se ainda está carregando, espera
+      if (isLoading) {
+        console.log("Index: Aguardando carregamento...");
         return;
       }
       
       // Se não há usuário, mostra login
       if (!user) {
         console.log("Index: Usuário não autenticado, mostrando login");
-        return;
-      }
-
-      // Se ainda está carregando clínicas, espera
-      if (clinicsLoading) {
-        console.log("Index: Usuário autenticado, aguardando carregamento de clínicas...");
         return;
       }
 
@@ -66,14 +58,14 @@ const Index = () => {
     };
 
     handleRedirect();
-  }, [user, authLoading, clinicsLoading, userClinics, navigate]);
+  }, [user, isLoading, userClinics, navigate]);
 
-  // Mostra loading apenas quando necessário
-  if (authLoading) {
+  // Mostra loading quando necessário
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-cardio-500 mb-4" />
-        <div className="text-cardio-500 text-xl">Verificando autenticação...</div>
+        <div className="text-cardio-500 text-xl">Carregando...</div>
       </div>
     );
   }
@@ -81,16 +73,6 @@ const Index = () => {
   // Se não há usuário, mostra login
   if (!user) {
     return <LoginForm />;
-  }
-
-  // Mostra loading apenas durante carregamento de clínicas
-  if (clinicsLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-cardio-500 mb-4" />
-        <div className="text-cardio-500 text-xl">Carregando clínicas...</div>
-      </div>
-    );
   }
 
   // Loading final rápido durante redirecionamento
