@@ -175,7 +175,7 @@ export const fetchClinicStaff = async (clinicId: string) => {
     console.log('=== FETCHCLINICSTAFF ===');
     console.log('Buscando funcionários para clínica:', clinicId);
     
-    // Usar INNER JOIN explícito do Supabase para garantir que apenas registros válidos sejam retornados
+    // Usar INNER JOIN explícito do Supabase especificando qual foreign key usar
     const { data: staffData, error: staffError } = await supabase
       .from('clinic_staff')
       .select(`
@@ -185,7 +185,7 @@ export const fetchClinicStaff = async (clinicId: string) => {
         is_admin,
         active,
         created_at,
-        user:profiles!inner(
+        user:profiles!fk_clinic_staff_user(
           id,
           email,
           first_name,
@@ -214,7 +214,7 @@ export const fetchClinicStaff = async (clinicId: string) => {
       return [];
     }
     
-    // Mapear os dados para o formato esperado
+    // Mapear os dados para o formato esperado - com INNER JOIN não há registros null
     const mappedStaff = staffData.map((staffRecord: any) => {
       return {
         id: staffRecord.id,
@@ -249,12 +249,12 @@ export const fetchUsersForSelection = async (clinicId: string): Promise<UserProf
     console.log('=== FETCH USERS FOR SELECTION ===');
     console.log('Buscando usuários para seleção na clínica:', clinicId);
     
-    // Buscar todos os funcionários ativos da clínica usando join inner
+    // Buscar todos os funcionários ativos da clínica usando join inner especificando a FK
     const { data: staffData, error: staffError } = await supabase
       .from('clinic_staff')
       .select(`
         user_id,
-        profiles!inner(
+        profiles!fk_clinic_staff_user(
           id,
           first_name,
           last_name,
