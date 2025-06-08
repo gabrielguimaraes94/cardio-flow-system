@@ -89,7 +89,14 @@ export const ClinicManagement = () => {
       if (currentClinic) {
         // EDITANDO CLÍNICA EXISTENTE
         console.log('=== MODO: EDITANDO CLÍNICA EXISTENTE ===');
-        console.log('🆔 ID da clínica a ser editada:', currentClinic.id);
+        console.log('=== DEBUG IDs ===');
+        console.log('currentClinic.id:', currentClinic.id);
+        console.log('clinicData.id:', clinicData.id);
+        console.log('IDs são iguais?', currentClinic.id === clinicData.id);
+        
+        // Determinar qual ID usar - priorizar clinicData.id se existir, senão currentClinic.id
+        const idParaUpdate = clinicData.id || currentClinic.id;
+        console.log('🆔 ID que será usado no UPDATE:', idParaUpdate);
         
         // Montar objeto para update
         const updateData = {
@@ -105,12 +112,12 @@ export const ClinicManagement = () => {
         
         console.log('📝 Objeto para update:', JSON.stringify(updateData, null, 2));
         
-        // Executar update DIRETO - sem verificação de existência e sem .select()
+        // Executar update DIRETO - usando o ID correto
         console.log('💾 Executando update direto...');
         const { error: updateError } = await supabase
           .from('clinics')
           .update(updateData)
-          .eq('id', currentClinic.id);
+          .eq('id', idParaUpdate);
         
         if (updateError) {
           console.error('❌ Erro no update:', updateError);
