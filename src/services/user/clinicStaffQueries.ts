@@ -7,29 +7,10 @@ export const fetchClinicStaff = async (clinicId: string) => {
     console.log('=== FETCHCLINICSTAFF ===');
     console.log('Buscando funcionários para clínica:', clinicId);
     
-    // Query corrigida - especificando a relação exata para evitar ambiguidade
+    // 1. Buscar todos os registros de clinic_staff da clínica
     const { data: staffData, error: staffError } = await supabase
       .from('clinic_staff')
-      .select(`
-        id,
-        clinic_id,
-        user_id,
-        role,
-        is_admin,
-        active,
-        created_at,
-        profiles!clinic_staff_user_id_fkey (
-          id,
-          email,
-          first_name,
-          last_name,
-          crm,
-          role,
-          phone,
-          title,
-          bio
-        )
-      `)
+      .select('*')
       .eq('clinic_id', clinicId)
       .eq('active', true)
       .order('created_at', { ascending: false });
@@ -39,17 +20,38 @@ export const fetchClinicStaff = async (clinicId: string) => {
       throw staffError;
     }
     
-    console.log('Funcionários encontrados:', staffData?.length || 0);
-    console.log('Dados completos dos funcionários:', staffData);
+    console.log('Registros de clinic_staff encontrados:', staffData?.length || 0);
     
     if (!staffData || staffData.length === 0) {
       console.log('Nenhum funcionário encontrado para a clínica:', clinicId);
       return [];
     }
     
-    // Processar os dados retornados
-    const validStaff = staffData.map((staffRecord: any) => {
-      const profile = staffRecord.profiles;
+    // 2. Buscar os dados dos usuários na tabela profiles
+    const userIds = staffData.map(staff => staff.user_id);
+    console.log('IDs dos usuários para buscar profiles:', userIds);
+    
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('id', userIds);
+    
+    if (profilesError) {
+      console.error('Erro ao buscar profiles:', profilesError);
+      throw profilesError;
+    }
+    
+    console.log('Profiles encontrados:', profilesData?.length || 0);
+    console.log('Dados dos profiles:', profilesData);
+    
+    // 3. Combinar os dados
+    const combinedData = staffData.map((staffRecord) => {
+      const profile = profilesData?.find(p => p.id === staffRecord.user_id);
+      
+      if (!profile) {
+        console.warn('Profile não encontrado para user_id:', staffRecord.user_id);
+        return null;
+      }
       
       return {
         id: staffRecord.id,
@@ -67,11 +69,12 @@ export const fetchClinicStaff = async (clinicId: string) => {
         role: staffRecord.role,
         isAdmin: staffRecord.is_admin
       };
-    });
+    }).filter(Boolean); // Remove registros nulos
     
-    console.log('Funcionários válidos processados:', validStaff.length);
+    console.log('Funcionários válidos processados:', combinedData.length);
+    console.log('Dados finais:', combinedData);
     
-    return validStaff;
+    return combinedData;
     
   } catch (error) {
     console.error('Error fetching clinic staff:', error);
