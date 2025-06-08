@@ -110,7 +110,8 @@ export const AngioplastyView: React.FC = () => {
     },
     clinic: {
       ...selectedClinic,
-      email: selectedClinic.email || 'contato@clinica.com' // Fallback if email is missing
+      email: selectedClinic.email || 'contato@clinica.com', // Fallback if email is missing
+      city: selectedClinic.city || 'São Paulo' // Ensure city is always provided
     },
     tussProcedures: request.tussProcedures,
     materials: request.materials,
