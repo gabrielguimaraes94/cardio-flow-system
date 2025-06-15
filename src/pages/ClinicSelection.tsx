@@ -14,14 +14,11 @@ export const ClinicSelection: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Redirecionamento automático apenas em casos específicos
+  // Apenas redireciona em casos de erro (sem clínicas)
   useEffect(() => {
-    if (!loading) {
-      if (clinics.length === 0) {
-        console.log('ClinicSelection: Nenhuma clínica encontrada, redirecionando para no-access');
-        navigate('/no-access', { replace: true });
-      }
-      // Removido redirecionamento automático para dashboard para permitir seleção manual
+    if (!loading && clinics.length === 0) {
+      console.log('ClinicSelection: Nenhuma clínica encontrada, redirecionando para no-access');
+      navigate('/no-access', { replace: true });
     }
   }, [clinics, loading, navigate]);
 
