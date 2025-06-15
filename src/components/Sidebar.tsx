@@ -88,22 +88,6 @@ export const Sidebar: React.FC = () => {
                   </SidebarMenuItem>
                 );
               })}
-              
-              {/* Botão para alterar clínica - só mostra se há múltiplas clínicas */}
-              {clinics.length > 1 && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    tooltip={state === 'collapsed' ? 'Alterar Clínica' : undefined}
-                    className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  >
-                    <Link to="/clinic-selection" className="flex items-center gap-3 w-full">
-                      <Building className="h-5 w-5 flex-shrink-0" />
-                      <span className="truncate">Alterar Clínica</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -111,6 +95,22 @@ export const Sidebar: React.FC = () => {
 
       <SidebarFooter className="border-t border-sidebar-border p-2">
         <SidebarMenu>
+          {/* Botão para alterar clínica - só mostra se há múltiplas clínicas */}
+          {clinics.length > 1 && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                tooltip={state === 'collapsed' ? 'Alterar Clínica' : undefined}
+                className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              >
+                <Link to="/clinic-selection" className="flex items-center gap-3 w-full">
+                  <Building className="h-5 w-5 flex-shrink-0" />
+                  <span className="truncate">Alterar Clínica</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+          
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={handleLogout}
