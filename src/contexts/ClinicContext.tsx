@@ -59,45 +59,39 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
   const { clinics, isLoading, error, refetch } = useMe();
 
-  // Função para validar se uma clínica ainda existe na lista atual
-  const validateStoredClinic = (storedClinicId: string, availableClinics: Clinic[]): Clinic | null => {
-    const clinic = availableClinics.find(c => c.id === storedClinicId);
-    if (!clinic) {
-      console.log('ClinicContext: Clínica armazenada não encontrada na lista atual, removendo do localStorage');
-      safeLocalStorage.removeItem('selectedClinicId');
-      return null;
-    }
-    return clinic;
-  };
-
-  // Auto-select clinic logic when clinics are loaded
+  // Auto-select clinic logic - APENAS para usuários com UMA clínica
   useEffect(() => {
     if (isLoading || clinics.length === 0) return;
 
-    console.log('ClinicContext: Processando seleção automática de clínica');
+    console.log('ClinicContext: Processando seleção de clínica', { clinicsCount: clinics.length });
     
-    // Verifica se já existe uma clínica selecionada no localStorage
-    const storedClinicId = safeLocalStorage.getItem('selectedClinicId');
-    
-    if (storedClinicId) {
-      // Busca a clínica atualizada na lista atual (isso garante dados atualizados)
-      const updatedClinic = clinics.find(c => c.id === storedClinicId);
+    // Se há múltiplas clínicas, NÃO faz seleção automática
+    if (clinics.length > 1) {
+      console.log('ClinicContext: Múltiplas clínicas encontradas, aguardando seleção manual');
       
-      if (updatedClinic) {
-        // Se a clínica existe na lista, usa os dados atualizados
-        console.log('ClinicContext: ✅ Atualizando clínica selecionada com dados mais recentes:', updatedClinic.name);
-        handleSetSelectedClinic(updatedClinic);
-      } else {
-        console.log('ClinicContext: ❌ Clínica do localStorage não encontrada, selecionando primeira da lista');
-        handleSetSelectedClinic(clinics[0]);
+      // Verifica se há uma clínica já selecionada no localStorage
+      const storedClinicId = safeLocalStorage.getItem('selectedClinicId');
+      if (storedClinicId) {
+        const storedClinic = clinics.find(c => c.id === storedClinicId);
+        if (storedClinic) {
+          console.log('ClinicContext: Restaurando clínica do localStorage:', storedClinic.name);
+          setSelectedClinic(storedClinic);
+        } else {
+          console.log('ClinicContext: Clínica do localStorage não encontrada, removendo');
+          safeLocalStorage.removeItem('selectedClinicId');
+        }
       }
-    } else {
-      console.log('ClinicContext: ⚠️ Nenhuma clínica no localStorage, selecionando primeira da lista');
+      return;
+    }
+
+    // Se há apenas UMA clínica, seleciona automaticamente
+    if (clinics.length === 1) {
+      console.log('ClinicContext: Uma clínica encontrada, selecionando automaticamente:', clinics[0].name);
       handleSetSelectedClinic(clinics[0]);
     }
-  }, [clinics, isLoading]); // Dependência em clinics garante que sempre use dados atualizados
+  }, [clinics, isLoading]);
 
-  // Efeito adicional para atualizar a clínica selecionada quando os dados das clínicas mudam
+  // Efeito para atualizar a clínica selecionada quando os dados das clínicas mudam
   useEffect(() => {
     if (selectedClinic && clinics.length > 0) {
       // Busca a versão atualizada da clínica selecionada
