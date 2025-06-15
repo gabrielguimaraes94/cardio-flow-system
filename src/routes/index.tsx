@@ -8,6 +8,9 @@ import { AdminRoute } from './AdminRoute';
 // Guest Routes (não logado)
 import Index from '@/pages/Index';
 
+// Clinic Selection Route
+import { ClinicSelection } from '@/pages/ClinicSelection';
+
 // Private Routes (logado com clínicas)
 import { Dashboard } from '@/pages/Dashboard';
 import { AngioplastyCreate } from '@/pages/AngioplastyCreate';
@@ -60,6 +63,12 @@ export const AppRoutes: React.FC = () => {
             <AdminLogin />
           </GuestRoute>
         } 
+      />
+
+      {/* Clinic Selection Route - para usuários logados escolherem clínica */}
+      <Route 
+        path="/clinic-selection" 
+        element={<ClinicSelection />} 
       />
 
       {/* Private Routes - para usuários logados com clínicas */}

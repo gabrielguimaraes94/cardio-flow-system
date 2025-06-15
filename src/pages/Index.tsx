@@ -48,8 +48,11 @@ const Index = () => {
       }
 
       // Para usuários normais, verifica clínicas
-      if (userClinics.length > 0) {
-        console.log("Index: Usuário tem clínicas, redirecionando para dashboard");
+      if (userClinics.length > 1) {
+        console.log("Index: Usuário tem múltiplas clínicas, redirecionando para seleção");
+        navigate('/clinic-selection', { replace: true });
+      } else if (userClinics.length === 1) {
+        console.log("Index: Usuário tem uma clínica, redirecionando para dashboard");
         navigate('/dashboard', { replace: true });
       } else {
         console.log("Index: Usuário sem clínicas, redirecionando para no-access");
