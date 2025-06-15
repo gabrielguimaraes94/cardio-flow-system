@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Users, Heart, FileText, Calendar, Settings, LogOut, Menu, FileUser, BarChart } from 'lucide-react';
+import { User, Users, Heart, FileText, Calendar, Settings, LogOut, Menu, FileUser, BarChart, Building } from 'lucide-react';
 import { 
   Sidebar as SidebarComponent,
   SidebarContent, 
@@ -16,11 +16,13 @@ import {
   useSidebar
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useClinic } from '@/contexts/ClinicContext';
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
   const { state } = useSidebar();
   const { signOut } = useAuth();
+  const { clinics } = useClinic();
 
   const menuItems = [
     { title: "Dashboard", url: "/dashboard", icon: Heart },
@@ -86,6 +88,22 @@ export const Sidebar: React.FC = () => {
                   </SidebarMenuItem>
                 );
               })}
+              
+              {/* Botão para alterar clínica - só mostra se há múltiplas clínicas */}
+              {clinics.length > 1 && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={state === 'collapsed' ? 'Alterar Clínica' : undefined}
+                    className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  >
+                    <Link to="/clinic-selection" className="flex items-center gap-3 w-full">
+                      <Building className="h-5 w-5 flex-shrink-0" />
+                      <span className="truncate">Alterar Clínica</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
