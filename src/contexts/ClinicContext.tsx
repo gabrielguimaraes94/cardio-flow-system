@@ -59,17 +59,24 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
   const { clinics, isLoading, error, refetch } = useMe();
 
-  // Auto-select clinic logic - APENAS para usuários com UMA clínica
+  // Lógica de seleção de clínica - APENAS para usuários com UMA clínica
   useEffect(() => {
     if (isLoading || clinics.length === 0) return;
 
     console.log('ClinicContext: Processando seleção de clínica', { clinicsCount: clinics.length });
     
+    // Se há apenas UMA clínica, seleciona automaticamente
+    if (clinics.length === 1) {
+      console.log('ClinicContext: Uma clínica encontrada, selecionando automaticamente:', clinics[0].name);
+      handleSetSelectedClinic(clinics[0]);
+      return;
+    }
+
     // Se há múltiplas clínicas, NÃO faz seleção automática
+    // Apenas tenta restaurar do localStorage se houver uma clínica previamente selecionada
     if (clinics.length > 1) {
-      console.log('ClinicContext: Múltiplas clínicas encontradas, aguardando seleção manual');
+      console.log('ClinicContext: Múltiplas clínicas encontradas, verificando localStorage');
       
-      // Verifica se há uma clínica já selecionada no localStorage
       const storedClinicId = safeLocalStorage.getItem('selectedClinicId');
       if (storedClinicId) {
         const storedClinic = clinics.find(c => c.id === storedClinicId);
@@ -80,14 +87,9 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           console.log('ClinicContext: Clínica do localStorage não encontrada, removendo');
           safeLocalStorage.removeItem('selectedClinicId');
         }
+      } else {
+        console.log('ClinicContext: Nenhuma clínica no localStorage para múltiplas clínicas');
       }
-      return;
-    }
-
-    // Se há apenas UMA clínica, seleciona automaticamente
-    if (clinics.length === 1) {
-      console.log('ClinicContext: Uma clínica encontrada, selecionando automaticamente:', clinics[0].name);
-      handleSetSelectedClinic(clinics[0]);
     }
   }, [clinics, isLoading]);
 
