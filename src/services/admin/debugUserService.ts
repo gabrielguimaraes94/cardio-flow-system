@@ -1,122 +1,84 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export const debugUserConsistency = async () => {
+  console.log('=== DEBUG COMPLETO DE USUÁRIOS ===');
+  
   try {
-    console.log('=== DEBUG COMPLETO DE USUÁRIOS ===');
+    // 1. Verificar usuários no auth.users
+    console.log('1. VERIFICANDO AUTH.USERS...');
+    const { data: authUsers, error: authError } = await supabase
+      .rpc('debug_get_auth_users');
     
-    // 1. Verificar profiles
-    console.log('📋 VERIFICANDO PROFILES...');
+    if (authError) {
+      console.error('❌ Erro ao buscar auth users:', authError);
+    } else {
+      console.log(`✅ Total de usuários auth: ${authUsers?.length || 0}`);
+      console.log('📋 Primeiros 3 usuários auth:', authUsers?.slice(0, 3));
+    }
+
+    // 2. Verificar profiles
+    console.log('2. VERIFICANDO PROFILES...');
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });
     
-    console.log('Profiles encontrados:', profiles?.length || 0);
     if (profilesError) {
-      console.error('Erro ao buscar profiles:', profilesError);
+      console.error('❌ Erro ao buscar profiles:', profilesError);
     } else {
-      profiles?.forEach((profile, index) => {
-        console.log(`Profile ${index + 1}:`, {
-          id: profile.id,
-          name: `${profile.first_name} ${profile.last_name}`,
-          email: profile.email,
-          role: profile.role
-        });
-      });
+      console.log(`✅ Total de profiles: ${profiles?.length || 0}`);
+      console.log('📋 Primeiros 3 profiles:', profiles?.slice(0, 3));
     }
-    
-    // 2. Verificar clinic_staff
-    console.log('👥 VERIFICANDO CLINIC_STAFF...');
-    const { data: clinicStaff, error: staffError } = await supabase
-      .from('clinic_staff')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    console.log('Clinic staff encontrados:', clinicStaff?.length || 0);
-    if (staffError) {
-      console.error('Erro ao buscar clinic staff:', staffError);
-    } else {
-      clinicStaff?.forEach((staff, index) => {
-        console.log(`Staff ${index + 1}:`, {
-          id: staff.id,
-          user_id: staff.user_id,
-          clinic_id: staff.clinic_id,
-          role: staff.role,
-          is_admin: staff.is_admin,
-          active: staff.active
-        });
-      });
-    }
-    
-    // 3. Verificar clínicas
-    console.log('🏥 VERIFICANDO CLÍNICAS...');
+
+    // 3. Verificar clínicas - MELHORADA
+    console.log('3. VERIFICANDO CLÍNICAS...');
     const { data: clinics, error: clinicsError } = await supabase
       .from('clinics')
       .select('*')
       .order('created_at', { ascending: false });
     
-    console.log('Clínicas encontradas:', clinics?.length || 0);
     if (clinicsError) {
-      console.error('Erro ao buscar clínicas:', clinicsError);
+      console.error('❌ Erro ao buscar clínicas:', clinicsError);
+      console.error('Detalhes do erro:', JSON.stringify(clinicsError, null, 2));
     } else {
-      clinics?.forEach((clinic, index) => {
-        console.log(`Clínica ${index + 1}:`, {
-          id: clinic.id,
-          name: clinic.name,
-          city: clinic.city,
-          active: clinic.active,
-          created_by: clinic.created_by
-        });
-      });
+      console.log(`✅ Total de clínicas: ${clinics?.length || 0}`);
+      console.log('📋 Clínicas encontradas:', clinics);
     }
+
+    // 4. Verificar clinic_staff - MELHORADA
+    console.log('4. VERIFICANDO CLINIC_STAFF...');
+    const { data: clinicStaff, error: staffError } = await supabase
+      .from('clinic_staff')
+      .select('*')
+      .order('created_at', { ascending: false });
     
-    // 4. Tentar buscar auth users agora que a função foi corrigida
-    console.log('🔐 VERIFICANDO AUTH USERS...');
-    try {
-      const { data: authUsers, error: authError } = await supabase
-        .rpc('debug_get_auth_users');
+    if (staffError) {
+      console.error('❌ Erro ao buscar clinic_staff:', staffError);
+      console.error('Detalhes do erro:', JSON.stringify(staffError, null, 2));
+    } else {
+      console.log(`✅ Total de clinic_staff: ${clinicStaff?.length || 0}`);
+      console.log('📋 Clinic staff encontrado:', clinicStaff);
+    }
+
+    // 5. Verificar usuário atual
+    console.log('5. VERIFICANDO USUÁRIO ATUAL...');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      console.log('👤 Usuário atual:', user.id);
+      console.log('📧 Email:', user.email);
       
-      if (authError) {
-        console.error('Erro ao buscar auth users:', authError);
-      } else {
-        console.log('Auth users encontrados:', authUsers?.length || 0);
-        authUsers?.forEach((user, index) => {
-          console.log(`Auth User ${index + 1}:`, {
-            id: user.auth_user_id,
-            email: user.auth_email,
-            created_at: user.auth_created_at,
-            has_profile: user.has_profile
-          });
-        });
-      }
-    } catch (error) {
-      console.error('Erro na função debug_get_auth_users:', error);
+      // Verificar role do usuário atual
+      const { data: currentUserProfile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      
+      console.log('🔑 Role do usuário atual:', currentUserProfile?.role);
     }
-    
-    // 5. Resumo final
-    console.log('=== RESUMO DO DEBUG ===');
-    console.log(`✅ Profiles: ${profiles?.length || 0}`);
-    console.log(`✅ Clinic Staff: ${clinicStaff?.length || 0}`);
-    console.log(`✅ Clínicas: ${clinics?.length || 0}`);
-    console.log('🎉 Debug completo finalizado!');
-    
-    return {
-      profiles: profiles || [],
-      clinicStaff: clinicStaff || [],
-      clinics: clinics || [],
-      success: true
-    };
-    
+
   } catch (error) {
     console.error('❌ ERRO GERAL no debug:', error);
-    return {
-      profiles: [],
-      clinicStaff: [],
-      clinics: [],
-      success: false,
-      error
-    };
   }
 };
 

@@ -1,9 +1,11 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AdminClinic, ClinicFilters, AdminData, ClinicData } from './types';
 
 export const getAllClinics = async (filters?: ClinicFilters): Promise<AdminClinic[]> => {
   try {
+    console.log('=== BUSCANDO TODAS AS CLÍNICAS ===');
+    console.log('Filtros aplicados:', filters);
+    
     let query = supabase
       .from('clinics')
       .select('*');
@@ -30,13 +32,20 @@ export const getAllClinics = async (filters?: ClinicFilters): Promise<AdminClini
       }
     }
     
-    const { data, error } = await query;
+    const { data, error } = await query.order('created_at', { ascending: false });
     
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erro ao buscar clínicas:', error);
+      console.error('Detalhes do erro:', JSON.stringify(error, null, 2));
+      throw error;
+    }
+    
+    console.log('✅ Clínicas retornadas:', data?.length || 0);
+    console.log('📋 Dados das clínicas:', data);
     
     return data as AdminClinic[];
   } catch (error) {
-    console.error('Erro ao buscar todas as clínicas:', error);
+    console.error('❌ Erro geral ao buscar todas as clínicas:', error);
     throw error;
   }
 };
