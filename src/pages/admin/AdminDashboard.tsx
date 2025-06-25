@@ -19,6 +19,8 @@ import { Loader2 } from 'lucide-react';
 import { RegisterTab } from '@/components/admin/dashboard/Tabs/RegisterTab';
 import { ClinicsTab } from '@/components/admin/dashboard/Tabs/ClinicsTab';
 import { UsersTab } from '@/components/admin/dashboard/Tabs/UsersTab';
+import { Button } from '@/components/ui/button';
+import { debugUserConsistency } from '@/services/admin/debugUserService';
 
 type UserRole = Database["public"]["Enums"]["user_role"];
 
@@ -212,6 +214,11 @@ export const AdminDashboard = () => {
     });
   };
 
+  const handleDebugUsers = async () => {
+    console.log('=== INICIANDO DEBUG DE USUÁRIOS ===');
+    await debugUserConsistency();
+  };
+
   if (isLoading || authLoading) {
     return (
       <AdminLayout>
@@ -226,11 +233,20 @@ export const AdminDashboard = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Painel Administrativo</h1>
-          <p className="text-muted-foreground mt-1">
-            Gerenciamento global do sistema CardioFlow
-          </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Painel Administrativo</h1>
+            <p className="text-muted-foreground mt-1">
+              Gerenciamento global do sistema CardioFlow
+            </p>
+          </div>
+          <Button 
+            onClick={handleDebugUsers}
+            variant="outline"
+            className="bg-yellow-50 border-yellow-200 text-yellow-800 hover:bg-yellow-100"
+          >
+            🔍 Debug Usuários
+          </Button>
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
