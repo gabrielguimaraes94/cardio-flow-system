@@ -50,10 +50,11 @@ export const LoginForm: React.FC = () => {
       if (authData.session) {
         toast({
           title: "Login realizado com sucesso!",
-          description: "Redirecionando para o dashboard.",
+          description: "Redirecionando...",
         });
         
-        navigate('/dashboard');
+        // Redireciona para a página inicial que vai fazer a lógica de clínicas
+        navigate('/');
       }
     } catch (error) {
       console.error('Erro de login:', error);

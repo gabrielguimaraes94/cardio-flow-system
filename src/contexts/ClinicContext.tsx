@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Clinic } from '@/types/clinic';
 import { useMe } from '@/hooks/useMe';
@@ -59,7 +58,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
   const { clinics, isLoading, error, refetch } = useMe();
 
-  // Lógica de seleção de clínica - APENAS para usuários com UMA clínica
+  // Lógica de seleção de clínica
   useEffect(() => {
     if (isLoading || clinics.length === 0) return;
 
@@ -72,8 +71,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    // Se há múltiplas clínicas, NÃO faz seleção automática
-    // Apenas tenta restaurar do localStorage se houver uma clínica previamente selecionada
+    // Se há múltiplas clínicas, tenta restaurar do localStorage
     if (clinics.length > 1) {
       console.log('ClinicContext: Múltiplas clínicas encontradas, verificando localStorage');
       
