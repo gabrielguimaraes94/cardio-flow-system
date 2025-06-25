@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AdminUser } from '@/services/admin';
 import { Loader2, Search, Trash2 } from 'lucide-react';
@@ -30,9 +29,8 @@ export const UsersList: React.FC<UsersListProps> = ({
 }) => {
   const { toast } = useToast();
   
-  // Log detalhado dos dados recebidos
   console.log('=== USERLIST COMPONENT ===');
-  console.log('Props recebidas:');
+  console.log('Props received:');
   console.log('- users:', users);
   console.log('- users.length:', users?.length || 0);
   console.log('- loading:', loading);
@@ -48,12 +46,12 @@ export const UsersList: React.FC<UsersListProps> = ({
   
   const getRoleName = (role: string): string => {
     const roleNames: Record<string, string> = {
-      admin: 'Administrador Global',
-      clinic_admin: 'Admin. Clínica',
-      doctor: 'Médico',
-      nurse: 'Enfermeiro',
-      receptionist: 'Recepção',
-      staff: 'Equipe',
+      admin: 'Global Administrator',
+      clinic_admin: 'Clinic Admin',
+      doctor: 'Doctor',
+      nurse: 'Nurse',
+      receptionist: 'Receptionist',
+      staff: 'Staff',
     };
     return roleNames[role] || role;
   };
@@ -71,25 +69,25 @@ export const UsersList: React.FC<UsersListProps> = ({
   };
 
   const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`Tem certeza que deseja excluir o usuário ${userName}? Esta ação não pode ser desfeita.`)) {
+    if (!confirm(`Are you sure you want to delete user ${userName}? This action cannot be undone.`)) {
       return;
     }
 
     try {
-      console.log('Iniciando exclusão do usuário:', userId);
+      console.log('Starting user deletion:', userId);
       await deleteUser(userId);
       
       toast({
-        title: "Usuário excluído",
-        description: `${userName} foi excluído com sucesso.`,
+        title: "User deleted",
+        description: `${userName} was deleted successfully.`,
       });
       
       onRefetch();
     } catch (error) {
-      console.error('Erro ao excluir usuário:', error);
+      console.error('Error deleting user:', error);
       toast({
-        title: "Erro ao excluir usuário",
-        description: "Ocorreu um erro ao tentar excluir o usuário. Tente novamente.",
+        title: "Error deleting user",
+        description: "An error occurred while trying to delete the user. Please try again.",
         variant: "destructive",
       });
     }
@@ -101,7 +99,7 @@ export const UsersList: React.FC<UsersListProps> = ({
         <div className="relative w-full sm:max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome do usuário..."
+            placeholder="Search by user name..."
             className="pl-8"
             value={filters.name}
             onChange={(e) => filters.setName(e.target.value)}
@@ -114,7 +112,7 @@ export const UsersList: React.FC<UsersListProps> = ({
           className="w-full sm:w-auto"
         >
           <Search className="h-4 w-4 mr-2" />
-          Filtros
+          Filters
         </Button>
       </div>
       
@@ -123,13 +121,13 @@ export const UsersList: React.FC<UsersListProps> = ({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[150px]">Nome</TableHead>
+                <TableHead className="min-w-[150px]">Name</TableHead>
                 <TableHead className="min-w-[200px]">Email</TableHead>
-                <TableHead className="min-w-[120px]">Tipo</TableHead>
+                <TableHead className="min-w-[120px]">Role</TableHead>
                 <TableHead className="min-w-[100px]">CRM</TableHead>
-                <TableHead className="min-w-[120px]">Telefone</TableHead>
-                <TableHead className="min-w-[150px]">Criado em</TableHead>
-                <TableHead className="min-w-[80px]">Ações</TableHead>
+                <TableHead className="min-w-[120px]">Phone</TableHead>
+                <TableHead className="min-w-[150px]">Created</TableHead>
+                <TableHead className="min-w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -138,7 +136,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                   <TableCell colSpan={7} className="text-center py-10">
                     <div className="flex justify-center items-center">
                       <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                      <span>Carregando usuários...</span>
+                      <span>Loading users...</span>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -146,20 +144,20 @@ export const UsersList: React.FC<UsersListProps> = ({
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                     <div>
-                      <p>❌ Nenhum usuário encontrado</p>
-                      <p className="text-sm mt-2">Verifique o console para logs detalhados</p>
+                      <p>❌ No users found</p>
+                      <p className="text-sm mt-2">Check console for detailed logs</p>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 users.map((user, index) => {
-                  console.log(`Renderizando usuário ${index + 1}:`, user);
+                  console.log(`Rendering user ${index + 1}:`, user);
                   return (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
                         <div className="min-w-0">
                           <div className="truncate">
-                            {user.firstName} {user.lastName}
+                            {user.first_name} {user.last_name}
                           </div>
                         </div>
                       </TableCell>
@@ -186,7 +184,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteUser(user.id, `${user.firstName} ${user.lastName}`)}
+                          onClick={() => handleDeleteUser(user.id, `${user.first_name} ${user.last_name}`)}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4" />
