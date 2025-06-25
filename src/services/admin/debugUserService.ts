@@ -85,18 +85,32 @@ export const debugUserConsistency = async () => {
       });
     }
     
-    // 5. Tentar buscar usuários diretamente do auth (se possível via RPC)
-    console.log('🔐 Tentando verificar tabela auth.users via RPC...');
+    // 5. Verificar usuários por role
+    console.log('👤 ANÁLISE POR ROLE:');
+    const roleCount: Record<string, number> = {};
+    profiles?.forEach(profile => {
+      roleCount[profile.role] = (roleCount[profile.role] || 0) + 1;
+    });
     
-    // Como não podemos acessar auth.users diretamente, vamos criar uma RPC function
-    const { data: authUsers, error: authError } = await supabase
-      .rpc('debug_get_auth_users');
+    console.log('Contagem por role:', roleCount);
     
-    if (authError) {
-      console.log('⚠️ Não foi possível acessar auth.users via RPC:', authError.message);
-    } else {
-      console.log('🔐 USUÁRIOS AUTH.USERS:', authUsers);
+    // 6. Verificar possíveis problemas
+    console.log('🔧 POSSÍVEIS PROBLEMAS:');
+    
+    if (profiles && profiles.length === 1 && profiles[0].role === 'admin') {
+      console.log('⚠️ PROBLEMA IDENTIFICADO: Apenas 1 usuário admin encontrado');
+      console.log('Isso indica que:');
+      console.log('1. Novos usuários podem não estar sendo criados corretamente');
+      console.log('2. Trigger handle_new_user pode não estar funcionando');
+      console.log('3. Usuários podem estar sendo criados apenas na tabela auth.users');
+      console.log('4. RLS pode estar bloqueando a visualização');
     }
+    
+    // 7. Verificar RLS policies
+    console.log('🔒 VERIFICANDO RLS:');
+    console.log('Para verificar se RLS está bloqueando, execute no SQL Editor:');
+    console.log('SELECT * FROM profiles;');
+    console.log('Se retornar mais registros que aqui, RLS está bloqueando alguns dados');
     
   } catch (error) {
     console.error('❌ Erro no debug de consistência:', error);

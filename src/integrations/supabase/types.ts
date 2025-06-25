@@ -958,6 +958,15 @@ export type Database = {
             }
         Returns: Json
       }
+      debug_get_auth_users: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          auth_user_id: string
+          auth_email: string
+          auth_created_at: string
+          has_profile: boolean
+        }[]
+      }
       get_user_clinics: {
         Args: { user_uuid: string }
         Returns: {
