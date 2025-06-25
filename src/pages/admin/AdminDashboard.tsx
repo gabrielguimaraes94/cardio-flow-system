@@ -11,7 +11,6 @@ import {
   AdminClinic, 
   AdminUser
 } from '@/services/admin';
-import { getAllProfiles, ProfileData } from '@/services/admin/profileService';
 import { ProfilesTable } from '@/components/admin/dashboard/ProfilesTable';
 import { AuthUsersTable } from '@/components/admin/dashboard/AuthUsersTable';
 import { ClinicStaffTable } from '@/components/admin/dashboard/ClinicStaffTable';
@@ -58,7 +57,7 @@ export const AdminDashboard: React.FC = () => {
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(true);
-  const [profiles, setProfiles] = useState<ProfileData[]>([]);
+  const [profiles, setProfiles] = useState<AdminUser[]>([]);
   const [authUsers, setAuthUsers] = useState<AuthUser[]>([]);
   const [clinics, setClinics] = useState<AdminClinic[]>([]);
   const [clinicStaff, setClinicStaff] = useState<ClinicStaffMember[]>([]);
@@ -95,20 +94,20 @@ export const AdminDashboard: React.FC = () => {
       console.log('=== LOADING ADMIN DASHBOARD DATA ===');
 
       const [profilesData, authUsersData, clinicsData, clinicStaffData] = await Promise.allSettled([
-        getAllProfiles(),
+        getAllUsers(),
         debugAuthUsers(),
         getAllClinics(),
         getClinicStaffData()
       ]);
 
       if (profilesData.status === 'fulfilled') {
-        console.log('✅ Profiles loaded:', profilesData.value.length);
+        console.log('✅ Users loaded:', profilesData.value.length);
         setProfiles(profilesData.value);
       } else {
-        console.error('❌ Error loading profiles:', profilesData.reason);
+        console.error('❌ Error loading users:', profilesData.reason);
         toast({
-          title: "Error loading profiles",
-          description: "Unable to load profile data.",
+          title: "Error loading users",
+          description: "Unable to load user data.",
           variant: "destructive",
         });
       }
