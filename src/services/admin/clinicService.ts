@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { AdminClinic, ClinicFilters, AdminData, ClinicData } from './types';
 
@@ -5,6 +6,18 @@ export const getAllClinics = async (filters?: ClinicFilters): Promise<AdminClini
   try {
     console.log('=== BUSCANDO TODAS AS CLÍNICAS ===');
     console.log('Filtros aplicados:', filters);
+    
+    // Primeiro, testar permissões do usuário atual
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log('Usuário atual:', user?.id, user?.email);
+    
+    // Testar função de role
+    const { data: currentRole, error: roleError } = await supabase.rpc('get_current_user_role');
+    if (roleError) {
+      console.error('❌ Erro ao verificar role:', roleError);
+    } else {
+      console.log('Role atual do usuário:', currentRole);
+    }
     
     let query = supabase
       .from('clinics')
@@ -32,11 +45,15 @@ export const getAllClinics = async (filters?: ClinicFilters): Promise<AdminClini
       }
     }
     
+    console.log('Executando query para clínicas...');
     const { data, error } = await query.order('created_at', { ascending: false });
     
     if (error) {
       console.error('❌ Erro ao buscar clínicas:', error);
-      console.error('Detalhes do erro:', JSON.stringify(error, null, 2));
+      console.error('Código do erro:', error.code);
+      console.error('Mensagem do erro:', error.message);
+      console.error('Detalhes do erro:', error.details);
+      console.error('Hint do erro:', error.hint);
       throw error;
     }
     
@@ -241,5 +258,49 @@ export const deleteClinic = async (clinicId: string): Promise<void> => {
   } catch (error) {
     console.error('Erro ao excluir clínica:', error);
     throw error;
+  }
+};
+
+// Nova função para testar acesso às clínicas
+export const testClinicAccess = async () => {
+  try {
+    console.log('=== TESTANDO ACESSO ÀS CLÍNICAS ===');
+    
+    // Teste 1: Buscar clínicas sem filtros
+    console.log('1. Testando busca sem filtros...');
+    const { data: allClinics, error: allError } = await supabase
+      .from('clinics')
+      .select('*');
+    
+    if (allError) {
+      console.error('❌ Erro na busca sem filtros:', allError);
+    } else {
+      console.log('✅ Clínicas encontradas:', allClinics?.length || 0);
+    }
+    
+    // Teste 2: Verificar se o RLS está habilitado
+    console.log('2. Verificando configuração RLS...');
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log('Usuário autenticado:', !!user);
+    
+    if (user) {
+      // Teste 3: Verificar role do usuário
+      const { data: role } = await supabase.rpc('get_current_user_role');
+      console.log('Role do usuário:', role);
+      
+      // Teste 4: Verificar se usuário tem registros em clinic_staff
+      const { data: userStaff } = await supabase
+        .from('clinic_staff')
+        .select('*')
+        .eq('user_id', user.id);
+      
+      console.log('Registros do usuário em clinic_staff:', userStaff?.length || 0);
+    }
+    
+    return { allClinics: allClinics || [], error: allError };
+    
+  } catch (error) {
+    console.error('❌ Erro no teste de acesso:', error);
+    return { allClinics: [], error };
   }
 };
