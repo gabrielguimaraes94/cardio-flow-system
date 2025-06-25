@@ -13,6 +13,8 @@ import {
 } from '@/services/admin';
 import { getAllProfiles, ProfileData } from '@/services/admin/profileService';
 import { ProfilesTable } from '@/components/admin/dashboard/ProfilesTable';
+import { AuthUsersTable } from '@/components/admin/dashboard/AuthUsersTable';
+import { ClinicStaffTable } from '@/components/admin/dashboard/ClinicStaffTable';
 import { Database } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Users, RefreshCw } from 'lucide-react';
@@ -20,9 +22,27 @@ import { RegisterTab } from '@/components/admin/dashboard/Tabs/RegisterTab';
 import { ClinicsTab } from '@/components/admin/dashboard/Tabs/ClinicsTab';
 import { UsersTab } from '@/components/admin/dashboard/Tabs/UsersTab';
 import { Button } from '@/components/ui/button';
-import { debugUserConsistency, syncMissingProfiles, debugAuthUsers } from '@/services/admin/debugUserService';
+import { debugUserConsistency, syncMissingProfiles, debugAuthUsers, getClinicStaffData } from '@/services/admin/debugUserService';
 
 type UserRole = Database["public"]["Enums"]["user_role"];
+
+interface AuthUser {
+  auth_user_id: string;
+  auth_email: string;
+  auth_created_at: string;
+  has_profile: boolean;
+}
+
+interface ClinicStaffMember {
+  id: string;
+  user_id: string;
+  clinic_id: string;
+  role: string;
+  is_admin: boolean;
+  active: boolean;
+  created_at: string;
+  clinic_name?: string;
+}
 
 export const AdminDashboard = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -37,9 +57,13 @@ export const AdminDashboard = () => {
   const [clinics, setClinics] = useState<AdminClinic[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [profiles, setProfiles] = useState<ProfileData[]>([]);
+  const [authUsers, setAuthUsers] = useState<AuthUser[]>([]);
+  const [clinicStaff, setClinicStaff] = useState<ClinicStaffMember[]>([]);
   const [loadingClinics, setLoadingClinics] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
+  const [loadingAuthUsers, setLoadingAuthUsers] = useState(false);
+  const [loadingClinicStaff, setLoadingClinicStaff] = useState(false);
   
   // Estado para filtros
   const [clinicFilters, setClinicFilters] = useState({
@@ -108,7 +132,9 @@ export const AdminDashboard = () => {
     await Promise.all([
       fetchClinics(),
       fetchUsers(),
-      fetchProfiles()
+      fetchProfiles(),
+      fetchAuthUsers(),
+      fetchClinicStaff()
     ]);
   };
   
@@ -186,6 +212,62 @@ export const AdminDashboard = () => {
     } finally {
       setLoadingProfiles(false);
       console.log('Loading de profiles finalizado');
+    }
+  };
+
+  const fetchAuthUsers = async () => {
+    try {
+      setLoadingAuthUsers(true);
+      console.log('=== DASHBOARD: INICIANDO BUSCA DE AUTH USERS ===');
+      
+      const { authUsers: data, error } = await debugAuthUsers();
+      
+      if (error) {
+        throw error;
+      }
+      
+      console.log('=== DASHBOARD: RESULTADO DA BUSCA DE AUTH USERS ===');
+      console.log('Dados retornados:', data);
+      console.log('Quantidade de auth users:', data.length);
+      
+      setAuthUsers(data);
+    } catch (error) {
+      console.error('❌ DASHBOARD: Erro ao buscar auth users:', error);
+      toast({
+        title: "Erro ao buscar usuários auth",
+        description: "Não foi possível carregar a lista de usuários de autenticação.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingAuthUsers(false);
+    }
+  };
+
+  const fetchClinicStaff = async () => {
+    try {
+      setLoadingClinicStaff(true);
+      console.log('=== DASHBOARD: INICIANDO BUSCA DE CLINIC STAFF ===');
+      
+      const { clinicStaff: data, error } = await getClinicStaffData();
+      
+      if (error) {
+        throw error;
+      }
+      
+      console.log('=== DASHBOARD: RESULTADO DA BUSCA DE CLINIC STAFF ===');
+      console.log('Dados retornados:', data);
+      console.log('Quantidade de clinic staff:', data.length);
+      
+      setClinicStaff(data);
+    } catch (error) {
+      console.error('❌ DASHBOARD: Erro ao buscar clinic staff:', error);
+      toast({
+        title: "Erro ao buscar equipe",
+        description: "Não foi possível carregar a lista de equipe das clínicas.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingClinicStaff(false);
     }
   };
   
@@ -306,7 +388,7 @@ export const AdminDashboard = () => {
             <TabsTrigger value="register">Cadastrar Nova Clínica</TabsTrigger>
             <TabsTrigger value="clinics">Gerenciar Clínicas</TabsTrigger>
             <TabsTrigger value="users">Gerenciar Usuários</TabsTrigger>
-            <TabsTrigger value="profiles">Ver Profiles</TabsTrigger>
+            <TabsTrigger value="profiles">Análise Completa</TabsTrigger>
           </TabsList>
           
           <TabsContent value="register">
@@ -334,20 +416,33 @@ export const AdminDashboard = () => {
           </TabsContent>
           
           <TabsContent value="profiles">
-            <Card>
-              <CardHeader>
-                <CardTitle>Todos os Profiles</CardTitle>
-                <CardDescription>
-                  Lista completa de todos os profiles da tabela direta
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Análise Completa do Sistema</CardTitle>
+                  <CardDescription>
+                    Visualização detalhada de todas as tabelas relacionadas aos usuários
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+              
+              <div className="space-y-6">
                 <ProfilesTable
                   profiles={profiles}
                   loading={loadingProfiles}
                 />
-              </CardContent>
-            </Card>
+                
+                <AuthUsersTable
+                  authUsers={authUsers}
+                  loading={loadingAuthUsers}
+                />
+                
+                <ClinicStaffTable
+                  clinicStaff={clinicStaff}
+                  loading={loadingClinicStaff}
+                />
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
