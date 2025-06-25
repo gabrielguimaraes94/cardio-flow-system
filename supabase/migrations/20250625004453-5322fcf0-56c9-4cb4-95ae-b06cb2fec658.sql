@@ -3,7 +3,7 @@
 CREATE OR REPLACE FUNCTION public.debug_get_auth_users()
 RETURNS TABLE(
   auth_user_id uuid,
-  auth_email text,
+  auth_email character varying(255),
   auth_created_at timestamptz,
   has_profile boolean
 )
