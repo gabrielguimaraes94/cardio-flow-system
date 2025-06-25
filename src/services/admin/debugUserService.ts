@@ -116,3 +116,89 @@ export const debugUserConsistency = async () => {
     console.error('❌ Erro no debug de consistência:', error);
   }
 };
+
+export const syncMissingProfiles = async () => {
+  try {
+    console.log('=== SINCRONIZANDO PROFILES FALTANTES ===');
+    
+    const { data, error } = await supabase
+      .rpc('sync_missing_profiles');
+    
+    if (error) {
+      console.error('❌ Erro ao sincronizar profiles:', error);
+      throw error;
+    }
+    
+    console.log('✅ SINCRONIZAÇÃO CONCLUÍDA');
+    console.log('Profiles sincronizados:', data);
+    
+    if (data && data.length > 0) {
+      console.log(`📊 RESUMO: ${data.length} profiles foram criados`);
+      data.forEach((profile: any, index: number) => {
+        console.log(`Profile ${index + 1}:`, {
+          user_id: profile.synced_user_id,
+          email: profile.synced_email,
+          action: profile.action_taken
+        });
+      });
+    } else {
+      console.log('ℹ️ Nenhum profile precisou ser sincronizado');
+    }
+    
+    return data;
+    
+  } catch (error) {
+    console.error('❌ Erro na sincronização de profiles:', error);
+    throw error;
+  }
+};
+
+export const debugAuthUsers = async () => {
+  try {
+    console.log('=== DEBUG: VERIFICANDO USUÁRIOS AUTH ===');
+    
+    const { data: authUsers, error: authError } = await supabase
+      .rpc('debug_get_auth_users');
+    
+    if (authError) {
+      console.error('❌ Erro ao buscar usuários auth:', authError);
+      return;
+    }
+    
+    console.log('🔐 USUÁRIOS AUTH.USERS:');
+    console.log(`Total de usuários auth: ${authUsers?.length || 0}`);
+    
+    authUsers?.forEach((user: any, index: number) => {
+      console.log(`Auth User ${index + 1}:`, {
+        id: user.auth_user_id,
+        email: user.auth_email,
+        created_at: user.auth_created_at,
+        has_profile: user.has_profile
+      });
+    });
+    
+    // Identificar usuários sem profile
+    const usersWithoutProfile = authUsers?.filter((user: any) => !user.has_profile) || [];
+    
+    if (usersWithoutProfile.length > 0) {
+      console.log('❌ USUÁRIOS SEM PROFILE:');
+      usersWithoutProfile.forEach((user: any, index: number) => {
+        console.log(`Usuário sem profile ${index + 1}:`, {
+          id: user.auth_user_id,
+          email: user.auth_email,
+          created_at: user.auth_created_at
+        });
+      });
+      
+      console.log('💡 SOLUÇÃO: Execute a sincronização de profiles para corrigir isso');
+    } else {
+      console.log('✅ Todos os usuários auth têm profiles correspondentes');
+    }
+    
+    return authUsers;
+    
+  } catch (error) {
+    console.error('❌ Erro no debug de usuários auth:', error);
+    throw error;
+  }
+};

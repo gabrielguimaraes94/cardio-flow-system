@@ -15,12 +15,12 @@ import { getAllProfiles, ProfileData } from '@/services/admin/profileService';
 import { ProfilesTable } from '@/components/admin/dashboard/ProfilesTable';
 import { Database } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Users, RefreshCw } from 'lucide-react';
 import { RegisterTab } from '@/components/admin/dashboard/Tabs/RegisterTab';
 import { ClinicsTab } from '@/components/admin/dashboard/Tabs/ClinicsTab';
 import { UsersTab } from '@/components/admin/dashboard/Tabs/UsersTab';
 import { Button } from '@/components/ui/button';
-import { debugUserConsistency } from '@/services/admin/debugUserService';
+import { debugUserConsistency, syncMissingProfiles, debugAuthUsers } from '@/services/admin/debugUserService';
 
 type UserRole = Database["public"]["Enums"]["user_role"];
 
@@ -31,6 +31,7 @@ export const AdminDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [adminChecked, setAdminChecked] = useState(false);
   const [activeTab, setActiveTab] = useState('register');
+  const [isSyncing, setIsSyncing] = useState(false);
   
   // Estado para dados
   const [clinics, setClinics] = useState<AdminClinic[]>([]);
@@ -217,6 +218,41 @@ export const AdminDashboard = () => {
   const handleDebugUsers = async () => {
     console.log('=== INICIANDO DEBUG DE USUÁRIOS ===');
     await debugUserConsistency();
+    await debugAuthUsers();
+  };
+
+  const handleSyncProfiles = async () => {
+    try {
+      setIsSyncing(true);
+      console.log('=== INICIANDO SINCRONIZAÇÃO DE PROFILES ===');
+      
+      const result = await syncMissingProfiles();
+      
+      if (result && result.length > 0) {
+        toast({
+          title: "Sincronização concluída!",
+          description: `${result.length} profiles foram criados com sucesso.`,
+        });
+      } else {
+        toast({
+          title: "Sincronização concluída",
+          description: "Nenhum profile precisou ser sincronizado.",
+        });
+      }
+      
+      // Recarregar dados após sincronização
+      await fetchData();
+      
+    } catch (error) {
+      console.error('Erro na sincronização:', error);
+      toast({
+        title: "Erro na sincronização",
+        description: "Ocorreu um erro ao sincronizar os profiles. Verifique o console para mais detalhes.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   if (isLoading || authLoading) {
@@ -233,20 +269,36 @@ export const AdminDashboard = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">Painel Administrativo</h1>
             <p className="text-muted-foreground mt-1">
               Gerenciamento global do sistema CardioFlow
             </p>
           </div>
-          <Button 
-            onClick={handleDebugUsers}
-            variant="outline"
-            className="bg-yellow-50 border-yellow-200 text-yellow-800 hover:bg-yellow-100"
-          >
-            🔍 Debug Usuários
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button 
+              onClick={handleDebugUsers}
+              variant="outline"
+              className="bg-yellow-50 border-yellow-200 text-yellow-800 hover:bg-yellow-100"
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Debug Usuários
+            </Button>
+            <Button 
+              onClick={handleSyncProfiles}
+              disabled={isSyncing}
+              variant="outline"
+              className="bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100"
+            >
+              {isSyncing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Sincronizar Profiles
+            </Button>
+          </div>
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

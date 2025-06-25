@@ -1011,6 +1011,14 @@ export type Database = {
         Args: { staff_id: string; admin_user_id: string }
         Returns: boolean
       }
+      sync_missing_profiles: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          synced_user_id: string
+          synced_email: string
+          action_taken: string
+        }[]
+      }
     }
     Enums: {
       angioplasty_status: "active" | "cancelled"
