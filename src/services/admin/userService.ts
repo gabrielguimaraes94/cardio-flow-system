@@ -14,7 +14,7 @@ export const getAllUsers = async (filters?: UserFilters): Promise<AdminUser[]> =
       .order('created_at', { ascending: false });
     
     if (filters) {
-      if (filters.role && filters.role !== '') {
+      if (filters.role) {
         console.log('Aplicando filtro de role:', filters.role);
         query = query.eq('role', filters.role);
       }
