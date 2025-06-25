@@ -1,12 +1,14 @@
 
 import React from 'react';
 import { AdminUser } from '@/services/admin';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Search, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { deleteUser } from '@/services/admin';
 
 interface UsersListProps {
   users: AdminUser[];
@@ -26,6 +28,8 @@ export const UsersList: React.FC<UsersListProps> = ({
   onOpenFilters,
   onRefetch 
 }) => {
+  const { toast } = useToast();
+  
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'dd/MM/yyyy HH:mm');
@@ -55,13 +59,38 @@ export const UsersList: React.FC<UsersListProps> = ({
       receptionist: 'bg-yellow-100 text-yellow-800',
       staff: 'bg-gray-100 text-gray-800'
     };
-    return roleColors[role] || '';
+    return roleColors[role] || 'bg-gray-100 text-gray-800';
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o usuário ${userName}? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    try {
+      console.log('Iniciando exclusão do usuário:', userId);
+      await deleteUser(userId);
+      
+      toast({
+        title: "Usuário excluído",
+        description: `${userName} foi excluído com sucesso.`,
+      });
+      
+      onRefetch();
+    } catch (error) {
+      console.error('Erro ao excluir usuário:', error);
+      toast({
+        title: "Erro ao excluir usuário",
+        description: "Ocorreu um erro ao tentar excluir o usuário. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
     <>
-      <div className="flex justify-between items-center mb-6">
-        <div className="relative w-full max-w-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div className="relative w-full sm:max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por nome do usuário..."
@@ -74,7 +103,7 @@ export const UsersList: React.FC<UsersListProps> = ({
         <Button 
           variant="outline" 
           onClick={onOpenFilters}
-          className="ml-2"
+          className="w-full sm:w-auto"
         >
           <Search className="h-4 w-4 mr-2" />
           Filtros
@@ -82,53 +111,80 @@ export const UsersList: React.FC<UsersListProps> = ({
       </div>
       
       <div className="rounded-md border overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>CRM</TableHead>
-              <TableHead>Telefone</TableHead>
-              <TableHead>Criado em</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10">
-                  <div className="flex justify-center items-center">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                    <span>Carregando usuários...</span>
-                  </div>
-                </TableCell>
+                <TableHead className="min-w-[150px]">Nome</TableHead>
+                <TableHead className="min-w-[200px]">Email</TableHead>
+                <TableHead className="min-w-[120px]">Tipo</TableHead>
+                <TableHead className="min-w-[100px]">CRM</TableHead>
+                <TableHead className="min-w-[120px]">Telefone</TableHead>
+                <TableHead className="min-w-[150px]">Criado em</TableHead>
+                <TableHead className="min-w-[80px]">Ações</TableHead>
               </TableRow>
-            ) : users.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
-                  Nenhum usuário encontrado
-                </TableCell>
-              </TableRow>
-            ) : (
-              users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">
-                    {user.firstName} {user.lastName}
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-10">
+                    <div className="flex justify-center items-center">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      <span>Carregando usuários...</span>
+                    </div>
                   </TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={getRoleColor(user.role)}>
-                      {getRoleName(user.role)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{user.crm}</TableCell>
-                  <TableCell>{user.phone || "-"}</TableCell>
-                  <TableCell>{formatDate(user.created_at)}</TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : users.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                    Nenhum usuário encontrado
+                  </TableCell>
+                </TableRow>
+              ) : (
+                users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">
+                      <div className="min-w-0">
+                        <div className="truncate">
+                          {user.firstName} {user.lastName}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="min-w-0">
+                        <div className="truncate">{user.email}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getRoleColor(user.role)}>
+                        {getRoleName(user.role)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="truncate">{user.crm || "-"}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="truncate">{user.phone || "-"}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="truncate">{formatDate(user.created_at)}</div>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteUser(user.id, `${user.firstName} ${user.lastName}`)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </>
   );

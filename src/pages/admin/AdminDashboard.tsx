@@ -77,6 +77,7 @@ export const AdminDashboard = () => {
           navigate('/');
         } else {
           setIsLoading(false);
+          console.log('Admin verificado, carregando dados iniciais...');
           await fetchData(); // Carregar dados iniciais
         }
         setAdminChecked(true);
@@ -96,6 +97,7 @@ export const AdminDashboard = () => {
   
   // Função para buscar dados
   const fetchData = async () => {
+    console.log('=== CARREGANDO DADOS INICIAIS ===');
     await Promise.all([
       fetchClinics(),
       fetchUsers()
@@ -105,7 +107,9 @@ export const AdminDashboard = () => {
   const fetchClinics = async () => {
     try {
       setLoadingClinics(true);
+      console.log('Buscando clínicas...');
       const data = await getAllClinics(clinicFilters);
+      console.log('Clínicas carregadas:', data.length);
       setClinics(data);
     } catch (error) {
       console.error('Erro ao buscar clínicas:', error);
@@ -122,12 +126,15 @@ export const AdminDashboard = () => {
   const fetchUsers = async () => {
     try {
       setLoadingUsers(true);
-      // Here we ensure we're passing the correct role type or undefined
+      console.log('Buscando usuários...');
+      // Garantir que estamos passando os filtros corretos
       const filters = {
         ...userFilters,
         role: userFilters.role === '' ? undefined : userFilters.role
       };
+      console.log('Filtros para usuários:', filters);
       const data = await getAllUsers(filters);
+      console.log('Usuários carregados:', data.length);
       setUsers(data);
     } catch (error) {
       console.error('Erro ao buscar usuários:', error);
