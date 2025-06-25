@@ -1,42 +1,36 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
-export const isGlobalAdmin = async (userId: string): Promise<boolean> => {
+export const isGlobalAdmin = async (userUuid?: string): Promise<boolean> => {
   try {
-    console.log('Verificando se usuário é admin global:', userId);
+    console.log('=== CHECKING GLOBAL ADMIN PERMISSIONS ===');
     
-    // Usar a nova função security definer para evitar recursão
-    const { data, error } = await supabase
-      .rpc('get_current_user_role');
+    let userId = userUuid;
+    
+    if (!userId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('❌ No authenticated user found');
+        return false;
+      }
+      userId = user.id;
+    }
+    
+    console.log('Checking permissions for user:', userId);
+    
+    const { data, error } = await supabase.rpc('is_global_admin', {
+      user_uuid: userId
+    });
     
     if (error) {
-      console.error('Erro ao verificar permissões de admin:', error);
+      console.error('❌ Error checking global admin permissions:', error);
       return false;
     }
     
-    const isAdmin = data === 'admin';
-    console.log('Usuário é admin global?', isAdmin, 'Role:', data);
+    console.log('✅ Global admin check result:', data);
+    return data || false;
     
-    return isAdmin;
   } catch (error) {
-    console.error('Erro ao verificar se usuário é admin global:', error);
-    return false;
-  }
-};
-
-export const isClinicAdmin = async (userId: string, clinicId: string): Promise<boolean> => {
-  try {
-    const { data, error } = await supabase
-      .rpc('is_clinic_admin', { 
-        user_uuid: userId, 
-        clinic_uuid: clinicId 
-      });
-    
-    if (error) throw error;
-    
-    return !!data;
-  } catch (error) {
-    console.error('Erro ao verificar se usuário é admin da clínica:', error);
+    console.error('❌ Error in permission service:', error);
     return false;
   }
 };
