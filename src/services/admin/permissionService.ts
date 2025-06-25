@@ -5,19 +5,17 @@ export const isGlobalAdmin = async (userId: string): Promise<boolean> => {
   try {
     console.log('Verificando se usuário é admin global:', userId);
     
+    // Usar a nova função security definer para evitar recursão
     const { data, error } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .single();
+      .rpc('get_current_user_role');
     
     if (error) {
       console.error('Erro ao verificar permissões de admin:', error);
-      throw error;
+      return false;
     }
     
-    const isAdmin = data?.role === 'admin';
-    console.log('Usuário é admin global?', isAdmin, 'Role:', data?.role);
+    const isAdmin = data === 'admin';
+    console.log('Usuário é admin global?', isAdmin, 'Role:', data);
     
     return isAdmin;
   } catch (error) {

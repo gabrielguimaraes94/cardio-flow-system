@@ -17,20 +17,18 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!user) {
+        setIsAdmin(false);
         setIsChecking(false);
         return;
       }
 
       try {
-        const adminStatus = await Promise.race([
-          isGlobalAdmin(user.id),
-          new Promise<boolean>((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 2000)
-          )
-        ]);
+        console.log('AdminRoute: Verificando status de admin para usuário:', user.id);
+        const adminStatus = await isGlobalAdmin(user.id);
+        console.log('AdminRoute: Status admin:', adminStatus);
         setIsAdmin(adminStatus);
       } catch (error) {
-        console.log('Erro ao verificar status de admin:', error);
+        console.error('AdminRoute: Erro ao verificar status de admin:', error);
         setIsAdmin(false);
       } finally {
         setIsChecking(false);
@@ -53,13 +51,16 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
 
   // Se não está logado, redireciona para login
   if (!user) {
-    return <Navigate to="/" replace />;
+    console.log('AdminRoute: Usuário não autenticado, redirecionando para login');
+    return <Navigate to="/admin/login" replace />;
   }
 
   // Se não é admin, redireciona para dashboard
   if (!isAdmin) {
+    console.log('AdminRoute: Usuário não é admin, redirecionando para dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 
+  console.log('AdminRoute: Usuário é admin, permitindo acesso');
   return <>{children}</>;
 };

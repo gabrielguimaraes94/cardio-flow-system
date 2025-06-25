@@ -967,6 +967,10 @@ export type Database = {
           has_profile: boolean
         }[]
       }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_user_clinics: {
         Args: { user_uuid: string }
         Returns: {

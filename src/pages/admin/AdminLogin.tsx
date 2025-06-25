@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -45,22 +46,24 @@ export const AdminLogin = () => {
       if (user && !adminChecked) {
         setCheckingAdmin(true);
         try {
-          console.log('Verificando admin no login:', user.id);
+          console.log('AdminLogin: Verificando admin para usuário:', user.id);
           const isAdmin = await isGlobalAdmin(user.id);
-          console.log('Resultado verificação admin no login:', isAdmin);
+          console.log('AdminLogin: Resultado verificação admin:', isAdmin);
           
           if (isAdmin) {
+            console.log('AdminLogin: Usuário já é admin, redirecionando para dashboard');
             toast({
               title: "Acesso administrativo",
               description: "Você já está logado como administrador.",
             });
             navigate('/admin/dashboard');
           } else {
+            console.log('AdminLogin: Usuário não é admin');
             setCheckingAdmin(false);
           }
           setAdminChecked(true);
         } catch (error) {
-          console.error('Erro ao verificar permissões:', error);
+          console.error('AdminLogin: Erro ao verificar permissões:', error);
           setCheckingAdmin(false);
           setAdminChecked(true);
         }
@@ -72,6 +75,7 @@ export const AdminLogin = () => {
   
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
+      console.log('AdminLogin: Tentando fazer login com:', values.email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
@@ -82,17 +86,25 @@ export const AdminLogin = () => {
       }
       
       if (data?.user) {
+        console.log('AdminLogin: Login realizado, verificando permissões admin');
         setCheckingAdmin(true);
+        
+        // Aguardar um pouco para garantir que o profile foi criado
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         // Verificar se o usuário é um administrador global
         const isAdmin = await isGlobalAdmin(data.user.id);
+        console.log('AdminLogin: Verificação admin após login:', isAdmin);
         
         if (isAdmin) {
+          console.log('AdminLogin: Usuário é admin, redirecionando para dashboard');
           toast({
             title: "Login bem-sucedido",
             description: "Bem-vindo ao painel administrativo.",
           });
           navigate('/admin/dashboard');
         } else {
+          console.log('AdminLogin: Usuário não é admin, fazendo logout');
           await supabase.auth.signOut();
           toast({
             title: "Acesso negado",
@@ -103,6 +115,7 @@ export const AdminLogin = () => {
         }
       }
     } catch (error: any) {
+      console.error('AdminLogin: Erro no processo de login:', error);
       toast({
         title: "Erro ao fazer login",
         description: error.message || "Credenciais inválidas. Por favor, tente novamente.",
