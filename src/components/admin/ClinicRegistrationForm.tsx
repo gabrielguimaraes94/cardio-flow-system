@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -10,7 +9,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { registerClinic } from '@/services/admin';
 
-// Define the props interface with onSuccess
 interface ClinicRegistrationFormProps {
   onSuccess?: () => void;
 }
@@ -58,7 +56,6 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
     try {
       setIsSubmitting(true);
       
-      // 1. Criar o usuário admin primeiro
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: values.adminEmail,
         password: values.adminPassword,
@@ -78,10 +75,9 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
       }
 
       if (!authData.user) {
-        throw new Error('Falha ao criar usuário');
+        throw new Error('Failed to create user');
       }
 
-      // 2. Criar o profile do usuário
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
@@ -95,23 +91,31 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         });
 
       if (profileError) {
-        console.error('Erro ao criar profile:', profileError);
-        // Não fazer throw aqui, pois o trigger handle_new_user pode ter criado
+        console.error('Error creating profile:', profileError);
       }
 
-      // 3. Criar a clínica
-      const clinicId = await registerClinic({
+      const clinicData = {
         name: values.clinicName,
         city: values.clinicCity,
         address: values.clinicAddress,
         phone: values.clinicPhone,
         email: values.clinicEmail,
-        createdBy: authData.user.id,
-        tradingName: values.clinicTradingName,
+        trading_name: values.clinicTradingName,
         cnpj: values.clinicCnpj,
-      });
+      };
 
-      // 4. Adicionar o admin como staff da clínica
+      const result = await registerClinic(clinicData, authData.user.id);
+      
+      let clinicId: string;
+      if (typeof result === 'string') {
+        clinicId = result;
+      } else if (result && typeof result === 'object' && 'id' in result) {
+        clinicId = (result as any).id;
+      } else {
+        console.log('Clinic registration result:', JSON.stringify(result));
+        throw new Error('Unable to determine clinic ID from result');
+      }
+
       const { error: staffError } = await supabase.rpc('add_clinic_staff', {
         p_user_id: authData.user.id,
         p_clinic_id: clinicId,
@@ -120,26 +124,24 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
       });
 
       if (staffError) {
-        console.error('Erro ao adicionar staff:', staffError);
-        // Não fazer throw, pois a clínica foi criada
+        console.error('Error adding staff:', staffError);
       }
 
       toast({
-        title: "Clínica cadastrada com sucesso!",
-        description: "A clínica e o administrador foram registrados no sistema.",
+        title: "Clinic registered successfully!",
+        description: "The clinic and administrator have been registered in the system.",
       });
 
       form.reset();
       
-      // Call the onSuccess callback if provided
       if (onSuccess) {
         onSuccess();
       }
     } catch (error: any) {
-      console.error("Erro ao registrar clínica:", error);
+      console.error("Error registering clinic:", error);
       toast({
-        title: "Erro ao cadastrar",
-        description: error?.message || "Não foi possível cadastrar a clínica. Por favor, tente novamente.",
+        title: "Registration error",
+        description: error?.message || "Unable to register clinic. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -151,16 +153,16 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <div className="space-y-6">
-          <h3 className="text-lg font-medium">Dados do Administrador</h3>
+          <h3 className="text-lg font-medium">Administrator Data</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="adminFirstName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome *</FormLabel>
+                  <FormLabel>First Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nome" {...field} />
+                    <Input placeholder="First Name" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -171,9 +173,9 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
               name="adminLastName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Sobrenome *</FormLabel>
+                  <FormLabel>Last Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Sobrenome" {...field} />
+                    <Input placeholder="Last Name" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -186,7 +188,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
                 <FormItem>
                   <FormLabel>Email *</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="email@exemplo.com" {...field} />
+                    <Input type="email" placeholder="email@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -197,7 +199,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
               name="adminPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Senha *</FormLabel>
+                  <FormLabel>Password *</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="******" {...field} />
                   </FormControl>
@@ -210,7 +212,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
               name="adminPhone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Telefone</FormLabel>
+                  <FormLabel>Phone</FormLabel>
                   <FormControl>
                     <Input placeholder="(xx) xxxxx-xxxx" {...field} />
                   </FormControl>
@@ -225,7 +227,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
                 <FormItem>
                   <FormLabel>CRM</FormLabel>
                   <FormControl>
-                    <Input placeholder="CRM (se aplicável)" {...field} />
+                    <Input placeholder="CRM (if applicable)" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -235,16 +237,16 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         </div>
 
         <div className="space-y-6">
-          <h3 className="text-lg font-medium">Dados da Clínica</h3>
+          <h3 className="text-lg font-medium">Clinic Data</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="clinicName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome da Clínica *</FormLabel>
+                  <FormLabel>Clinic Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nome da clínica" {...field} />
+                    <Input placeholder="Clinic name" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -255,9 +257,9 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
               name="clinicTradingName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome Fantasia</FormLabel>
+                  <FormLabel>Trading Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nome fantasia" {...field} />
+                    <Input placeholder="Trading name" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -281,9 +283,9 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
               name="clinicCity"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Cidade *</FormLabel>
+                  <FormLabel>City *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Cidade" {...field} />
+                    <Input placeholder="City" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -294,9 +296,9 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
               name="clinicAddress"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Endereço *</FormLabel>
+                  <FormLabel>Address *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Endereço completo" {...field} />
+                    <Input placeholder="Complete address" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -307,7 +309,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
               name="clinicPhone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Telefone *</FormLabel>
+                  <FormLabel>Phone *</FormLabel>
                   <FormControl>
                     <Input placeholder="(xx) xxxxx-xxxx" {...field} />
                   </FormControl>
@@ -322,7 +324,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
                 <FormItem>
                   <FormLabel>Email *</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="clinica@exemplo.com" {...field} />
+                    <Input type="email" placeholder="clinic@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -332,7 +334,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         </div>
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Cadastrando..." : "Cadastrar Clínica"}
+          {isSubmitting ? "Registering..." : "Register Clinic"}
         </Button>
       </form>
     </Form>
