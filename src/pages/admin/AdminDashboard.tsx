@@ -23,7 +23,6 @@ import { ClinicsTab } from '@/components/admin/dashboard/Tabs/ClinicsTab';
 import { UsersTab } from '@/components/admin/dashboard/Tabs/UsersTab';
 import { Button } from '@/components/ui/button';
 import { syncMissingProfiles, debugAuthUsers, getClinicStaffData } from '@/services/admin/debugUserService';
-import { checkTriggerStatus, testTriggerExecution } from '@/services/admin/triggerService';
 
 type UserRole = Database["public"]["Enums"]["user_role"];
 
@@ -64,6 +63,29 @@ export const AdminDashboard: React.FC = () => {
   const [clinics, setClinics] = useState<AdminClinic[]>([]);
   const [clinicStaff, setClinicStaff] = useState<ClinicStaffMember[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const [userFilters, setUserFilters] = useState({
+    name: '',
+    role: '' as UserRole | '',
+    createdAfter: undefined as string | undefined,
+    createdBefore: undefined as string | undefined,
+  });
+  
+  const [clinicFilters, setClinicFilters] = useState({
+    name: '',
+    city: '',
+    active: undefined as boolean | undefined,
+    createdAfter: undefined as string | undefined,
+    createdBefore: undefined as string | undefined,
+  });
+
+  const handleUserFilterChange = (key: string, value: any) => {
+    setUserFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleClinicFilterChange = (key: string, value: any) => {
+    setClinicFilters(prev => ({ ...prev, [key]: value }));
+  };
 
   const loadData = async () => {
     if (!user) return;
@@ -315,18 +337,26 @@ export const AdminDashboard: React.FC = () => {
 
           <TabsContent value="users" className="space-y-4">
             <UsersTab 
-              onRefresh={loadData}
+              users={profiles}
+              loading={isLoading}
+              onRefetch={loadData}
+              filters={userFilters}
+              onFilterChange={handleUserFilterChange}
             />
           </TabsContent>
 
           <TabsContent value="clinics" className="space-y-4">
             <ClinicsTab 
               clinics={clinics}
+              loading={isLoading}
+              onRefetch={loadData}
+              filters={clinicFilters}
+              onFilterChange={handleClinicFilterChange}
             />
           </TabsContent>
 
           <TabsContent value="register" className="space-y-4">
-            <RegisterTab />
+            <RegisterTab onSuccess={loadData} />
           </TabsContent>
         </Tabs>
       </div>
