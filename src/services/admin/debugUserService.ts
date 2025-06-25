@@ -2,101 +2,94 @@ import { supabase } from '@/integrations/supabase/client';
 import { getTableData, getAllProfiles, getAllClinics, getAllClinicStaff } from './adminDataService';
 
 export const debugUserConsistency = async () => {
-  console.log('=== DEBUG COMPLETO DE USUÁRIOS (NOVA VERSÃO) ===');
+  console.log('=== COMPLETE USER DEBUG (NEW VERSION) ===');
   
   try {
-    // 1. Verificar usuários no auth.users
-    console.log('1. VERIFICANDO AUTH.USERS...');
+    console.log('1. CHECKING AUTH.USERS...');
     const { data: authUsers, error: authError } = await supabase
       .rpc('debug_get_auth_users');
     
     if (authError) {
-      console.error('❌ Erro ao buscar auth users:', authError);
+      console.error('❌ Error fetching auth users:', authError);
     } else {
-      console.log(`✅ Total de usuários auth: ${authUsers?.length || 0}`);
-      console.log('📋 Primeiros 3 usuários auth:', authUsers?.slice(0, 3));
+      console.log(`✅ Total auth users: ${authUsers?.length || 0}`);
+      console.log('📋 First 3 auth users:', authUsers?.slice(0, 3));
     }
 
-    // 2. Verificar profiles usando novo serviço
-    console.log('2. VERIFICANDO PROFILES (NOVO SERVIÇO)...');
+    console.log('2. CHECKING PROFILES (NEW SERVICE)...');
     try {
       const profiles = await getAllProfiles();
-      console.log(`✅ Total de profiles: ${profiles?.length || 0}`);
-      console.log('📋 Primeiros 3 profiles:', profiles?.slice(0, 3));
+      console.log(`✅ Total profiles: ${profiles?.length || 0}`);
+      console.log('📋 First 3 profiles:', profiles?.slice(0, 3));
     } catch (profilesError) {
-      console.error('❌ Erro ao buscar profiles:', profilesError);
+      console.error('❌ Error fetching profiles:', profilesError);
     }
 
-    // 3. Verificar usuário atual e suas permissões
-    console.log('3. VERIFICANDO USUÁRIO ATUAL...');
+    console.log('3. CHECKING CURRENT USER...');
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      console.log('👤 Usuário atual:', user.id);
+      console.log('👤 Current user:', user.id);
       console.log('📧 Email:', user.email);
       
-      // Testar função get_current_user_role
       const { data: roleFromFunction, error: roleError } = await supabase
         .rpc('get_current_user_role');
       
       if (roleError) {
-        console.error('❌ Erro ao chamar get_current_user_role:', roleError);
+        console.error('❌ Error calling get_current_user_role:', roleError);
       } else {
-        console.log('🔧 Role via função:', roleFromFunction);
+        console.log('🔧 Role via function:', roleFromFunction);
       }
     }
 
-    // 4. Verificar clínicas usando novo serviço
-    console.log('4. VERIFICANDO CLÍNICAS (NOVO SERVIÇO)...');
+    console.log('4. CHECKING CLINICS (NEW SERVICE)...');
     try {
       const clinics = await getAllClinics();
-      console.log(`✅ Total de clínicas: ${clinics?.length || 0}`);
-      console.log('📋 Clínicas encontradas:', clinics?.slice(0, 3));
+      console.log(`✅ Total clinics: ${clinics?.length || 0}`);
+      console.log('📋 Clinics found:', clinics?.slice(0, 3));
     } catch (clinicsError) {
-      console.error('❌ Erro ao buscar clínicas:', clinicsError);
+      console.error('❌ Error fetching clinics:', clinicsError);
     }
 
-    // 5. Verificar clinic_staff usando novo serviço
-    console.log('5. VERIFICANDO CLINIC_STAFF (NOVO SERVIÇO)...');
+    console.log('5. CHECKING CLINIC_STAFF (NEW SERVICE)...');
     try {
       const clinicStaff = await getAllClinicStaff();
-      console.log(`✅ Total de clinic_staff: ${clinicStaff?.length || 0}`);
-      console.log('📋 Clinic staff encontrado:', clinicStaff?.slice(0, 3));
+      console.log(`✅ Total clinic_staff: ${clinicStaff?.length || 0}`);
+      console.log('📋 Clinic staff found:', clinicStaff?.slice(0, 3));
     } catch (staffError) {
-      console.error('❌ Erro ao buscar clinic_staff:', staffError);  
+      console.error('❌ Error fetching clinic_staff:', staffError);  
     }
 
-    // 6. Testar função genérica para várias tabelas
-    console.log('6. TESTANDO FUNÇÃO GENÉRICA...');
-    const tablesToTest = ['profiles', 'clinics', 'clinic_staff', 'patients'];
+    console.log('6. TESTING GENERIC FUNCTION...');
+    const tablesToTest: Array<'profiles' | 'clinics' | 'clinic_staff' | 'patients'> = ['profiles', 'clinics', 'clinic_staff', 'patients'];
     
     for (const table of tablesToTest) {
       try {
-        console.log(`6.${tablesToTest.indexOf(table) + 1}. Testando tabela ${table}...`);
+        console.log(`6.${tablesToTest.indexOf(table) + 1}. Testing table ${table}...`);
         const data = await getTableData(table, 5);
-        console.log(`✅ ${table}: ${data?.length || 0} registros`);
+        console.log(`✅ ${table}: ${data?.length || 0} records`);
       } catch (error) {
-        console.error(`❌ Erro na tabela ${table}:`, error);
+        console.error(`❌ Error in table ${table}:`, error);
       }
     }
 
   } catch (error) {
-    console.error('❌ ERRO GERAL no debug:', error);
+    console.error('❌ GENERAL ERROR in debug:', error);
   }
 };
 
 export const debugAuthUsers = async () => {
   try {
-    console.log('=== TESTANDO FUNÇÃO DEBUG_GET_AUTH_USERS ===');
+    console.log('=== TESTING DEBUG_GET_AUTH_USERS FUNCTION ===');
     
     const { data, error } = await supabase.rpc('debug_get_auth_users');
     
     if (error) {
-      console.error('❌ Erro na função debug_get_auth_users:', error);
+      console.error('❌ Error in debug_get_auth_users function:', error);
       return { authUsers: [], error };
     }
     
-    console.log('✅ Função debug_get_auth_users funcionou!');
-    console.log('Auth users retornados:', data?.length || 0);
+    console.log('✅ debug_get_auth_users function worked!');
+    console.log('Auth users returned:', data?.length || 0);
     
     data?.forEach((user, index) => {
       console.log(`Auth User ${index + 1}:`, {
@@ -110,27 +103,27 @@ export const debugAuthUsers = async () => {
     return { authUsers: data || [], error: null };
     
   } catch (error) {
-    console.error('❌ Erro ao executar debug_get_auth_users:', error);
+    console.error('❌ Error executing debug_get_auth_users:', error);
     return { authUsers: [], error };
   }
 };
 
 export const syncMissingProfiles = async () => {
   try {
-    console.log('=== SINCRONIZANDO PROFILES FALTANTES ===');
+    console.log('=== SYNCING MISSING PROFILES ===');
     
     const { data, error } = await supabase.rpc('sync_missing_profiles');
     
     if (error) {
-      console.error('❌ Erro na sincronização:', error);
+      console.error('❌ Error in sync:', error);
       throw error;
     }
     
-    console.log('✅ Sincronização concluída!');
-    console.log('Profiles sincronizados:', data?.length || 0);
+    console.log('✅ Sync completed!');
+    console.log('Profiles synced:', data?.length || 0);
     
     data?.forEach((syncedUser, index) => {
-      console.log(`Profile sincronizado ${index + 1}:`, {
+      console.log(`Synced profile ${index + 1}:`, {
         user_id: syncedUser.synced_user_id,
         email: syncedUser.synced_email,
         action: syncedUser.action_taken
@@ -140,14 +133,14 @@ export const syncMissingProfiles = async () => {
     return data || [];
     
   } catch (error) {
-    console.error('❌ Erro na sincronização de profiles:', error);
+    console.error('❌ Error syncing profiles:', error);
     throw error;
   }
 };
 
 export const getClinicStaffData = async () => {
   try {
-    console.log('=== BUSCANDO DADOS DE CLINIC_STAFF ===');
+    console.log('=== FETCHING CLINIC_STAFF DATA ===');
     
     const { data, error } = await supabase
       .from('clinic_staff')
@@ -158,13 +151,13 @@ export const getClinicStaffData = async () => {
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.error('❌ Erro ao buscar clinic staff:', error);
-      console.error('Detalhes:', JSON.stringify(error, null, 2));
+      console.error('❌ Error fetching clinic staff:', error);
+      console.error('Details:', JSON.stringify(error, null, 2));
       return { clinicStaff: [], error };
     }
     
-    console.log('✅ Clinic staff encontrados:', data?.length || 0);
-    console.log('📋 Dados detalhados:', data);
+    console.log('✅ Clinic staff found:', data?.length || 0);
+    console.log('📋 Detailed data:', data);
     
     const mappedData = data?.map(staff => ({
       ...staff,
@@ -174,36 +167,33 @@ export const getClinicStaffData = async () => {
     return { clinicStaff: mappedData, error: null };
     
   } catch (error) {
-    console.error('❌ Erro ao buscar clinic staff:', error);
+    console.error('❌ Error fetching clinic staff:', error);
     return { clinicStaff: [], error };
   }
 };
 
-// Nova função para testar permissões específicas
 export const testPermissions = async () => {
   try {
-    console.log('=== TESTANDO PERMISSÕES ESPECÍFICAS ===');
+    console.log('=== TESTING SPECIFIC PERMISSIONS ===');
     
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      console.log('❌ Usuário não autenticado');
+      console.log('❌ User not authenticated');
       return;
     }
     
-    console.log('👤 Testando para usuário:', user.id, user.email);
+    console.log('👤 Testing for user:', user.id, user.email);
     
-    // 1. Testar função get_current_user_role
-    console.log('1. Testando get_current_user_role...');
+    console.log('1. Testing get_current_user_role...');
     const { data: role, error: roleError } = await supabase.rpc('get_current_user_role');
     
     if (roleError) {
-      console.error('❌ Erro get_current_user_role:', roleError);
+      console.error('❌ Error get_current_user_role:', roleError);
     } else {
-      console.log('✅ Role atual:', role);
+      console.log('✅ Current role:', role);
     }
     
-    // 2. Verificar profile diretamente
-    console.log('2. Verificando profile diretamente...');
+    console.log('2. Checking profile directly...');
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
@@ -211,38 +201,36 @@ export const testPermissions = async () => {
       .single();
     
     if (profileError) {
-      console.error('❌ Erro ao buscar profile:', profileError);
+      console.error('❌ Error fetching profile:', profileError);
     } else {
-      console.log('✅ Profile encontrado:', profile);
+      console.log('✅ Profile found:', profile);
     }
     
-    // 3. Testar consulta às clínicas com logs detalhados
-    console.log('3. Testando consulta às clínicas...');
+    console.log('3. Testing clinics query...');
     const { data: clinicsTest, error: clinicsTestError } = await supabase
       .from('clinics')
       .select('id, name, active, created_by')
       .limit(5);
     
     if (clinicsTestError) {
-      console.error('❌ Erro ao testar clínicas:', clinicsTestError);
+      console.error('❌ Error testing clinics:', clinicsTestError);
     } else {
-      console.log('✅ Clínicas no teste:', clinicsTest);
+      console.log('✅ Clinics in test:', clinicsTest);
     }
     
-    // 4. Testar consulta ao clinic_staff com logs detalhados
-    console.log('4. Testando consulta ao clinic_staff...');
+    console.log('4. Testing clinic_staff query...');
     const { data: staffTest, error: staffTestError } = await supabase
       .from('clinic_staff')
       .select('id, user_id, clinic_id, is_admin, active, role')
       .limit(5);
     
     if (staffTestError) {
-      console.error('❌ Erro ao testar clinic_staff:', staffTestError);
+      console.error('❌ Error testing clinic_staff:', staffTestError);
     } else {
-      console.log('✅ Clinic staff no teste:', staffTest);
+      console.log('✅ Clinic staff in test:', staffTest);
     }
     
   } catch (error) {
-    console.error('❌ Erro geral no teste de permissões:', error);
+    console.error('❌ General error in permissions test:', error);
   }
 };
