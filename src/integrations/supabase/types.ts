@@ -936,6 +936,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      admin_get_table_data: {
+        Args: { table_name: string; limit_count?: number }
+        Returns: Json
+      }
       create_clinic: {
         Args:
           | {

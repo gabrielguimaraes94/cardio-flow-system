@@ -1,8 +1,8 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { getTableData, getAllProfiles, getAllClinics, getAllClinicStaff } from './adminDataService';
 
 export const debugUserConsistency = async () => {
-  console.log('=== DEBUG COMPLETO DE USUÁRIOS ===');
+  console.log('=== DEBUG COMPLETO DE USUÁRIOS (NOVA VERSÃO) ===');
   
   try {
     // 1. Verificar usuários no auth.users
@@ -17,18 +17,14 @@ export const debugUserConsistency = async () => {
       console.log('📋 Primeiros 3 usuários auth:', authUsers?.slice(0, 3));
     }
 
-    // 2. Verificar profiles
-    console.log('2. VERIFICANDO PROFILES...');
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (profilesError) {
-      console.error('❌ Erro ao buscar profiles:', profilesError);
-    } else {
+    // 2. Verificar profiles usando novo serviço
+    console.log('2. VERIFICANDO PROFILES (NOVO SERVIÇO)...');
+    try {
+      const profiles = await getAllProfiles();
       console.log(`✅ Total de profiles: ${profiles?.length || 0}`);
       console.log('📋 Primeiros 3 profiles:', profiles?.slice(0, 3));
+    } catch (profilesError) {
+      console.error('❌ Erro ao buscar profiles:', profilesError);
     }
 
     // 3. Verificar usuário atual e suas permissões
@@ -37,15 +33,6 @@ export const debugUserConsistency = async () => {
     if (user) {
       console.log('👤 Usuário atual:', user.id);
       console.log('📧 Email:', user.email);
-      
-      // Verificar role do usuário atual
-      const { data: currentUserProfile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-      
-      console.log('🔑 Role do usuário atual:', currentUserProfile?.role);
       
       // Testar função get_current_user_role
       const { data: roleFromFunction, error: roleError } = await supabase
@@ -58,54 +45,38 @@ export const debugUserConsistency = async () => {
       }
     }
 
-    // 4. Verificar clínicas - TESTE DIRETO
-    console.log('4. VERIFICANDO CLÍNICAS...');
-    console.log('4.1. Tentando SELECT direto na tabela clinics...');
-    
-    const { data: clinics, error: clinicsError } = await supabase
-      .from('clinics')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (clinicsError) {
-      console.error('❌ Erro ao buscar clínicas:', clinicsError);
-      console.error('Código do erro:', clinicsError.code);
-      console.error('Mensagem do erro:', clinicsError.message);
-      console.error('Detalhes do erro:', clinicsError.details);
-    } else {
+    // 4. Verificar clínicas usando novo serviço
+    console.log('4. VERIFICANDO CLÍNICAS (NOVO SERVIÇO)...');
+    try {
+      const clinics = await getAllClinics();
       console.log(`✅ Total de clínicas: ${clinics?.length || 0}`);
-      console.log('📋 Clínicas encontradas:', clinics);
+      console.log('📋 Clínicas encontradas:', clinics?.slice(0, 3));
+    } catch (clinicsError) {
+      console.error('❌ Erro ao buscar clínicas:', clinicsError);
     }
 
-    // 5. Verificar clinic_staff - TESTE DIRETO
-    console.log('5. VERIFICANDO CLINIC_STAFF...');
-    console.log('5.1. Tentando SELECT direto na tabela clinic_staff...');
-    
-    const { data: clinicStaff, error: staffError } = await supabase
-      .from('clinic_staff')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (staffError) {
-      console.error('❌ Erro ao buscar clinic_staff:', staffError);
-      console.error('Código do erro:', staffError.code);
-      console.error('Mensagem do erro:', staffError.message);
-      console.error('Detalhes do erro:', staffError.details);
-    } else {
+    // 5. Verificar clinic_staff usando novo serviço
+    console.log('5. VERIFICANDO CLINIC_STAFF (NOVO SERVIÇO)...');
+    try {
+      const clinicStaff = await getAllClinicStaff();
       console.log(`✅ Total de clinic_staff: ${clinicStaff?.length || 0}`);
-      console.log('📋 Clinic staff encontrado:', clinicStaff);
+      console.log('📋 Clinic staff encontrado:', clinicStaff?.slice(0, 3));
+    } catch (staffError) {
+      console.error('❌ Erro ao buscar clinic_staff:', staffError);  
     }
 
-    // 6. Testar políticas RLS manualmente
-    console.log('6. TESTANDO POLÍTICAS RLS...');
+    // 6. Testar função genérica para várias tabelas
+    console.log('6. TESTANDO FUNÇÃO GENÉRICA...');
+    const tablesToTest = ['profiles', 'clinics', 'clinic_staff', 'patients'];
     
-    // Verificar se usuário é admin através da função
-    const { data: isAdminResult, error: isAdminError } = await supabase
-      .rpc('get_current_user_role');
-    
-    console.log('6.1. Resultado get_current_user_role:', isAdminResult);
-    if (isAdminError) {
-      console.error('6.1. Erro get_current_user_role:', isAdminError);
+    for (const table of tablesToTest) {
+      try {
+        console.log(`6.${tablesToTest.indexOf(table) + 1}. Testando tabela ${table}...`);
+        const data = await getTableData(table, 5);
+        console.log(`✅ ${table}: ${data?.length || 0} registros`);
+      } catch (error) {
+        console.error(`❌ Erro na tabela ${table}:`, error);
+      }
     }
 
   } catch (error) {

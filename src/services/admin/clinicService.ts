@@ -1,249 +1,175 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { AdminClinic, ClinicFilters, AdminData, ClinicData } from './types';
+import { AdminClinic, CreateClinicParams, ClinicFilters } from './types';
+import { getAllClinics } from './adminDataService';
 
 export const getAllClinics = async (filters?: ClinicFilters): Promise<AdminClinic[]> => {
   try {
-    console.log('=== BUSCANDO TODAS AS CLÍNICAS ===');
+    console.log('=== BUSCANDO TODAS AS CLÍNICAS (NOVA VERSÃO SIMPLIFICADA) ===');
     console.log('Filtros aplicados:', filters);
     
-    // Primeiro, testar permissões do usuário atual
-    const { data: { user } } = await supabase.auth.getUser();
-    console.log('Usuário atual:', user?.id, user?.email);
+    // Usar o novo serviço genérico
+    const data = await getAllClinics();
     
-    // Testar função de role
-    const { data: currentRole, error: roleError } = await supabase.rpc('get_current_user_role');
-    if (roleError) {
-      console.error('❌ Erro ao verificar role:', roleError);
-    } else {
-      console.log('Role atual do usuário:', currentRole);
+    if (!data || data.length === 0) {
+      console.log('⚠️ NENHUMA CLÍNICA ENCONTRADA');
+      return [];
     }
     
-    let query = supabase
-      .from('clinics')
-      .select('*');
+    console.log('=== APLICANDO FILTROS ===');
+    let filteredData = data;
     
     if (filters) {
       if (filters.active !== undefined) {
-        query = query.eq('active', filters.active);
-      }
-      
-      if (filters.city) {
-        query = query.ilike('city', `%${filters.city}%`);
-      }
-      
-      if (filters.name) {
-        query = query.ilike('name', `%${filters.name}%`);
+        console.log('Aplicando filtro de status ativo:', filters.active);
+        filteredData = filteredData.filter(clinic => clinic.active === filters.active);
       }
       
       if (filters.createdAfter) {
-        query = query.gte('created_at', filters.createdAfter);
+        console.log('Aplicando filtro de data inicial:', filters.createdAfter);
+        filteredData = filteredData.filter(clinic => 
+          new Date(clinic.created_at) >= new Date(filters.createdAfter!)
+        );
       }
       
       if (filters.createdBefore) {
-        query = query.lte('created_at', filters.createdBefore);
+        console.log('Aplicando filtro de data final:', filters.createdBefore);
+        filteredData = filteredData.filter(clinic => 
+          new Date(clinic.created_at) <= new Date(filters.createdBefore!)
+        );
+      }
+      
+      if (filters.name && filters.name.trim() !== '') {
+        console.log('Aplicando filtro de nome:', filters.name);
+        const searchTerm = filters.name.trim().toLowerCase();
+        filteredData = filteredData.filter(clinic => 
+          clinic.name?.toLowerCase().includes(searchTerm) ||
+          clinic.city?.toLowerCase().includes(searchTerm) ||
+          clinic.email?.toLowerCase().includes(searchTerm)
+        );
       }
     }
     
-    console.log('Executando query para clínicas...');
-    const { data, error } = await query.order('created_at', { ascending: false });
+    console.log('=== MAPEANDO DADOS PARA INTERFACE ===');
+    const clinics = filteredData.map((clinic: any) => ({
+      id: clinic.id,
+      name: clinic.name,
+      city: clinic.city,
+      address: clinic.address,
+      phone: clinic.phone,
+      email: clinic.email,
+      tradingName: clinic.trading_name,
+      cnpj: clinic.cnpj,
+      logoUrl: clinic.logo_url,
+      active: clinic.active,
+      created_at: clinic.created_at,
+      updated_at: clinic.updated_at,
+      created_by: clinic.created_by
+    })) as AdminClinic[];
     
-    if (error) {
-      console.error('❌ Erro ao buscar clínicas:', error);
-      console.error('Código do erro:', error.code);
-      console.error('Mensagem do erro:', error.message);
-      console.error('Detalhes do erro:', error.details);
-      console.error('Hint do erro:', error.hint);
-      throw error;
-    }
+    console.log('✅ Total de clínicas após filtros:', clinics.length);
+    console.log('📋 Primeiros 3 clínicas:', clinics.slice(0, 3));
     
-    console.log('✅ Clínicas retornadas:', data?.length || 0);
-    console.log('📋 Dados das clínicas:', data);
+    return clinics;
     
-    return data as AdminClinic[];
   } catch (error) {
-    console.error('❌ Erro geral ao buscar todas as clínicas:', error);
+    console.error('❌ ERRO COMPLETO ao buscar clínicas:', error);
     throw error;
   }
 };
 
-export const registerClinic = async ({
-  admin,
-  clinic,
-}: {
-  admin: AdminData;
-  clinic: ClinicData;
-}): Promise<void> => {
+export const registerClinic = async (params: CreateClinicParams): Promise<string> => {
   try {
-    const { data: existingUser } = await supabase
-      .from('profiles')
-      .select('id, email')
-      .eq('email', admin.email)
-      .maybeSingle();
+    console.log('=== REGISTRANDO NOVA CLÍNICA ===');
+    console.log('Parâmetros:', params);
     
-    let userId: string;
+    const { data, error } = await supabase.rpc('create_clinic', {
+      p_name: params.name,
+      p_city: params.city,
+      p_address: params.address,
+      p_phone: params.phone,
+      p_email: params.email,
+      p_created_by: params.createdBy,
+      p_trading_name: params.tradingName || null,
+      p_cnpj: params.cnpj || null
+    });
     
-    if (existingUser) {
-      console.log('Usuário já existe, usando ID existente:', existingUser.id);
-      userId = existingUser.id;
-    } else {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: admin.email,
-        password: admin.password,
-        options: {
-          data: {
-            first_name: admin.firstName,
-            last_name: admin.lastName,
-            crm: admin.crm || '',
-          },
-        },
-      });
-
-      if (authError) {
-        if (authError.status === 429) {
-          throw new Error('Limite de cadastros excedido. Por favor, aguarde alguns segundos antes de tentar novamente.');
-        }
-        throw authError;
-      }
-      
-      if (!authData.user) throw new Error('Falha ao criar usuário');
-      userId = authData.user.id;
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    if (error) {
+      console.error('Erro ao registrar clínica:', error);
+      throw error;
     }
-
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        first_name: admin.firstName,
-        last_name: admin.lastName,
-        crm: admin.crm || '',
-        phone: admin.phone,
-        role: admin.role
-      })
-      .eq('id', userId);
-
-    if (profileError) throw profileError;
-
-    const { data: clinicData, error: clinicError } = await supabase
-      .rpc('create_clinic', { 
-        p_name: clinic.name,
-        p_city: clinic.city,
-        p_address: clinic.address,
-        p_phone: clinic.phone,
-        p_email: clinic.email,
-        p_created_by: userId,
-        p_trading_name: clinic.tradingName,
-        p_cnpj: clinic.cnpj
-      });
-
-    if (clinicError) {
-      console.error('Erro ao criar clínica:', clinicError);
-      throw clinicError;
-    }
-
-    if (!clinicData) {
-      throw new Error('A clínica não foi criada. Verifique se a função RPC está configurada corretamente.');
-    }
-
-    let clinicId: string;
     
-    if (
-      typeof clinicData === 'object' && 
-      clinicData !== null && 
-      !Array.isArray(clinicData) && 
-      'id' in clinicData
-    ) {
-      clinicId = clinicData.id as string;
-    } else {
-      throw new Error('ID da clínica não recebido no formato esperado. Verifique a função RPC.');
-    }
-
-    console.log('Clínica criada com ID:', clinicId);
-
-    const { error: staffError } = await supabase
-      .rpc('add_clinic_staff', {
-        p_user_id: userId,
-        p_clinic_id: clinicId,
-        p_is_admin: true,
-        p_role: 'doctor'
-      });
-
-    if (staffError) {
-      console.error('Erro ao adicionar administrador à clínica:', staffError);
-      throw staffError;
-    }
-
-    console.log('Clínica e administrador registrados com sucesso');
+    const clinicId = data.id;
+    console.log('✅ Clínica registrada com ID:', clinicId);
+    
+    return clinicId;
   } catch (error) {
-    console.error('Erro ao registrar clínica:', error);
+    console.error('❌ Erro ao registrar clínica:', error);
     throw error;
   }
 };
 
 export const updateClinicStatus = async (clinicId: string, active: boolean): Promise<void> => {
   try {
+    console.log('=== ATUALIZANDO STATUS DA CLÍNICA ===');
+    console.log('Clínica ID:', clinicId);
+    console.log('Novo status:', active);
+    
     const { error } = await supabase
       .from('clinics')
       .update({ active, updated_at: new Date().toISOString() })
       .eq('id', clinicId);
     
-    if (error) throw error;
+    if (error) {
+      console.error('Erro ao atualizar status da clínica:', error);
+      throw error;
+    }
+    
+    console.log('✅ Status da clínica atualizado com sucesso');
   } catch (error) {
-    console.error('Erro ao atualizar status da clínica:', error);
+    console.error('❌ Erro ao atualizar status da clínica:', error);
     throw error;
   }
 };
 
 export const deleteClinic = async (clinicId: string): Promise<void> => {
   try {
-    console.log('Iniciando exclusão completa da clínica:', clinicId);
+    console.log('=== INICIANDO EXCLUSÃO COMPLETA DA CLÍNICA ===');
+    console.log('Clínica ID:', clinicId);
     
-    // 1. Primeiro deletar todas as solicitações de angioplastia da clínica
-    const { error: angioplastyError } = await supabase
-      .from('angioplasty_requests')
-      .delete()
-      .eq('clinic_id', clinicId);
-    
-    if (angioplastyError) {
-      console.error('Erro ao deletar solicitações de angioplastia:', angioplastyError);
-      throw angioplastyError;
-    }
-    
-    // 2. Depois deletar todos os pacientes da clínica
-    const { error: patientsError } = await supabase
-      .from('patients')
-      .delete()
-      .eq('clinic_id', clinicId);
-    
-    if (patientsError) {
-      console.error('Erro ao deletar pacientes da clínica:', patientsError);
-      throw patientsError;
-    }
-    
-    // 3. Deletar todos os staff da clínica
+    // 1. Deletar funcionários da clínica
+    console.log('1. Deletando funcionários da clínica...');
     const { error: staffError } = await supabase
       .from('clinic_staff')
       .delete()
       .eq('clinic_id', clinicId);
     
     if (staffError) {
-      console.error('Erro ao deletar staff da clínica:', staffError);
+      console.error('Erro ao deletar funcionários da clínica:', staffError);
       throw staffError;
     }
     
-    // 4. Deletar convênios da clínica
-    const { error: insuranceError } = await supabase
-      .from('insurance_companies')
-      .delete()
-      .eq('clinic_id', clinicId);
+    // 2. Atualizar ou deletar registros relacionados
+    console.log('2. Atualizando registros relacionados...');
+    const relatedTables = ['patients', 'angioplasty_requests', 'insurance_companies'];
     
-    if (insuranceError) {
-      console.error('Erro ao deletar convênios da clínica:', insuranceError);
-      throw insuranceError;
+    for (const table of relatedTables) {
+      try {
+        const { error } = await supabase
+          .from(table)
+          .delete()
+          .eq('clinic_id', clinicId);
+        
+        if (error) {
+          console.warn(`Aviso ao deletar registros de ${table}:`, error);
+        }
+      } catch (e) {
+        console.warn(`Aviso ao processar tabela ${table}:`, e);
+      }
     }
     
-    // 5. Por último, deletar a clínica
+    // 3. Deletar a clínica
+    console.log('3. Deletando a clínica...');
     const { error: clinicError } = await supabase
       .from('clinics')
       .delete()
@@ -254,53 +180,9 @@ export const deleteClinic = async (clinicId: string): Promise<void> => {
       throw clinicError;
     }
     
-    console.log('Clínica deletada completamente com sucesso');
+    console.log('✅ Clínica deletada completamente com sucesso');
   } catch (error) {
-    console.error('Erro ao excluir clínica:', error);
+    console.error('❌ Erro ao excluir clínica:', error);
     throw error;
-  }
-};
-
-// Nova função para testar acesso às clínicas
-export const testClinicAccess = async () => {
-  try {
-    console.log('=== TESTANDO ACESSO ÀS CLÍNICAS ===');
-    
-    // Teste 1: Buscar clínicas sem filtros
-    console.log('1. Testando busca sem filtros...');
-    const { data: allClinics, error: allError } = await supabase
-      .from('clinics')
-      .select('*');
-    
-    if (allError) {
-      console.error('❌ Erro na busca sem filtros:', allError);
-    } else {
-      console.log('✅ Clínicas encontradas:', allClinics?.length || 0);
-    }
-    
-    // Teste 2: Verificar se o RLS está habilitado
-    console.log('2. Verificando configuração RLS...');
-    const { data: { user } } = await supabase.auth.getUser();
-    console.log('Usuário autenticado:', !!user);
-    
-    if (user) {
-      // Teste 3: Verificar role do usuário
-      const { data: role } = await supabase.rpc('get_current_user_role');
-      console.log('Role do usuário:', role);
-      
-      // Teste 4: Verificar se usuário tem registros em clinic_staff
-      const { data: userStaff } = await supabase
-        .from('clinic_staff')
-        .select('*')
-        .eq('user_id', user.id);
-      
-      console.log('Registros do usuário em clinic_staff:', userStaff?.length || 0);
-    }
-    
-    return { allClinics: allClinics || [], error: allError };
-    
-  } catch (error) {
-    console.error('❌ Erro no teste de acesso:', error);
-    return { allClinics: [], error };
   }
 };
