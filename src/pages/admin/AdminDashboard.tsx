@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -7,12 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   isGlobalAdmin, 
-  getAllClinics, 
-  getAllUsers, 
+  getAllClinicsAdmin,
+  getAllUsersAdmin, 
   AdminClinic, 
   AdminUser
 } from '@/services/admin';
-import { getAllProfiles, ProfileData } from '@/services/admin/profileService';
+import { getAllProfilesAdmin, ProfileData } from '@/services/admin/profileService';
 import { ProfilesTable } from '@/components/admin/dashboard/ProfilesTable';
 import { AuthUsersTable } from '@/components/admin/dashboard/AuthUsersTable';
 import { ClinicStaffTable } from '@/components/admin/dashboard/ClinicStaffTable';
@@ -23,7 +22,7 @@ import { RegisterTab } from '@/components/admin/dashboard/Tabs/RegisterTab';
 import { ClinicsTab } from '@/components/admin/dashboard/Tabs/ClinicsTab';
 import { UsersTab } from '@/components/admin/dashboard/Tabs/UsersTab';
 import { Button } from '@/components/ui/button';
-import { syncMissingProfiles, debugAuthUsers, getClinicStaffData } from '@/services/admin/debugUserService';
+import { syncMissingProfilesAdmin, debugAuthUsersAdmin, getClinicStaffDataAdmin } from '@/services/admin/debugUserService';
 import { checkTriggerStatus, testTriggerExecution } from '@/services/admin/triggerService';
 
 type UserRole = Database["public"]["Enums"]["user_role"];
@@ -39,314 +38,178 @@ interface ClinicStaffMember {
   id: string;
   user_id: string;
   clinic_id: string;
-  role: string;
   is_admin: boolean;
   active: boolean;
   created_at: string;
-  clinic_name?: string;
+  profiles?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    role: UserRole;
+  };
+  clinics?: {
+    name: string;
+    city: string;
+  };
 }
 
-export const AdminDashboard = () => {
-  const { user, isLoading: authLoading } = useAuth();
+export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(true);
-  const [adminChecked, setAdminChecked] = useState(false);
-  const [activeTab, setActiveTab] = useState('register');
-  const [isSyncing, setIsSyncing] = useState(false);
   
-  // Estado para dados
-  const [clinics, setClinics] = useState<AdminClinic[]>([]);
-  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [profiles, setProfiles] = useState<ProfileData[]>([]);
   const [authUsers, setAuthUsers] = useState<AuthUser[]>([]);
+  const [clinics, setClinics] = useState<AdminClinic[]>([]);
   const [clinicStaff, setClinicStaff] = useState<ClinicStaffMember[]>([]);
-  const [loadingClinics, setLoadingClinics] = useState(false);
-  const [loadingUsers, setLoadingUsers] = useState(false);
-  const [loadingProfiles, setLoadingProfiles] = useState(false);
-  const [loadingAuthUsers, setLoadingAuthUsers] = useState(false);
-  const [loadingClinicStaff, setLoadingClinicStaff] = useState(false);
-  
-  // Estado para filtros
-  const [clinicFilters, setClinicFilters] = useState({
-    name: '',
-    city: '',
-    active: undefined as boolean | undefined,
-    createdAfter: undefined as string | undefined,
-    createdBefore: undefined as string | undefined
-  });
-  
-  const [userFilters, setUserFilters] = useState({
-    name: '',
-    role: '' as UserRole | '',
-    createdAfter: undefined as string | undefined,
-    createdBefore: undefined as string | undefined
-  });
-  
-  useEffect(() => {
-    // Verificar se o usuário está autenticado e é um admin global
-    const checkAdmin = async () => {
-      if (authLoading) return;
-      
-      if (!user) {
-        console.log("AdminDashboard: No user, redirecting to login");
-        navigate('/admin/login');
-        return;
-      }
-      
-      if (adminChecked) return;
-      
-      try {
-        console.log('Verificando admin no dashboard:', user.id);
-        const isAdmin = await isGlobalAdmin(user.id);
-        console.log('Resultado verificação admin:', isAdmin);
-        
-        if (!isAdmin) {
-          toast({
-            title: "Acesso negado",
-            description: "Você não tem permissão para acessar esta área.",
-            variant: "destructive",
-          });
-          navigate('/');
-        } else {
-          setIsLoading(false);
-          console.log('Admin verificado, carregando dados iniciais...');
-          await fetchData(); // Carregar dados iniciais
-        }
-        setAdminChecked(true);
-      } catch (error) {
-        console.error('Erro ao verificar permissões:', error);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const loadData = async () => {
+    if (!user) return;
+
+    try {
+      setIsLoading(true);
+      console.log('=== CARREGANDO DADOS DO DASHBOARD ADMIN ===');
+
+      const [profilesData, authUsersData, clinicsData, clinicStaffData] = await Promise.allSettled([
+        getAllProfilesAdmin(),
+        debugAuthUsersAdmin(),
+        getAllClinicsAdmin(),
+        getClinicStaffDataAdmin()
+      ]);
+
+      if (profilesData.status === 'fulfilled') {
+        console.log('✅ Profiles carregados:', profilesData.value.length);
+        setProfiles(profilesData.value);
+      } else {
+        console.error('❌ Erro ao carregar profiles:', profilesData.reason);
         toast({
-          title: "Erro ao verificar permissões",
-          description: "Ocorreu um erro ao verificar suas permissões. Tente novamente mais tarde.",
+          title: "Erro ao carregar profiles",
+          description: "Não foi possível carregar os dados dos profiles.",
           variant: "destructive",
         });
-        navigate('/admin/login');
       }
-    };
-    
-    checkAdmin();
-  }, [user, authLoading, navigate, toast, adminChecked]);
-  
-  // Função para buscar dados
-  const fetchData = async () => {
-    console.log('=== CARREGANDO DADOS INICIAIS ===');
-    await Promise.all([
-      fetchClinics(),
-      fetchUsers(),
-      fetchProfiles(),
-      fetchAuthUsers(),
-      fetchClinicStaff()
-    ]);
-  };
-  
-  const fetchClinics = async () => {
-    try {
-      setLoadingClinics(true);
-      console.log('Buscando clínicas...');
-      const data = await getAllClinics(clinicFilters);
-      console.log('Clínicas carregadas:', data.length);
-      setClinics(data);
+
+      if (authUsersData.status === 'fulfilled') {
+        console.log('✅ Auth users carregados:', authUsersData.value.length);
+        setAuthUsers(authUsersData.value);
+      } else {
+        console.error('❌ Erro ao carregar auth users:', authUsersData.reason);
+        toast({
+          title: "Erro ao carregar usuários",
+          description: "Não foi possível carregar os dados dos usuários.",
+          variant: "destructive",
+        });
+      }
+
+      if (clinicsData.status === 'fulfilled') {
+        console.log('✅ Clínicas carregadas:', clinicsData.value.length);
+        setClinics(clinicsData.value);
+      } else {
+        console.error('❌ Erro ao carregar clínicas:', clinicsData.reason);
+        toast({
+          title: "Erro ao carregar clínicas",
+          description: "Não foi possível carregar os dados das clínicas.",
+          variant: "destructive",
+        });
+      }
+
+      if (clinicStaffData.status === 'fulfilled') {
+        console.log('✅ Clinic staff carregado:', clinicStaffData.value.length);
+        setClinicStaff(clinicStaffData.value);
+      } else {
+        console.error('❌ Erro ao carregar clinic staff:', clinicStaffData.reason);
+        toast({
+          title: "Erro ao carregar funcionários",
+          description: "Não foi possível carregar os dados dos funcionários das clínicas.",
+          variant: "destructive",
+        });
+      }
+
     } catch (error) {
-      console.error('Erro ao buscar clínicas:', error);
+      console.error('❌ ERRO GERAL AO CARREGAR DASHBOARD:', error);
       toast({
-        title: "Erro ao buscar clínicas",
-        description: "Não foi possível carregar a lista de clínicas.",
+        title: "Erro no dashboard",
+        description: "Não foi possível carregar os dados do dashboard.",
         variant: "destructive",
       });
     } finally {
-      setLoadingClinics(false);
-    }
-  };
-  
-  const fetchUsers = async () => {
-    try {
-      setLoadingUsers(true);
-      console.log('=== DASHBOARD: INICIANDO BUSCA DE USUÁRIOS ===');
-      
-      // Garantir que estamos passando os filtros corretos
-      const filters = {
-        ...userFilters,
-        role: userFilters.role === '' ? undefined : userFilters.role
-      };
-      
-      const data = await getAllUsers(filters);
-      console.log('=== DASHBOARD: RESULTADO DA BUSCA ===');
-      console.log('Dados retornados por getAllUsers:', data);
-      
-      setUsers(data);
-    } catch (error) {
-      console.error('❌ DASHBOARD: Erro ao buscar usuários:', error);
-      toast({
-        title: "Erro ao buscar usuários",
-        description: "Não foi possível carregar a lista de usuários.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-  
-  const fetchProfiles = async () => {
-    try {
-      setLoadingProfiles(true);
-      console.log('=== DASHBOARD: INICIANDO BUSCA DE PROFILES ===');
-      
-      const data = await getAllProfiles();
-      console.log('=== DASHBOARD: RESULTADO DA BUSCA DE PROFILES ===');
-      console.log('Dados retornados por getAllProfiles:', data);
-      
-      setProfiles(data);
-    } catch (error) {
-      console.error('❌ DASHBOARD: Erro ao buscar profiles:', error);
-      toast({
-        title: "Erro ao buscar profiles",
-        description: "Não foi possível carregar a lista de profiles.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingProfiles(false);
+      setIsLoading(false);
     }
   };
 
-  const fetchAuthUsers = async () => {
-    try {
-      setLoadingAuthUsers(true);
-      console.log('=== DASHBOARD: INICIANDO BUSCA DE AUTH USERS ===');
-      
-      const { authUsers: data, error } = await debugAuthUsers();
-      
-      if (error) {
-        throw error;
-      }
-      
-      console.log('=== DASHBOARD: RESULTADO DA BUSCA DE AUTH USERS ===');
-      console.log('Dados retornados:', data);
-      
-      setAuthUsers(data);
-    } catch (error) {
-      console.error('❌ DASHBOARD: Erro ao buscar auth users:', error);
-      toast({
-        title: "Erro ao buscar usuários auth",
-        description: "Não foi possível carregar a lista de usuários de autenticação.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingAuthUsers(false);
-    }
-  };
-
-  const fetchClinicStaff = async () => {
-    try {
-      setLoadingClinicStaff(true);
-      console.log('=== DASHBOARD: INICIANDO BUSCA DE CLINIC STAFF ===');
-      
-      const { clinicStaff: data, error } = await getClinicStaffData();
-      
-      if (error) {
-        throw error;
-      }
-      
-      console.log('=== DASHBOARD: RESULTADO DA BUSCA DE CLINIC STAFF ===');
-      console.log('Dados retornados:', data);
-      
-      setClinicStaff(data);
-    } catch (error) {
-      console.error('❌ DASHBOARD: Erro ao buscar clinic staff:', error);
-      toast({
-        title: "Erro ao buscar equipe",
-        description: "Não foi possível carregar a lista de equipe das clínicas.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingClinicStaff(false);
-    }
-  };
-  
-  // Manipuladores de eventos
-  const handleClinicFilterChange = (key: string, value: any) => {
-    setClinicFilters(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
-  
-  const handleUserFilterChange = (key: string, value: any) => {
-    setUserFilters(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
-
-  // Nova função para lidar com sucesso no cadastro de clínica
-  const handleClinicRegistrationSuccess = async () => {
-    console.log('Clínica cadastrada com sucesso, trocando para aba de gerenciar clínicas');
-    await fetchData(); // Recarregar dados
-    setActiveTab('clinics'); // Trocar para aba de gerenciar clínicas
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadData();
+    setIsRefreshing(false);
     toast({
-      title: "Clínica cadastrada!",
-      description: "A clínica foi cadastrada com sucesso. Agora você pode visualizá-la na lista.",
+      title: "Dados atualizados",
+      description: "Dashboard atualizado com sucesso.",
     });
   };
 
-  const handleSyncProfiles = async () => {
+  const handleSyncMissingProfiles = async () => {
     try {
-      setIsSyncing(true);
-      console.log('=== INICIANDO SINCRONIZAÇÃO DE PROFILES ===');
-      
-      const result = await syncMissingProfiles();
-      
-      if (result && result.length > 0) {
-        toast({
-          title: "Sincronização concluída!",
-          description: `${result.length} profiles foram criados com sucesso.`,
-        });
-      } else {
-        toast({
-          title: "Sincronização concluída",
-          description: "Nenhum profile precisou ser sincronizado.",
-        });
-      }
-      
-      // Recarregar dados após sincronização
-      await fetchData();
-      
+      console.log('=== SINCRONIZANDO PROFILES FALTANTES ===');
+      await syncMissingProfilesAdmin();
+      await loadData();
+      toast({
+        title: "Sincronização completa",
+        description: "Profiles faltantes foram sincronizados.",
+      });
     } catch (error) {
       console.error('Erro na sincronização:', error);
       toast({
         title: "Erro na sincronização",
-        description: "Ocorreu um erro ao sincronizar os profiles. Verifique o console para mais detalhes.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleCheckTrigger = async () => {
-    console.log('=== VERIFICANDO TRIGGER HANDLE_NEW_USER ===');
-    const isWorking = await checkTriggerStatus();
-    
-    if (isWorking) {
-      toast({
-        title: "Trigger funcionando!",
-        description: "O trigger handle_new_user está ativo e funcionando corretamente.",
-      });
-    } else {
-      toast({
-        title: "Problema no trigger",
-        description: "O trigger handle_new_user pode estar com problemas. Verifique o console para mais detalhes.",
+        description: "Não foi possível sincronizar os profiles.",
         variant: "destructive",
       });
     }
   };
 
-  if (isLoading || authLoading) {
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!user) {
+        navigate('/admin/login');
+        return;
+      }
+
+      try {
+        const hasAccess = await isGlobalAdmin();
+        if (!hasAccess) {
+          toast({
+            title: "Acesso negado",
+            description: "Você não tem permissão para acessar o dashboard administrativo.",
+            variant: "destructive",
+          });
+          navigate('/no-access');
+          return;
+        }
+
+        await loadData();
+      } catch (error) {
+        console.error('Erro ao verificar acesso:', error);
+        toast({
+          title: "Erro de acesso",
+          description: "Não foi possível verificar suas permissões.",
+          variant: "destructive",
+        });
+        navigate('/no-access');
+      }
+    };
+
+    checkAccess();
+  }, [user, navigate, toast]);
+
+  if (isLoading) {
     return (
       <AdminLayout>
-        <div className="flex justify-center items-center h-[50vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-2">Verificando permissões...</span>
+        <div className="flex items-center justify-center h-64">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>Carregando dashboard...</span>
+          </div>
         </div>
       </AdminLayout>
     );
@@ -355,98 +218,119 @@ export const AdminDashboard = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Painel Administrativo</h1>
-            <p className="text-muted-foreground mt-1">
-              Gerenciamento global do sistema CardioFlow
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard Administrativo</h1>
+            <p className="text-muted-foreground">
+              Gerencie usuários, clínicas e configurações do sistema
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <div className="flex items-center space-x-2">
             <Button 
-              onClick={handleCheckTrigger}
+              onClick={handleSyncMissingProfiles}
               variant="outline"
-              className="bg-purple-50 border-purple-200 text-purple-800 hover:bg-purple-100"
+              size="sm"
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Verificar Trigger
+              <Users className="h-4 w-4 mr-2" />
+              Sincronizar Profiles
             </Button>
             <Button 
-              onClick={handleSyncProfiles}
-              disabled={isSyncing}
+              onClick={handleRefresh}
               variant="outline"
-              className="bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100"
+              size="sm"
+              disabled={isRefreshing}
             >
-              {isSyncing ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
-              )}
-              Sincronizar Profiles
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Atualizar
             </Button>
           </div>
         </div>
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-1 md:grid-cols-4 mb-6">
-            <TabsTrigger value="register">Cadastrar Nova Clínica</TabsTrigger>
-            <TabsTrigger value="clinics">Gerenciar Clínicas</TabsTrigger>
-            <TabsTrigger value="users">Gerenciar Usuários</TabsTrigger>
-            <TabsTrigger value="profiles">Análise Completa</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="register">
-            <RegisterTab onSuccess={handleClinicRegistrationSuccess} />
-          </TabsContent>
-          
-          <TabsContent value="clinics">
-            <ClinicsTab
-              clinics={clinics}
-              loading={loadingClinics}
-              onRefetch={fetchClinics}
-              filters={clinicFilters}
-              onFilterChange={handleClinicFilterChange}
-            />
-          </TabsContent>
-          
-          <TabsContent value="users">
-            <UsersTab
-              users={users}
-              loading={loadingUsers}
-              onRefetch={fetchUsers}
-              filters={userFilters}
-              onFilterChange={handleUserFilterChange}
-            />
-          </TabsContent>
-          
-          <TabsContent value="profiles">
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Análise Completa do Sistema</CardTitle>
-                  <CardDescription>
-                    Visualização detalhada de todas as tabelas relacionadas aos usuários
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-              
-              <div className="space-y-6">
-                <ProfilesTable
-                  profiles={profiles}
-                  loading={loadingProfiles}
-                />
-                
-                <AuthUsersTable
-                  authUsers={authUsers}
-                  loading={loadingAuthUsers}
-                />
-                
-                <ClinicStaffTable
-                  clinicStaff={clinicStaff}
-                  loading={loadingClinicStaff}
-                />
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{authUsers.length}</div>
+              <p className="text-xs text-muted-foreground">
+                {profiles.length} com perfil completo
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Clínicas Ativas</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {clinics.filter(c => c.active).length}
               </div>
-            </div>
+              <p className="text-xs text-muted-foreground">
+                {clinics.length} total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Funcionários</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {clinicStaff.filter(cs => cs.active).length}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {clinicStaff.length} total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Admins de Clínica</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {clinicStaff.filter(cs => cs.is_admin && cs.active).length}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                administradores ativos
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Tabs defaultValue="users" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="users">Usuários</TabsTrigger>
+            <TabsTrigger value="clinics">Clínicas</TabsTrigger>
+            <TabsTrigger value="register">Cadastrar</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="users" className="space-y-4">
+            <UsersTab 
+              profiles={profiles}
+              authUsers={authUsers}
+              clinicStaff={clinicStaff}
+              onRefresh={loadData}
+            />
+          </TabsContent>
+
+          <TabsContent value="clinics" className="space-y-4">
+            <ClinicsTab 
+              clinics={clinics}
+              onRefresh={loadData}
+            />
+          </TabsContent>
+
+          <TabsContent value="register" className="space-y-4">
+            <RegisterTab onRefresh={loadData} />
           </TabsContent>
         </Tabs>
       </div>
