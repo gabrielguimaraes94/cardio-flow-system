@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClinicRegistrationForm } from '@/components/admin/ClinicRegistrationForm';
@@ -11,9 +10,9 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({ onSuccess }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Cadastrar Nova Clínica</CardTitle>
+        <CardTitle>Register New Clinic</CardTitle>
         <CardDescription>
-          Registre uma nova clínica e seu administrador no sistema
+          Register a new clinic and its administrator in the system
         </CardDescription>
       </CardHeader>
       <CardContent>
