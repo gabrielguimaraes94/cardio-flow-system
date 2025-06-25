@@ -5,41 +5,33 @@ export const checkTriggerStatus = async () => {
   try {
     console.log('=== VERIFICANDO STATUS DO TRIGGER ===');
     
-    // Verificar se a função handle_new_user existe
-    const { data: functions, error: funcError } = await supabase
-      .from('information_schema.routines')
-      .select('routine_name, routine_type')
-      .eq('routine_name', 'handle_new_user')
-      .eq('routine_schema', 'public');
+    // Como não podemos acessar information_schema diretamente via PostgREST,
+    // vamos tentar executar a função handle_new_user diretamente
+    console.log('🔧 TESTANDO se a função handle_new_user existe...');
     
-    if (funcError) {
-      console.error('Erro ao verificar função:', funcError);
-      return false;
-    }
+    // Tentar chamar uma função que existe para comparar
+    const { data: testExistingFunction, error: existingError } = await supabase
+      .rpc('is_global_admin', { user_uuid: 'test-uuid' });
     
-    console.log('Função handle_new_user encontrada:', functions?.length > 0);
+    console.log('Teste de função existente (is_global_admin):', { testExistingFunction, existingError });
     
-    // Tentar executar uma verificação direta via RPC se possível
-    const { data: triggerCheck, error: triggerError } = await supabase
-      .rpc('sql', {
-        query: `
-          SELECT 
-            tgname as trigger_name,
-            tgenabled as enabled,
-            tgtype as trigger_type
-          FROM pg_trigger 
-          WHERE tgrelid = 'auth.users'::regclass
-            AND tgname LIKE '%auth_user%'
-        `
-      });
+    // Informar ao usuário que precisa verificar manualmente
+    console.log('📝 VERIFICAÇÃO MANUAL NECESSÁRIA:');
+    console.log('Para verificar triggers e funções, execute no SQL Editor do Supabase:');
+    console.log(`
+      -- Verificar se a função handle_new_user existe
+      SELECT proname, prosrc FROM pg_proc WHERE proname = 'handle_new_user';
+      
+      -- Verificar triggers na tabela auth.users
+      SELECT tgname, tgenabled FROM pg_trigger WHERE tgrelid = 'auth.users'::regclass;
+      
+      -- Verificar usuários auth vs profiles
+      SELECT 
+        (SELECT COUNT(*) FROM auth.users) as auth_users_count,
+        (SELECT COUNT(*) FROM public.profiles) as profiles_count;
+    `);
     
-    if (triggerError) {
-      console.error('Erro ao verificar trigger:', triggerError);
-      return false;
-    }
-    
-    console.log('Triggers encontrados:', triggerCheck);
-    return triggerCheck && triggerCheck.length > 0;
+    return false; // Retornamos false pois não conseguimos verificar via API
     
   } catch (error) {
     console.error('Erro na verificação de trigger:', error);
@@ -51,8 +43,6 @@ export const testTriggerExecution = async () => {
   try {
     console.log('=== TESTANDO EXECUÇÃO DO TRIGGER ===');
     
-    // Simular criação de usuário para testar trigger
-    // Nota: Em produção, isso seria feito via Supabase Admin API
     console.log('Para testar o trigger, execute no SQL Editor:');
     console.log(`
       -- Teste manual do trigger

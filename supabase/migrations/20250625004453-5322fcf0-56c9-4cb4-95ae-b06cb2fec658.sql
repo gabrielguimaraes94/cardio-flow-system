@@ -1,5 +1,5 @@
 
--- Função para debug dos usuários do auth vs profiles (CORRIGIDA)
+-- Função para debug dos usuários do auth vs profiles (CORRIGIDA - TIPO TEXT)
 CREATE OR REPLACE FUNCTION public.debug_get_auth_users()
 RETURNS TABLE(
   auth_user_id uuid,
