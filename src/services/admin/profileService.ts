@@ -1,5 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { Database } from '@/integrations/supabase/types';
 
 export interface ProfileData {
   id: string;
@@ -8,7 +8,7 @@ export interface ProfileData {
   email: string;
   crm: string;
   phone: string | null;
-  role: string;
+  role: Database["public"]["Enums"]["user_role"];
   created_at: string;
   updated_at: string;
   title: string | null;
@@ -18,29 +18,29 @@ export interface ProfileData {
 
 export const getAllProfiles = async (): Promise<ProfileData[]> => {
   try {
-    console.log('=== BUSCANDO TODOS OS PROFILES DIRETAMENTE ===');
+    console.log('=== FETCHING ALL PROFILES DIRECTLY ===');
     
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });
     
-    console.log('=== RESULTADO DA QUERY PROFILES ===');
+    console.log('=== PROFILES QUERY RESULT ===');
     console.log('Error:', error);
-    console.log('Data bruta:', data);
-    console.log('Quantidade de profiles:', data?.length || 0);
+    console.log('Raw data:', data);
+    console.log('Profiles count:', data?.length || 0);
     
     if (error) {
-      console.error('Erro na query de profiles:', error);
+      console.error('Error in profiles query:', error);
       throw error;
     }
     
     if (!data || data.length === 0) {
-      console.log('⚠️ NENHUM PROFILE ENCONTRADO');
+      console.log('⚠️ NO PROFILES FOUND');
       return [];
     }
     
-    console.log('=== PROFILES ENCONTRADOS ===');
+    console.log('=== PROFILES FOUND ===');
     data.forEach((profile, index) => {
       console.log(`Profile ${index + 1}:`, {
         id: profile.id,
@@ -55,7 +55,7 @@ export const getAllProfiles = async (): Promise<ProfileData[]> => {
     return data as ProfileData[];
     
   } catch (error) {
-    console.error('❌ ERRO ao buscar profiles:', error);
+    console.error('❌ ERROR fetching profiles:', error);
     throw error;
   }
 };
