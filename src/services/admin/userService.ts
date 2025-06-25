@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { AdminUser, UserFilters } from './types';
@@ -12,6 +11,8 @@ export const getAllUsers = async (filters?: UserFilters): Promise<AdminUser[]> =
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });
+    
+    console.log('Query inicial criada para tabela profiles');
     
     if (filters) {
       if (filters.role) {
@@ -36,19 +37,38 @@ export const getAllUsers = async (filters?: UserFilters): Promise<AdminUser[]> =
       }
     }
     
+    console.log('Executando query no Supabase...');
     const { data, error } = await query;
+    
+    console.log('=== RESULTADO DA QUERY ===');
+    console.log('Error:', error);
+    console.log('Data bruta retornada:', data);
+    console.log('Quantidade de registros:', data?.length || 0);
     
     if (error) {
       console.error('Erro na query de usuários:', error);
       throw error;
     }
     
-    console.log('Usuários encontrados:', data?.length || 0);
-    
     if (!data || data.length === 0) {
-      console.log('Nenhum usuário encontrado');
+      console.log('⚠️ NENHUM USUÁRIO ENCONTRADO - Verificar:');
+      console.log('1. Se existem registros na tabela profiles');
+      console.log('2. Se o usuário atual tem permissão para ver os dados');
+      console.log('3. Se há políticas RLS bloqueando o acesso');
       return [];
     }
+    
+    console.log('=== DADOS INDIVIDUAIS DOS USUÁRIOS ===');
+    data.forEach((user, index) => {
+      console.log(`Usuário ${index + 1}:`, {
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        role: user.role,
+        created_at: user.created_at
+      });
+    });
     
     const users = data.map((user: any) => ({
       id: user.id,
@@ -64,11 +84,15 @@ export const getAllUsers = async (filters?: UserFilters): Promise<AdminUser[]> =
       updated_at: user.updated_at
     })) as AdminUser[];
     
-    console.log('Usuários mapeados:', users.length);
+    console.log('=== USUÁRIOS MAPEADOS PARA INTERFACE ===');
+    console.log('Usuários finais:', users);
+    console.log('Total de usuários mapeados:', users.length);
+    
     return users;
     
   } catch (error) {
-    console.error('Erro ao buscar todos os usuários:', error);
+    console.error('❌ ERRO COMPLETO ao buscar usuários:', error);
+    console.error('Stack trace:', error instanceof Error ? error.stack : 'Sem stack trace');
     throw error;
   }
 };

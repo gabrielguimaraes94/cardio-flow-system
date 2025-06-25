@@ -30,6 +30,14 @@ export const UsersList: React.FC<UsersListProps> = ({
 }) => {
   const { toast } = useToast();
   
+  // Log detalhado dos dados recebidos
+  console.log('=== USERLIST COMPONENT ===');
+  console.log('Props recebidas:');
+  console.log('- users:', users);
+  console.log('- users.length:', users?.length || 0);
+  console.log('- loading:', loading);
+  console.log('- filters:', filters);
+  
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'dd/MM/yyyy HH:mm');
@@ -137,50 +145,56 @@ export const UsersList: React.FC<UsersListProps> = ({
               ) : users.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
-                    Nenhum usuário encontrado
+                    <div>
+                      <p>❌ Nenhum usuário encontrado</p>
+                      <p className="text-sm mt-2">Verifique o console para logs detalhados</p>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
-                users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">
-                      <div className="min-w-0">
-                        <div className="truncate">
-                          {user.firstName} {user.lastName}
+                users.map((user, index) => {
+                  console.log(`Renderizando usuário ${index + 1}:`, user);
+                  return (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">
+                        <div className="min-w-0">
+                          <div className="truncate">
+                            {user.firstName} {user.lastName}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="min-w-0">
-                        <div className="truncate">{user.email}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getRoleColor(user.role)}>
-                        {getRoleName(user.role)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="truncate">{user.crm || "-"}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="truncate">{user.phone || "-"}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="truncate">{formatDate(user.created_at)}</div>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteUser(user.id, `${user.firstName} ${user.lastName}`)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell>
+                        <div className="min-w-0">
+                          <div className="truncate">{user.email}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={getRoleColor(user.role)}>
+                          {getRoleName(user.role)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="truncate">{user.crm || "-"}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="truncate">{user.phone || "-"}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="truncate">{formatDate(user.created_at)}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteUser(user.id, `${user.firstName} ${user.lastName}`)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

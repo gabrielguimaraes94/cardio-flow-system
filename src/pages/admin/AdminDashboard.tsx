@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -126,18 +125,25 @@ export const AdminDashboard = () => {
   const fetchUsers = async () => {
     try {
       setLoadingUsers(true);
-      console.log('Buscando usuários...');
+      console.log('=== DASHBOARD: INICIANDO BUSCA DE USUÁRIOS ===');
+      console.log('Estado atual dos filtros de usuário:', userFilters);
+      
       // Garantir que estamos passando os filtros corretos
       const filters = {
         ...userFilters,
         role: userFilters.role === '' ? undefined : userFilters.role
       };
-      console.log('Filtros para usuários:', filters);
+      console.log('Filtros processados enviados para getAllUsers:', filters);
+      
       const data = await getAllUsers(filters);
-      console.log('Usuários carregados:', data.length);
+      console.log('=== DASHBOARD: RESULTADO DA BUSCA ===');
+      console.log('Dados retornados por getAllUsers:', data);
+      console.log('Quantidade de usuários:', data.length);
+      
       setUsers(data);
+      console.log('Estado dos usuários atualizado no Dashboard');
     } catch (error) {
-      console.error('Erro ao buscar usuários:', error);
+      console.error('❌ DASHBOARD: Erro ao buscar usuários:', error);
       toast({
         title: "Erro ao buscar usuários",
         description: "Não foi possível carregar a lista de usuários.",
@@ -145,6 +151,7 @@ export const AdminDashboard = () => {
       });
     } finally {
       setLoadingUsers(false);
+      console.log('Loading de usuários finalizado');
     }
   };
   
