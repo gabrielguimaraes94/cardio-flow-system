@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UsersList } from '../UsersList';
@@ -47,9 +46,9 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Gerenciar Usuários</CardTitle>
+        <CardTitle>Manage Users</CardTitle>
         <CardDescription>
-          Visualize e gerencie todos os usuários do sistema
+          View and manage all system users
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -64,15 +63,17 @@ export const UsersTab: React.FC<UsersTabProps> = ({
           onRefetch={onRefetch}
         />
       </CardContent>
-
-      <UserFilters
-        isOpen={showFilters}
-        onClose={() => setShowFilters(false)}
-        filters={filters}
-        onFilterChange={onFilterChange}
-        onApplyFilters={applyFilters}
-        onClearFilters={clearFilters}
-      />
+      {/* UserFilters component - make sure this component exists */}
+      {typeof UserFilters !== 'undefined' && (
+        <UserFilters
+          isOpen={showFilters}
+          onClose={() => setShowFilters(false)}
+          filters={filters}
+          onFilterChange={onFilterChange}
+          onApplyFilters={applyFilters}
+          onClearFilters={clearFilters}
+        />
+      )}
     </Card>
   );
 };
