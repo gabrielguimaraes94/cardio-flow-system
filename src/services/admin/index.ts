@@ -1,33 +1,34 @@
 
-// Export types
-export type {
-  AdminData,
-  ClinicData,
-  CreateClinicResponse,
-  CreateClinicParams,
-  AddClinicStaffParams,
-  AdminClinic,
-  AdminUser,
-  ClinicFilters,
-  UserFilters
-} from './types';
+// Export de permissões e funções admin
+export { isGlobalAdmin } from './permissionService';
 
-// Export permission services
-export {
-  isGlobalAdmin,
-  isClinicAdmin
-} from './permissionService';
+// Export de serviços de dados
+export { 
+  getAllProfiles, 
+  getAllClinics, 
+  getAllClinicStaff, 
+  getAllPatients 
+} from './adminDataService';
 
-// Export clinic services
-export {
-  getAllClinics,
-  registerClinic,
-  updateClinicStatus,
-  deleteClinic
+// Export de serviços específicos
+export { 
+  getAllUsers, 
+  deleteUser 
+} from './userService';
+
+export { 
+  getAllClinicsAdmin as getAllClinics, 
+  registerClinic, 
+  updateClinicStatus, 
+  deleteClinic 
 } from './clinicService';
 
-// Export user services
-export {
-  getAllUsers,
-  deleteUser
-} from './userService';
+// Export de tipos
+export type { 
+  AdminUser, 
+  AdminClinic, 
+  UserFilters, 
+  ClinicFilters, 
+  RegisterClinicRequest,
+  CreateClinicParams
+} from './types';

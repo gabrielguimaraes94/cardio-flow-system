@@ -16,8 +16,9 @@ export const getTableData = async (tableName: string, limit = 100) => {
       throw error;
     }
     
-    console.log(`✅ Dados da tabela ${tableName}:`, data?.length || 0, 'registros');
-    return data || [];
+    const result = Array.isArray(data) ? data : [];
+    console.log(`✅ Dados da tabela ${tableName}:`, result.length, 'registros');
+    return result;
     
   } catch (error) {
     console.error(`❌ Erro ao buscar tabela ${tableName}:`, error);
@@ -118,85 +119,6 @@ export const getAllPatients = async () => {
     
   } catch (error) {
     console.error('❌ Erro ao buscar pacientes:', error);
-    throw error;
-  }
-};
-
-// Função para criar registros em qualquer tabela (apenas admin)
-export const createRecord = async (tableName: string, data: Record<string, any>) => {
-  try {
-    console.log(`=== CRIANDO REGISTRO NA TABELA: ${tableName} ===`);
-    console.log('Dados:', data);
-    
-    const { data: result, error } = await supabase
-      .from(tableName)
-      .insert(data)
-      .select()
-      .single();
-    
-    if (error) {
-      console.error(`Erro ao criar registro em ${tableName}:`, error);
-      throw error;
-    }
-    
-    console.log(`✅ Registro criado em ${tableName}:`, result);
-    return result;
-    
-  } catch (error) {
-    console.error(`❌ Erro ao criar registro em ${tableName}:`, error);
-    throw error;
-  }
-};
-
-// Função para atualizar registros em qualquer tabela (apenas admin)
-export const updateRecord = async (tableName: string, id: string, data: Record<string, any>) => {
-  try {
-    console.log(`=== ATUALIZANDO REGISTRO NA TABELA: ${tableName} ===`);
-    console.log('ID:', id);
-    console.log('Dados:', data);
-    
-    const { data: result, error } = await supabase
-      .from(tableName)
-      .update(data)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) {
-      console.error(`Erro ao atualizar registro em ${tableName}:`, error);
-      throw error;
-    }
-    
-    console.log(`✅ Registro atualizado em ${tableName}:`, result);
-    return result;
-    
-  } catch (error) {
-    console.error(`❌ Erro ao atualizar registro em ${tableName}:`, error);
-    throw error;
-  }
-};
-
-// Função para deletar registros em qualquer tabela (apenas admin)
-export const deleteRecord = async (tableName: string, id: string) => {
-  try {
-    console.log(`=== DELETANDO REGISTRO NA TABELA: ${tableName} ===`);
-    console.log('ID:', id);
-    
-    const { error } = await supabase
-      .from(tableName)
-      .delete()
-      .eq('id', id);
-    
-    if (error) {
-      console.error(`Erro ao deletar registro em ${tableName}:`, error);
-      throw error;
-    }
-    
-    console.log(`✅ Registro deletado em ${tableName}`);
-    return true;
-    
-  } catch (error) {
-    console.error(`❌ Erro ao deletar registro em ${tableName}:`, error);
     throw error;
   }
 };

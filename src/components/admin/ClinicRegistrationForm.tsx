@@ -6,8 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { registerClinic } from '@/services/admin';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { registerClinic } from '@/services/admin';
 
 // Define the props interface with onSuccess
 interface ClinicRegistrationFormProps {
@@ -57,26 +58,71 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
     try {
       setIsSubmitting(true);
       
-      await registerClinic({
-        admin: {
-          firstName: values.adminFirstName,
-          lastName: values.adminLastName,
-          email: values.adminEmail,
-          password: values.adminPassword,
-          phone: values.adminPhone || null,
-          crm: values.adminCrm,
-          role: 'clinic_admin',
-        },
-        clinic: {
-          name: values.clinicName,
-          city: values.clinicCity,
-          address: values.clinicAddress,
-          phone: values.clinicPhone,
-          email: values.clinicEmail,
-          tradingName: values.clinicTradingName,
-          cnpj: values.clinicCnpj,
-        },
+      // 1. Criar o usuário admin primeiro
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: values.adminEmail,
+        password: values.adminPassword,
+        options: {
+          data: {
+            first_name: values.adminFirstName,
+            last_name: values.adminLastName,
+            phone: values.adminPhone,
+            crm: values.adminCrm,
+            role: 'clinic_admin'
+          }
+        }
       });
+
+      if (authError) {
+        throw authError;
+      }
+
+      if (!authData.user) {
+        throw new Error('Falha ao criar usuário');
+      }
+
+      // 2. Criar o profile do usuário
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: authData.user.id,
+          first_name: values.adminFirstName,
+          last_name: values.adminLastName,
+          email: values.adminEmail,
+          phone: values.adminPhone || null,
+          crm: values.adminCrm || '',
+          role: 'clinic_admin'
+        });
+
+      if (profileError) {
+        console.error('Erro ao criar profile:', profileError);
+        // Não fazer throw aqui, pois o trigger handle_new_user pode ter criado
+      }
+
+      // 3. Criar a clínica
+      const clinicId = await registerClinic({
+        name: values.clinicName,
+        city: values.clinicCity,
+        address: values.clinicAddress,
+        phone: values.clinicPhone,
+        email: values.clinicEmail,
+        createdBy: authData.user.id,
+        tradingName: values.clinicTradingName,
+        cnpj: values.clinicCnpj,
+      });
+
+      // 4. Adicionar o admin como staff da clínica
+      const { error: staffError } = await supabase.rpc('add_clinic_staff', {
+        p_user_id: authData.user.id,
+        p_clinic_id: clinicId,
+        p_is_admin: true,
+        p_role: 'administrator'
+      });
+
+      if (staffError) {
+        console.error('Erro ao adicionar staff:', staffError);
+        // Não fazer throw, pois a clínica foi criada
+      }
 
       toast({
         title: "Clínica cadastrada com sucesso!",

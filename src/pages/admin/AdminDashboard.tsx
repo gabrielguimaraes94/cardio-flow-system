@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -22,7 +23,7 @@ import { RegisterTab } from '@/components/admin/dashboard/Tabs/RegisterTab';
 import { ClinicsTab } from '@/components/admin/dashboard/Tabs/ClinicsTab';
 import { UsersTab } from '@/components/admin/dashboard/Tabs/UsersTab';
 import { Button } from '@/components/ui/button';
-import { debugUserConsistency, syncMissingProfiles, debugAuthUsers, getClinicStaffData } from '@/services/admin/debugUserService';
+import { syncMissingProfiles, debugAuthUsers, getClinicStaffData } from '@/services/admin/debugUserService';
 import { checkTriggerStatus, testTriggerExecution } from '@/services/admin/triggerService';
 
 type UserRole = Database["public"]["Enums"]["user_role"];
@@ -162,22 +163,18 @@ export const AdminDashboard = () => {
     try {
       setLoadingUsers(true);
       console.log('=== DASHBOARD: INICIANDO BUSCA DE USUÁRIOS ===');
-      console.log('Estado atual dos filtros de usuário:', userFilters);
       
       // Garantir que estamos passando os filtros corretos
       const filters = {
         ...userFilters,
         role: userFilters.role === '' ? undefined : userFilters.role
       };
-      console.log('Filtros processados enviados para getAllUsers:', filters);
       
       const data = await getAllUsers(filters);
       console.log('=== DASHBOARD: RESULTADO DA BUSCA ===');
       console.log('Dados retornados por getAllUsers:', data);
-      console.log('Quantidade de usuários:', data.length);
       
       setUsers(data);
-      console.log('Estado dos usuários atualizado no Dashboard');
     } catch (error) {
       console.error('❌ DASHBOARD: Erro ao buscar usuários:', error);
       toast({
@@ -187,7 +184,6 @@ export const AdminDashboard = () => {
       });
     } finally {
       setLoadingUsers(false);
-      console.log('Loading de usuários finalizado');
     }
   };
   
@@ -199,10 +195,8 @@ export const AdminDashboard = () => {
       const data = await getAllProfiles();
       console.log('=== DASHBOARD: RESULTADO DA BUSCA DE PROFILES ===');
       console.log('Dados retornados por getAllProfiles:', data);
-      console.log('Quantidade de profiles:', data.length);
       
       setProfiles(data);
-      console.log('Estado dos profiles atualizado no Dashboard');
     } catch (error) {
       console.error('❌ DASHBOARD: Erro ao buscar profiles:', error);
       toast({
@@ -212,7 +206,6 @@ export const AdminDashboard = () => {
       });
     } finally {
       setLoadingProfiles(false);
-      console.log('Loading de profiles finalizado');
     }
   };
 
@@ -229,7 +222,6 @@ export const AdminDashboard = () => {
       
       console.log('=== DASHBOARD: RESULTADO DA BUSCA DE AUTH USERS ===');
       console.log('Dados retornados:', data);
-      console.log('Quantidade de auth users:', data.length);
       
       setAuthUsers(data);
     } catch (error) {
@@ -257,7 +249,6 @@ export const AdminDashboard = () => {
       
       console.log('=== DASHBOARD: RESULTADO DA BUSCA DE CLINIC STAFF ===');
       console.log('Dados retornados:', data);
-      console.log('Quantidade de clinic staff:', data.length);
       
       setClinicStaff(data);
     } catch (error) {
@@ -296,20 +287,6 @@ export const AdminDashboard = () => {
       title: "Clínica cadastrada!",
       description: "A clínica foi cadastrada com sucesso. Agora você pode visualizá-la na lista.",
     });
-  };
-
-  const handleDebugUsers = async () => {
-    console.log('=== INICIANDO DEBUG COMPLETO DE USUÁRIOS ===');
-    await debugUserConsistency();
-    await debugAuthUsers();
-    
-    // Verificar trigger também
-    console.log('=== VERIFICANDO SISTEMA DE TRIGGERS ===');
-    const triggerWorking = await checkTriggerStatus();
-    if (!triggerWorking) {
-      console.log('⚠️ TRIGGER PODE ESTAR COM PROBLEMAS');
-      await testTriggerExecution();
-    }
   };
 
   const handleSyncProfiles = async () => {
@@ -386,14 +363,6 @@ export const AdminDashboard = () => {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <Button 
-              onClick={handleDebugUsers}
-              variant="outline"
-              className="bg-yellow-50 border-yellow-200 text-yellow-800 hover:bg-yellow-100"
-            >
-              <Users className="h-4 w-4 mr-2" />
-              Debug Completo
-            </Button>
             <Button 
               onClick={handleCheckTrigger}
               variant="outline"

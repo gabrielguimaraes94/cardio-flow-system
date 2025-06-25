@@ -1,15 +1,15 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { AdminClinic, CreateClinicParams, ClinicFilters } from './types';
-import { getAllClinics } from './adminDataService';
+import { getAllClinics as getAllClinicsData } from './adminDataService';
 
-export const getAllClinics = async (filters?: ClinicFilters): Promise<AdminClinic[]> => {
+export const getAllClinicsAdmin = async (filters?: ClinicFilters): Promise<AdminClinic[]> => {
   try {
     console.log('=== BUSCANDO TODAS AS CLÍNICAS (NOVA VERSÃO SIMPLIFICADA) ===');
     console.log('Filtros aplicados:', filters);
     
     // Usar o novo serviço genérico
-    const data = await getAllClinics();
+    const data = await getAllClinicsData();
     
     if (!data || data.length === 0) {
       console.log('⚠️ NENHUMA CLÍNICA ENCONTRADA');
@@ -60,7 +60,7 @@ export const getAllClinics = async (filters?: ClinicFilters): Promise<AdminClini
       email: clinic.email,
       tradingName: clinic.trading_name,
       cnpj: clinic.cnpj,
-      logoUrl: clinic.logo_url,
+      logo_url: clinic.logo_url,
       active: clinic.active,
       created_at: clinic.created_at,
       updated_at: clinic.updated_at,

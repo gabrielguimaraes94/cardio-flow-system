@@ -2,41 +2,39 @@
 import { Database } from '@/integrations/supabase/types';
 import { UserProfile } from '@/types/profile';
 
-// Tipos para a função registerClinic
-export type AdminData = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  phone: string | null;
-  role: 'clinic_admin';
-  crm?: string;
-};
+// Tipos simplificados para registerClinic
+export interface RegisterClinicRequest {
+  admin: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    phone: string | null;
+    crm?: string;
+    role: 'clinic_admin';
+  };
+  clinic: {
+    name: string;
+    city: string;
+    address: string;
+    phone: string;
+    email: string;
+    tradingName?: string;
+    cnpj?: string;
+  };
+}
 
-export type ClinicData = {
+// Tipos para a função create_clinic
+export type CreateClinicParams = {
   name: string;
   city: string;
   address: string;
   phone: string;
   email: string;
+  createdBy: string;
   tradingName?: string;
   cnpj?: string;
 };
-
-export interface CreateClinicResponse {
-  id: string;
-}
-
-export type CreateClinicParams = {
-  p_name: string;
-  p_city: string;
-  p_address: string;
-  p_phone: string;
-  p_email: string;
-  p_created_by: string;
-  p_trading_name?: string;
-  p_cnpj?: string;
-}
 
 export type AddClinicStaffParams = {
   p_user_id: string;
@@ -57,6 +55,8 @@ export interface AdminClinic {
   updated_at: string;
   created_by: string;
   logo_url: string | null;
+  tradingName?: string;
+  cnpj?: string;
 }
 
 export interface AdminUser extends UserProfile {
