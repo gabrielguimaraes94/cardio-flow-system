@@ -23,6 +23,7 @@ import { ClinicsTab } from '@/components/admin/dashboard/Tabs/ClinicsTab';
 import { UsersTab } from '@/components/admin/dashboard/Tabs/UsersTab';
 import { Button } from '@/components/ui/button';
 import { debugUserConsistency, syncMissingProfiles, debugAuthUsers, getClinicStaffData } from '@/services/admin/debugUserService';
+import { checkTriggerStatus, testTriggerExecution } from '@/services/admin/triggerService';
 
 type UserRole = Database["public"]["Enums"]["user_role"];
 
@@ -298,9 +299,17 @@ export const AdminDashboard = () => {
   };
 
   const handleDebugUsers = async () => {
-    console.log('=== INICIANDO DEBUG DE USUÁRIOS ===');
+    console.log('=== INICIANDO DEBUG COMPLETO DE USUÁRIOS ===');
     await debugUserConsistency();
     await debugAuthUsers();
+    
+    // Verificar trigger também
+    console.log('=== VERIFICANDO SISTEMA DE TRIGGERS ===');
+    const triggerWorking = await checkTriggerStatus();
+    if (!triggerWorking) {
+      console.log('⚠️ TRIGGER PODE ESTAR COM PROBLEMAS');
+      await testTriggerExecution();
+    }
   };
 
   const handleSyncProfiles = async () => {
@@ -337,6 +346,24 @@ export const AdminDashboard = () => {
     }
   };
 
+  const handleCheckTrigger = async () => {
+    console.log('=== VERIFICANDO TRIGGER HANDLE_NEW_USER ===');
+    const isWorking = await checkTriggerStatus();
+    
+    if (isWorking) {
+      toast({
+        title: "Trigger funcionando!",
+        description: "O trigger handle_new_user está ativo e funcionando corretamente.",
+      });
+    } else {
+      toast({
+        title: "Problema no trigger",
+        description: "O trigger handle_new_user pode estar com problemas. Verifique o console para mais detalhes.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading || authLoading) {
     return (
       <AdminLayout>
@@ -365,7 +392,15 @@ export const AdminDashboard = () => {
               className="bg-yellow-50 border-yellow-200 text-yellow-800 hover:bg-yellow-100"
             >
               <Users className="h-4 w-4 mr-2" />
-              Debug Usuários
+              Debug Completo
+            </Button>
+            <Button 
+              onClick={handleCheckTrigger}
+              variant="outline"
+              className="bg-purple-50 border-purple-200 text-purple-800 hover:bg-purple-100"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Verificar Trigger
             </Button>
             <Button 
               onClick={handleSyncProfiles}

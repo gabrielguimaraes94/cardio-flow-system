@@ -1,11 +1,28 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export const debugUserConsistency = async () => {
   try {
     console.log('=== DEBUG: VERIFICAÇÃO COMPLETA DO SISTEMA ===');
     
-    // 1. Buscar todos os profiles
+    // 1. Verificar se o trigger existe
+    console.log('🔧 VERIFICANDO TRIGGER handle_new_user...');
+    const { data: triggers, error: triggerError } = await supabase
+      .rpc('sql', { 
+        query: `
+          SELECT tgname, tgenabled, proname 
+          FROM pg_trigger t 
+          JOIN pg_proc p ON t.tgfoid = p.oid 
+          WHERE tgname LIKE '%auth_user%' OR proname LIKE '%handle_new_user%'
+        ` 
+      });
+    
+    if (triggerError) {
+      console.error('❌ Erro ao verificar triggers:', triggerError);
+    } else {
+      console.log('Triggers encontrados:', triggers);
+    }
+    
+    // 2. Buscar todos os profiles
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, first_name, last_name, email, role, created_at');
@@ -27,10 +44,10 @@ export const debugUserConsistency = async () => {
       });
     });
     
-    // 2. Buscar usuários na tabela clinic_staff
+    // 3. Buscar usuários na tabela clinic_staff
     const { data: clinicStaff, error: staffError } = await supabase
       .from('clinic_staff')
-      .select('user_id, role, clinic_id, is_admin, active');
+      .select('user_id, role, clinic_id, is_admin, active, created_at');
     
     if (staffError) {
       console.error('Erro ao buscar clinic_staff:', staffError);
@@ -43,11 +60,12 @@ export const debugUserConsistency = async () => {
           role: staff.role,
           clinic_id: staff.clinic_id,
           is_admin: staff.is_admin,
-          active: staff.active
+          active: staff.active,
+          created_at: staff.created_at
         });
       });
       
-      // 3. Verificar se todos os users do clinic_staff têm profile
+      // 4. Verificar se todos os users do clinic_staff têm profile
       console.log('🔍 VERIFICANDO CONSISTÊNCIA:');
       const staffUserIds = clinicStaff?.map(s => s.user_id) || [];
       const profileIds = profiles?.map(p => p.id) || [];
@@ -57,10 +75,12 @@ export const debugUserConsistency = async () => {
       
       if (missingProfiles.length > 0) {
         console.log('❌ USUÁRIOS SEM PROFILE:', missingProfiles);
+        console.log('🔧 AÇÃO NECESSÁRIA: Execute sincronização de profiles');
       }
       
       if (orphanProfiles.length > 0) {
         console.log('⚠️ PROFILES SEM CLINIC_STAFF:', orphanProfiles);
+        console.log('ℹ️ NOTA: Podem ser admins globais (normal)');
       }
       
       if (missingProfiles.length === 0 && orphanProfiles.length === 0) {
@@ -68,10 +88,10 @@ export const debugUserConsistency = async () => {
       }
     }
     
-    // 4. Verificar clínicas criadas
+    // 5. Verificar clínicas criadas
     const { data: clinics, error: clinicsError } = await supabase
       .from('clinics')
-      .select('id, name, created_by');
+      .select('id, name, created_by, created_at');
     
     if (!clinicsError && clinics) {
       console.log('🏥 CLÍNICAS CRIADAS:');
@@ -80,12 +100,13 @@ export const debugUserConsistency = async () => {
         console.log(`Clínica ${index + 1}:`, {
           id: clinic.id,
           name: clinic.name,
-          created_by: clinic.created_by
+          created_by: clinic.created_by,
+          created_at: clinic.created_at
         });
       });
     }
     
-    // 5. Verificar usuários por role
+    // 6. Verificar usuários por role
     console.log('👤 ANÁLISE POR ROLE:');
     const roleCount: Record<string, number> = {};
     profiles?.forEach(profile => {
@@ -94,7 +115,24 @@ export const debugUserConsistency = async () => {
     
     console.log('Contagem por role:', roleCount);
     
-    // 6. Análise passo a passo do fluxo
+    // 7. Identificar problemas críticos
+    console.log('🔧 POSSÍVEIS PROBLEMAS:');
+    
+    if (profiles && profiles.length <= 1) {
+      console.log('⚠️ PROBLEMA IDENTIFICADO: Apenas 1 usuário admin encontrado');
+      console.log('Isso indica que:');
+      console.log('1. Novos usuários podem não estar sendo criados corretamente');
+      console.log('2. Trigger handle_new_user pode não estar funcionando');
+      console.log('3. Usuários podem estar sendo criados apenas na tabela auth.users');
+      console.log('4. RLS pode estar bloqueando a visualização');
+    }
+    
+    console.log('🔒 VERIFICANDO RLS:');
+    console.log('Para verificar se RLS está bloqueando, execute no SQL Editor:');
+    console.log('SELECT * FROM profiles;');
+    console.log('Se retornar mais registros que aqui, RLS está bloqueando alguns dados');
+    
+    // 8. Análise passo a passo do fluxo
     console.log('🔄 ANÁLISE PASSO A PASSO DO FLUXO:');
     await analyzeUserCreationFlow();
     
@@ -133,6 +171,8 @@ const analyzeUserCreationFlow = async () => {
     }
   } catch (error) {
     console.error('❌ 2: Erro ao verificar auth.users:', error);
+    console.log('❌ 2.4: Função debug_get_auth_users tem problema de tipo');
+    console.log('❌ 2.5: Permissões insuficientes para acessar auth.users');
   }
   
   // Passo 3: Verificar fluxo admin → admin de clínica
@@ -146,8 +186,8 @@ const analyzeUserCreationFlow = async () => {
   console.log('6. Relação clinic_staff é estabelecida');
   
   console.log('Possíveis erros:');
-  console.log('❌ 3.1: Admin global não tem permissões para criar clínicas');
-  console.log('❌ 3.2: Processo de registro de admin de clínica falha');
+  console.log('❌ 3.1: Admin global não tem função para criar usuários');
+  console.log('❌ 3.2: Processo de registro de admin de clínica não existe');
   console.log('❌ 3.3: Email de convite não é enviado/recebido');
   
   // Passo 4: Verificar fluxo admin clínica → funcionários
@@ -161,7 +201,7 @@ const analyzeUserCreationFlow = async () => {
   console.log('6. Funcionário recebe credenciais');
   
   console.log('Possíveis erros:');
-  console.log('❌ 4.1: Admin de clínica não tem permissões corretas');
+  console.log('❌ 4.1: Admin de clínica não tem interface para criar usuários');
   console.log('❌ 4.2: Falha na criação do usuário no auth.users');
   console.log('❌ 4.3: Trigger handle_new_user falha ao criar profile');
   
@@ -185,6 +225,12 @@ const analyzeUserCreationFlow = async () => {
   console.log('3. Execute SELECT * FROM clinic_staff; no SQL Editor');
   console.log('4. Verifique se o trigger on_auth_user_created existe');
   console.log('5. Teste criação manual de usuário no dashboard do Supabase');
+  
+  console.log('\n🚀 PRÓXIMOS PASSOS RECOMENDADOS:');
+  console.log('1. Clique em "Sincronizar Profiles" para corrigir inconsistências');
+  console.log('2. Verifique se o trigger está funcionando');
+  console.log('3. Implemente interface de criação de usuários');
+  console.log('4. Teste o fluxo completo de criação');
 };
 
 export const syncMissingProfiles = async () => {
