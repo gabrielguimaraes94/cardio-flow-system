@@ -1,85 +1,111 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { AdminClinic, RegisterClinicRequest, CreateClinicParams } from './types';
+import { Clinic } from '@/types/clinic';
 
-export const registerClinic = async (clinicData: RegisterClinicRequest, createdBy: string) => {
-  try {
-    console.log('=== REGISTERING NEW CLINIC ===');
-    console.log('Clinic data:', clinicData);
-    
-    const params: CreateClinicParams = {
-      p_name: clinicData.name,
-      p_city: clinicData.city,
-      p_address: clinicData.address,
-      p_phone: clinicData.phone,
-      p_email: clinicData.email,
-      p_created_by: createdBy,
-      p_trading_name: clinicData.trading_name,
-      p_cnpj: clinicData.cnpj
-    };
-    
-    const { data, error } = await supabase.rpc('create_clinic', params);
-    
-    if (error) {
-      console.error('❌ Error registering clinic:', error);
+interface UserClinicData {
+  clinic_id: string;
+  clinic_name: string;
+  clinic_city: string;
+  clinic_address: string;
+  clinic_phone: string;
+  clinic_email: string;
+  clinic_logo_url: string | null;
+  clinic_active: boolean;
+  is_admin: boolean;
+  staff_id: string | null;
+  staff_role: string;
+  staff_active: boolean;
+}
+
+/**
+ * Service for handling clinic operations
+ */
+export const clinicService = {
+  /**
+   * Fetch clinics where the user has access (as owner or staff) using the optimized function
+   */
+  async getUserClinics(): Promise<{
+    clinics: Clinic[];
+    userClinics: Array<{
+      id: string;
+      name: string;
+      city: string;
+      logo?: string;
+      staffId: string;
+      is_admin: boolean;
+    }>;
+  }> {
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session?.user) {
+        return { clinics: [], userClinics: [] };
+      }
+
+      const userId = session.session.user.id;
+
+      // Use our updated RPC function to get user clinics with all fields
+      const { data, error } = await supabase.rpc('get_user_clinics', {
+        user_uuid: userId
+      });
+
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        return { clinics: [], userClinics: [] };
+      }
+
+      // Transform the result to match our interfaces
+      const clinics: Clinic[] = data.map((item: UserClinicData) => ({
+        id: item.clinic_id,
+        name: item.clinic_name,
+        city: item.clinic_city,
+        address: item.clinic_address,
+        phone: item.clinic_phone,
+        email: item.clinic_email,
+        logo_url: item.clinic_logo_url,
+        active: item.clinic_active
+      }));
+
+      const userClinics = data.map((item: UserClinicData) => ({
+        id: item.clinic_id,
+        name: item.clinic_name,
+        city: item.clinic_city,
+        logo: item.clinic_logo_url || undefined,
+        staffId: item.staff_id || 'global-admin',
+        is_admin: item.is_admin
+      }));
+      
+      return { clinics, userClinics };
+    } catch (error) {
+      console.error('Error fetching user clinics:', error);
       throw error;
     }
-    
-    console.log('✅ Clinic registered successfully:', data);
-    return data;
-    
-  } catch (error) {
-    console.error('❌ Error in clinic registration:', error);
-    throw error;
-  }
-};
+  },
 
-export const updateClinicStatus = async (clinicId: string, active: boolean): Promise<AdminClinic> => {
-  try {
-    console.log('=== UPDATING CLINIC STATUS ===');
-    console.log('Clinic ID:', clinicId);
-    console.log('New status:', active);
-    
-    const { data, error } = await supabase
-      .from('clinics')
-      .update({ active, updated_at: new Date().toISOString() })
-      .eq('id', clinicId)
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('❌ Error updating clinic status:', error);
-      throw error;
-    }
-    
-    console.log('✅ Clinic status updated successfully');
-    return data;
-    
-  } catch (error) {
-    console.error('❌ Error in clinic status update:', error);
-    throw error;
-  }
-};
+  /**
+   * Fetch a specific clinic by ID
+   */
+  async getClinicById(clinicId: string): Promise<Clinic | null> {
+    try {
+      const { data, error } = await supabase
+        .from('clinics')
+        .select('*')
+        .eq('id', clinicId)
+        .eq('active', true)
+        .single();
 
-export const deleteClinic = async (clinicId: string): Promise<boolean> => {
-  try {
-    console.log('=== DELETING CLINIC ===');
-    console.log('Clinic ID:', clinicId);
-    
-    const { error } = await supabase
-      .from('clinics')
-      .delete()
-      .eq('id', clinicId);
-    
-    if (error) {
-      console.error('❌ Error deleting clinic:', error);
-      throw error;
+      if (error) throw error;
+      
+      return data ? {
+        ...data,
+        address: data.address,
+        phone: data.phone,
+        city: data.city,
+        email: data.email
+      } : null;
+    } catch (error) {
+      console.error('Error fetching clinic by ID:', error);
+      return null;
     }
-    
-    console.log('✅ Clinic deleted successfully');
-    return true;
-    
-  } catch (error) {
-    console.error('❌ Error in clinic deletion:', error);
-    throw error;
   }
 };
