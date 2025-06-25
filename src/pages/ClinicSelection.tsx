@@ -14,6 +14,12 @@ export const ClinicSelection: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Limpa a clínica selecionada sempre que entrar nesta página
+  useEffect(() => {
+    console.log('ClinicSelection: Limpando clínica selecionada ao entrar na página');
+    setSelectedClinic(null);
+  }, [setSelectedClinic]);
+
   // Apenas redireciona em casos de erro (sem clínicas)
   useEffect(() => {
     if (!loading && clinics.length === 0) {
@@ -64,10 +70,7 @@ export const ClinicSelection: React.FC = () => {
               Selecione uma Clínica
             </h2>
             <p className="text-gray-600">
-              {selectedClinic 
-                ? `Clínica atual: ${selectedClinic.name}. Selecione uma clínica diferente se desejar.`
-                : 'Você tem acesso a múltiplas clínicas. Selecione uma para continuar.'
-              }
+              Você tem acesso a múltiplas clínicas. Selecione uma para continuar.
             </p>
           </div>
 
@@ -75,11 +78,7 @@ export const ClinicSelection: React.FC = () => {
             {clinics.map((clinic) => (
               <Card 
                 key={clinic.id} 
-                className={`transition-all duration-200 cursor-pointer border-2 ${
-                  selectedClinic?.id === clinic.id 
-                    ? 'border-cardio-500 shadow-lg bg-cardio-50' 
-                    : 'border-gray-200 hover:border-cardio-300 hover:shadow-md'
-                }`}
+                className="transition-all duration-200 cursor-pointer border-2 border-gray-200 hover:border-cardio-300 hover:shadow-md"
               >
                 <CardHeader className="text-center pb-4">
                   <div className="flex justify-center mb-4">
@@ -103,14 +102,10 @@ export const ClinicSelection: React.FC = () => {
                     {clinic.email && <p><strong>Email:</strong> {clinic.email}</p>}
                   </div>
                   <Button 
-                    className={`w-full ${
-                      selectedClinic?.id === clinic.id 
-                        ? 'bg-cardio-600 hover:bg-cardio-700' 
-                        : 'bg-cardio-500 hover:bg-cardio-600'
-                    }`}
+                    className="w-full bg-cardio-500 hover:bg-cardio-600"
                     onClick={() => handleSelectClinic(clinic)}
                   >
-                    {selectedClinic?.id === clinic.id ? 'Clínica Atual' : 'Selecionar Clínica'}
+                    Selecionar Clínica
                   </Button>
                 </CardContent>
               </Card>
@@ -130,18 +125,6 @@ export const ClinicSelection: React.FC = () => {
                   </p>
                 </div>
               </div>
-            </div>
-          )}
-
-          {clinics.length > 0 && (
-            <div className="text-center mt-8">
-              <Button 
-                variant="outline" 
-                onClick={() => navigate('/dashboard')}
-                className="border-cardio-300 text-cardio-600 hover:bg-cardio-50"
-              >
-                {selectedClinic ? 'Continuar com Clínica Atual' : 'Ir para Dashboard'}
-              </Button>
             </div>
           )}
         </div>
