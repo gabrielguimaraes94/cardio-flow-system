@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   isGlobalAdmin, 
@@ -10,6 +11,8 @@ import {
   AdminClinic, 
   AdminUser
 } from '@/services/admin';
+import { getAllProfiles, ProfileData } from '@/services/admin/profileService';
+import { ProfilesTable } from '@/components/admin/dashboard/ProfilesTable';
 import { Database } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -30,8 +33,10 @@ export const AdminDashboard = () => {
   // Estado para dados
   const [clinics, setClinics] = useState<AdminClinic[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [profiles, setProfiles] = useState<ProfileData[]>([]);
   const [loadingClinics, setLoadingClinics] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
   
   // Estado para filtros
   const [clinicFilters, setClinicFilters] = useState({
@@ -99,7 +104,8 @@ export const AdminDashboard = () => {
     console.log('=== CARREGANDO DADOS INICIAIS ===');
     await Promise.all([
       fetchClinics(),
-      fetchUsers()
+      fetchUsers(),
+      fetchProfiles()
     ]);
   };
   
@@ -155,6 +161,31 @@ export const AdminDashboard = () => {
     }
   };
   
+  const fetchProfiles = async () => {
+    try {
+      setLoadingProfiles(true);
+      console.log('=== DASHBOARD: INICIANDO BUSCA DE PROFILES ===');
+      
+      const data = await getAllProfiles();
+      console.log('=== DASHBOARD: RESULTADO DA BUSCA DE PROFILES ===');
+      console.log('Dados retornados por getAllProfiles:', data);
+      console.log('Quantidade de profiles:', data.length);
+      
+      setProfiles(data);
+      console.log('Estado dos profiles atualizado no Dashboard');
+    } catch (error) {
+      console.error('❌ DASHBOARD: Erro ao buscar profiles:', error);
+      toast({
+        title: "Erro ao buscar profiles",
+        description: "Não foi possível carregar a lista de profiles.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingProfiles(false);
+      console.log('Loading de profiles finalizado');
+    }
+  };
+  
   // Manipuladores de eventos
   const handleClinicFilterChange = (key: string, value: any) => {
     setClinicFilters(prev => ({
@@ -203,10 +234,11 @@ export const AdminDashboard = () => {
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-1 md:grid-cols-3 mb-6">
+          <TabsList className="grid grid-cols-1 md:grid-cols-4 mb-6">
             <TabsTrigger value="register">Cadastrar Nova Clínica</TabsTrigger>
             <TabsTrigger value="clinics">Gerenciar Clínicas</TabsTrigger>
             <TabsTrigger value="users">Gerenciar Usuários</TabsTrigger>
+            <TabsTrigger value="profiles">Ver Profiles</TabsTrigger>
           </TabsList>
           
           <TabsContent value="register">
@@ -231,6 +263,23 @@ export const AdminDashboard = () => {
               filters={userFilters}
               onFilterChange={handleUserFilterChange}
             />
+          </TabsContent>
+          
+          <TabsContent value="profiles">
+            <Card>
+              <CardHeader>
+                <CardTitle>Todos os Profiles</CardTitle>
+                <CardDescription>
+                  Lista completa de todos os profiles da tabela direta
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ProfilesTable
+                  profiles={profiles}
+                  loading={loadingProfiles}
+                />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
