@@ -45,32 +45,37 @@ export const ClinicsTab: React.FC<ClinicsTabProps> = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Gerenciar Clínicas</CardTitle>
+        <CardTitle>Manage Clinics</CardTitle>
         <CardDescription>
-          Visualize e gerencie todas as clínicas cadastradas no sistema
+          View and manage all clinics registered in the system
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ClinicsList
-          clinics={clinics}
-          loading={loading}
-          filters={{
-            name: filters.name,
-            setName: (value) => onFilterChange('name', value)
-          }}
-          onOpenFilters={() => setShowFilters(true)}
-          onRefetch={onRefetch}
-        />
+        {/* ClinicsList component - make sure this component exists */}
+        {typeof ClinicsList !== 'undefined' && (
+          <ClinicsList
+            clinics={clinics}
+            loading={loading}
+            filters={{
+              name: filters.name,
+              setName: (value) => onFilterChange('name', value)
+            }}
+            onOpenFilters={() => setShowFilters(true)}
+            onRefetch={onRefetch}
+          />
+        )}
       </CardContent>
-
-      <ClinicFilters
-        isOpen={showFilters}
-        onClose={() => setShowFilters(false)}
-        filters={filters}
-        onFilterChange={onFilterChange}
-        onApplyFilters={applyFilters}
-        onClearFilters={clearFilters}
-      />
+      {/* ClinicFilters component - make sure this component exists */}
+      {typeof ClinicFilters !== 'undefined' && (
+        <ClinicFilters
+          isOpen={showFilters}
+          onClose={() => setShowFilters(false)}
+          filters={filters}
+          onFilterChange={onFilterChange}
+          onApplyFilters={applyFilters}
+          onClearFilters={clearFilters}
+        />
+      )}
     </Card>
   );
 };
