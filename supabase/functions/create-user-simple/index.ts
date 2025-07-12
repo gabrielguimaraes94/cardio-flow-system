@@ -40,7 +40,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    // Fazer signup sem afetar a sessão principal
+    // Fazer signup simples - o trigger handle_new_user vai criar o profile automaticamente
     const { data, error } = await supabaseClient.auth.signUp({
       email: requestData.email,
       password: 'CardioFlow2024!', // Senha padrão
