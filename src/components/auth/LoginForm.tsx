@@ -40,6 +40,9 @@ export const LoginForm: React.FC = () => {
     setIsLoading(true);
     
     try {
+      console.log('=== INICIANDO LOGIN ===');
+      console.log('Email:', data.email);
+      
       const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password
@@ -48,13 +51,76 @@ export const LoginForm: React.FC = () => {
       if (error) throw error;
       
       if (authData.session) {
-        toast({
-          title: "Login realizado com sucesso!",
-          description: "Redirecionando...",
-        });
+        console.log('=== LOGIN BEM-SUCEDIDO ===');
+        console.log('User ID:', authData.user?.id);
         
-        // Redireciona para a página inicial que vai fazer a lógica de clínicas
-        navigate('/');
+        // ✅ NOVO: Verificar primeiro login antes de redirecionar
+        try {
+          const { data: firstLoginData, error: firstLoginError } = await supabase.rpc('is_user_first_login', {
+            user_uuid: authData.user!.id
+          });
+          
+          if (firstLoginError) {
+            console.error('Erro ao verificar primeiro login:', firstLoginError);
+          } else {
+            console.log('É primeiro login?', firstLoginData);
+            
+            if (firstLoginData) {
+              toast({
+                title: "Primeiro acesso detectado",
+                description: "Você será redirecionado para alterar sua senha.",
+              });
+              
+              // Redirecionar para página de primeiro login
+              navigate('/first-login', { replace: true });
+              return;
+            }
+          }
+        } catch (firstLoginError) {
+          console.error('Erro ao verificar primeiro login:', firstLoginError);
+        }
+        
+        // ✅ NOVO: Verificar clínicas antes de redirecionar
+        try {
+          console.log('=== VERIFICANDO CLÍNICAS DO USUÁRIO ===');
+          
+          const { data: clinicsData, error: clinicsError } = await supabase.rpc('get_user_clinics', {
+            user_uuid: authData.user!.id
+          });
+          
+          if (clinicsError) {
+            console.error('Erro ao buscar clínicas:', clinicsError);
+            throw clinicsError;
+          }
+          
+          console.log('Clínicas encontradas:', clinicsData);
+          console.log('Quantidade de clínicas:', clinicsData?.length || 0);
+          
+          toast({
+            title: "Login realizado com sucesso!",
+            description: "Redirecionando...",
+          });
+          
+          // ✅ CORREÇÃO: Redirecionar baseado nas clínicas encontradas
+          if (!clinicsData || clinicsData.length === 0) {
+            console.log('Usuário sem clínicas, redirecionando para no-access');
+            navigate('/no-access', { replace: true });
+          } else if (clinicsData.length === 1) {
+            console.log('Usuário tem uma clínica, redirecionando para dashboard');
+            navigate('/dashboard', { replace: true });
+          } else {
+            console.log('Usuário tem múltiplas clínicas, redirecionando para seleção');
+            navigate('/clinic-selection', { replace: true });
+          }
+          
+        } catch (clinicsError) {
+          console.error('Erro ao verificar clínicas:', clinicsError);
+          toast({
+            title: "Erro ao verificar acesso",
+            description: "Erro ao verificar suas clínicas. Tente novamente.",
+            variant: "destructive"
+          });
+        }
       }
     } catch (error) {
       console.error('Erro de login:', error);
@@ -146,7 +212,7 @@ export const LoginForm: React.FC = () => {
               className="w-full bg-cardio-500 hover:bg-cardio-600" 
               disabled={isLoading}
             >
-              {isLoading ? 'Entrando...' : 'Entrar'}
+              {isLoading ? 'Verificando acesso...' : 'Entrar'}
             </Button>
             <Button 
               type="button" 

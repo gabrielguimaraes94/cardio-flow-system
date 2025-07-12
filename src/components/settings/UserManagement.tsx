@@ -325,7 +325,7 @@ export const UserManagement = () => {
             title: userData.title,
             bio: userData.bio,
             role: userData.role,
-            is_first_login: true // ✅ Adicionar este campo
+            is_first_login: true // Marcar como primeiro login
           });
 
         if (profileError) throw profileError;
