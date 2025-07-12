@@ -43,13 +43,13 @@ serve(async (req) => {
     }
 
     // Verificar se SERVICE_ROLE_KEY está configurada
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY');
     if (!serviceRoleKey) {
-      console.error('SUPABASE_SERVICE_ROLE_KEY não configurada');
+      console.error('SERVICE_ROLE_KEY não configurada');
       return new Response(
         JSON.stringify({ 
           error: 'Configuração de servidor incompleta',
-          details: 'SUPABASE_SERVICE_ROLE_KEY não configurada. Configure em Edge Functions → Manage secrets'
+          details: 'SERVICE_ROLE_KEY não configurada. Configure em Edge Functions → Manage secrets'
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
