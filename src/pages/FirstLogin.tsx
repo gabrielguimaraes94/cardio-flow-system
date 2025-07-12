@@ -153,6 +153,16 @@ export default function FirstLogin() {
               </Button>
             </form>
           </Form>
+          <Button 
+            variant="outline" 
+            className="w-full mt-4"
+            onClick={async () => {
+              await supabase.auth.signOut();
+              navigate('/login');
+            }}
+          >
+            Sair
+          </Button>
         </CardContent>
       </Card>
     </div>
