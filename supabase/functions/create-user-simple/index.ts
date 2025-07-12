@@ -29,17 +29,47 @@ serve(async (req) => {
   try {
     const requestData: CreateUserRequest = await req.json();
     
-    console.log('Creating user (simple approach):', { 
-      email: requestData.email, 
-      role: requestData.role, 
-      clinic_id: requestData.clinic_id 
-    });
+    console.log('=== CREATE USER SIMPLE START ===');
+    console.log('Request data received:', JSON.stringify(requestData, null, 2));
+
+    // Validar dados obrigatórios
+    if (!requestData.email || !requestData.first_name || !requestData.last_name) {
+      console.error('Dados obrigatórios faltando:', {
+        email: !!requestData.email,
+        first_name: !!requestData.first_name,
+        last_name: !!requestData.last_name
+      });
+      return new Response(
+        JSON.stringify({ 
+          error: 'Dados obrigatórios faltando',
+          details: 'Email, nome e sobrenome são obrigatórios'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validar role
+    const validRoles = ['admin', 'clinic_admin', 'doctor', 'nurse', 'receptionist', 'staff'];
+    if (!validRoles.includes(requestData.role)) {
+      console.error('Role inválido:', requestData.role);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Role inválido',
+          details: `Role deve ser um dos: ${validRoles.join(', ')}`
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Validação passou. Criando usuário...');
 
     // Criar um cliente Supabase separado para não afetar a sessão atual
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
+
+    console.log('Cliente Supabase criado. Fazendo signup...');
 
     // Fazer signup simples - o trigger handle_new_user vai criar o profile automaticamente
     const { data, error } = await supabaseClient.auth.signUp({
@@ -50,7 +80,7 @@ serve(async (req) => {
           first_name: requestData.first_name,
           last_name: requestData.last_name,
           phone: requestData.phone || '',
-          crm: requestData.crm,
+          crm: requestData.crm || '',
           role: requestData.role,
           title: requestData.title || '',
           bio: requestData.bio || ''
@@ -59,39 +89,51 @@ serve(async (req) => {
     });
 
     if (error) {
-      console.error('Erro ao criar usuário:', error);
+      console.error('Erro no signup:', JSON.stringify(error, null, 2));
       return new Response(
         JSON.stringify({ 
           error: 'Erro ao criar usuário',
-          details: error.message
+          details: error.message,
+          code: error.status
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     if (!data.user) {
+      console.error('Signup retornou sem user data:', JSON.stringify(data, null, 2));
       return new Response(
-        JSON.stringify({ error: 'Falha na criação do usuário' }),
+        JSON.stringify({ error: 'Falha na criação do usuário - sem dados do usuário' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Usuário criado:', data.user.id);
+    console.log('Usuário criado com sucesso:', {
+      id: data.user.id,
+      email: data.user.email,
+      created_at: data.user.created_at
+    });
 
-    // Se clinic_id foi fornecido, adicionar à clínica usando a função add_clinic_staff
+    // Se clinic_id foi fornecido, adicionar à clínica
     if (requestData.clinic_id) {
-      console.log('Tentando adicionar usuário à clínica:', requestData.clinic_id);
+      console.log('Adicionando usuário à clínica:', requestData.clinic_id);
       
-      // Usar cliente admin para chamadas que precisam de privilégios elevados
+      // Usar cliente admin para operações que precisam de privilégios elevados
       const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY');
       
-      if (serviceRoleKey) {
+      if (!serviceRoleKey) {
+        console.error('SERVICE_ROLE_KEY não encontrado nas env vars');
+        console.log('Env vars disponíveis:', Object.keys(Deno.env.toObject()).filter(k => k.includes('SERVICE') || k.includes('SUPABASE')));
+      } else {
+        console.log('SERVICE_ROLE_KEY encontrado, criando cliente admin...');
+        
         const supabaseAdmin = createClient(
           Deno.env.get('SUPABASE_URL') ?? '',
           serviceRoleKey
         );
 
-        // Usar a função add_clinic_staff que já existe
+        // Tentar usar a função add_clinic_staff primeiro
+        console.log('Tentando RPC add_clinic_staff...');
         const { data: staffResult, error: staffError } = await supabaseAdmin
           .rpc('add_clinic_staff', {
             p_user_id: data.user.id,
@@ -101,10 +143,11 @@ serve(async (req) => {
           });
 
         if (staffError) {
-          console.error('Erro ao adicionar usuário à clínica via RPC:', staffError);
+          console.error('Erro no RPC add_clinic_staff:', JSON.stringify(staffError, null, 2));
           
-          // Fallback: tentar inserção direta
-          const { error: directInsertError } = await supabaseAdmin
+          // Fallback: inserção direta na tabela clinic_staff
+          console.log('Tentando inserção direta na tabela clinic_staff...');
+          const { data: insertResult, error: directInsertError } = await supabaseAdmin
             .from('clinic_staff')
             .insert({
               user_id: data.user.id,
@@ -112,21 +155,22 @@ serve(async (req) => {
               is_admin: requestData.is_admin || false,
               role: requestData.role,
               active: true
-            });
+            })
+            .select();
 
           if (directInsertError) {
-            console.error('Erro na inserção direta também:', directInsertError);
+            console.error('Erro na inserção direta:', JSON.stringify(directInsertError, null, 2));
+            // Não falhar o processo todo por causa disso
           } else {
-            console.log('Usuário adicionado à clínica via inserção direta');
+            console.log('Usuário adicionado à clínica via inserção direta:', insertResult);
           }
         } else {
           console.log('Usuário adicionado à clínica via RPC com sucesso:', staffResult);
         }
-      } else {
-        console.error('SERVICE_ROLE_KEY não encontrada');
       }
     }
 
+    console.log('=== CREATE USER SIMPLE SUCCESS ===');
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -138,7 +182,9 @@ serve(async (req) => {
     );
 
   } catch (error) {
+    console.error('=== CREATE USER SIMPLE ERROR ===');
     console.error('Erro inesperado:', error);
+    console.error('Stack trace:', error.stack);
     return new Response(
       JSON.stringify({ 
         error: 'Erro interno do servidor',
