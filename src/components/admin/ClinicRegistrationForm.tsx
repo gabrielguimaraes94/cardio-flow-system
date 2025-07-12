@@ -76,23 +76,8 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         throw new Error('Falha ao criar usuário');
       }
 
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          first_name: values.adminFirstName,
-          last_name: values.adminLastName,
-          email: values.adminEmail,
-          phone: values.adminPhone || null,
-          crm: values.adminCrm || '',
-          role: 'clinic_admin',
-          is_first_login: true // ✅ Marcar como primeiro login
-        });
-
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
-        throw profileError;
-      }
+      // ✅ Profile será criado automaticamente pela trigger handle_new_user
+      // com role e is_first_login corretos baseados no metadata
 
       const clinicData = {
         name: values.clinicName,
