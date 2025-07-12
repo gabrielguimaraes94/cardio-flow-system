@@ -120,7 +120,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         p_user_id: authData.user.id,
         p_clinic_id: clinicId,
         p_is_admin: true,
-        p_role: 'administrator'
+        p_role: 'clinic_admin'
       });
 
       if (staffError) {
