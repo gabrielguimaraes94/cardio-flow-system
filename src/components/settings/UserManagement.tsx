@@ -239,6 +239,16 @@ export const UserManagement = () => {
       return;
     }
 
+    // Verificar se o usuário atual pode criar usuários
+    if (!currentUser && !currentUserIsAdmin) {
+      toast({
+        title: "Acesso negado",
+        description: "Apenas administradores podem criar usuários",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       console.log('=== SALVANDO USUÁRIO ===');
       console.log('userData:', userData);
@@ -314,7 +324,8 @@ export const UserManagement = () => {
             phone: userData.phone,
             title: userData.title,
             bio: userData.bio,
-            role: userData.role
+            role: userData.role,
+            is_first_login: true // ✅ Adicionar este campo
           });
 
         if (profileError) throw profileError;

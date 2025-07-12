@@ -42,6 +42,7 @@ import { AdminLogin } from '@/pages/admin/AdminLogin';
 // Special Routes
 import NoAccess from '@/pages/NoAccess';
 import NotFound from '@/pages/NotFound';
+import FirstLogin from '@/pages/FirstLogin';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -324,6 +325,14 @@ export const AppRoutes: React.FC = () => {
 
       {/* Special Routes - sem guards */}
       <Route path="/no-access" element={<NoAccess />} />
+      <Route 
+        path="/first-login" 
+        element={
+          <PrivateRoute>
+            <FirstLogin />
+          </PrivateRoute>
+        } 
+      />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
@@ -17,6 +18,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     console.log('AuthProvider effect running');
@@ -36,11 +38,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsLoading(false);
           }
           
-          if (event === 'SIGNED_IN') {
+          if (event === 'SIGNED_IN' && currentSession?.user) {
             toast({
               title: "Login bem-sucedido",
               description: "Bem-vindo de volta!",
             });
+            
+            // Verificar primeiro login
+            setTimeout(() => {
+              checkFirstLogin(currentSession.user.id);
+            }, 0);
           }
         } else if (event === 'SIGNED_OUT') {
           if (mounted) {
@@ -88,6 +95,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
           setIsLoading(false);
+          
+          // Verificar primeiro login se já há sessão ativa
+          if (currentSession?.user) {
+            setTimeout(() => {
+              checkFirstLogin(currentSession.user.id);
+            }, 0);
+          }
         }
       } catch (error) {
         console.error('Error checking session:', error);
@@ -106,6 +120,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe();
     };
   }, []);
+
+  const checkFirstLogin = async (userId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('is_user_first_login', {
+        user_uuid: userId
+      });
+
+      if (error) {
+        console.error('Erro ao verificar primeiro login:', error);
+        return;
+      }
+
+      // Se é primeiro login, redirecionar para página de troca de senha
+      if (data === true && window.location.pathname !== '/first-login') {
+        navigate('/first-login');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar primeiro login:', error);
+    }
+  };
 
   const signOut = async () => {
     console.log('🚪 Starting logout process...');

@@ -890,6 +890,7 @@ export type Database = {
           email: string
           first_name: string
           id: string
+          is_first_login: boolean | null
           last_name: string
           notification_preferences: Json | null
           phone: string | null
@@ -904,6 +905,7 @@ export type Database = {
           email: string
           first_name: string
           id: string
+          is_first_login?: boolean | null
           last_name: string
           notification_preferences?: Json | null
           phone?: string | null
@@ -918,6 +920,7 @@ export type Database = {
           email?: string
           first_name?: string
           id?: string
+          is_first_login?: boolean | null
           last_name?: string
           notification_preferences?: Json | null
           phone?: string | null
@@ -1031,6 +1034,14 @@ export type Database = {
       is_staff_of_clinic: {
         Args: { clinic_uuid: string }
         Returns: boolean
+      }
+      is_user_first_login: {
+        Args: { user_uuid: string }
+        Returns: boolean
+      }
+      mark_first_login_complete: {
+        Args: { user_uuid: string }
+        Returns: undefined
       }
       remove_clinic_staff: {
         Args: { staff_id: string; admin_user_id: string }
