@@ -70,28 +70,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         throw new Error('Apenas administradores globais podem registrar clínicas');
       }
 
-      // Usar o approach antigo por enquanto - precisa ser melhorado com service role
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: values.adminEmail,
-        password: 'temp123456', // Senha padrão
-        email_confirm: true,
-        user_metadata: {
-          first_name: values.adminFirstName,
-          last_name: values.adminLastName,
-          phone: values.adminPhone,
-          crm: values.adminCrm,
-          role: 'clinic_admin'
-        }
-      });
-
-      if (authError) {
-        throw authError;
-      }
-
-      if (!authData.user) {
-        throw new Error('Falha ao criar usuário');
-      }
-
+      // 1. Registrar clínica primeiro
       const clinicData = {
         name: values.clinicName,
         city: values.clinicCity,
@@ -102,7 +81,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         cnpj: values.clinicCnpj,
       };
 
-      const result = await registerClinic(clinicData, authData.user.id);
+      const result = await registerClinic(clinicData, user.id);
       
       let clinicId: string;
       if (typeof result === 'string') {
@@ -114,16 +93,30 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         throw new Error('Unable to determine clinic ID from result');
       }
 
-      const { error: staffError } = await supabase.rpc('add_clinic_staff', {
-        p_user_id: authData.user.id,
-        p_clinic_id: clinicId,
-        p_is_admin: true,
-        p_role: 'clinic_admin'
+      // 2. Criar usuário admin usando Edge Function
+      const { data: userData, error: userCreationError } = await supabase.functions.invoke('create-user-admin', {
+        body: {
+          email: values.adminEmail,
+          password: 'temp123456', // Senha padrão
+          first_name: values.adminFirstName,
+          last_name: values.adminLastName,
+          phone: values.adminPhone,
+          crm: values.adminCrm,
+          role: 'clinic_admin',
+          title: '',
+          bio: '',
+          clinic_id: clinicId,
+          is_admin: true
+        }
       });
 
-      if (staffError) {
-        console.error('Error adding staff:', staffError);
-        throw staffError;
+      if (userCreationError) {
+        console.error('Error creating user:', userCreationError);
+        throw new Error(`Erro ao criar usuário admin: ${userCreationError.message}`);
+      }
+
+      if (!userData?.success) {
+        throw new Error('Falha ao criar usuário admin');
       }
 
       toast({
