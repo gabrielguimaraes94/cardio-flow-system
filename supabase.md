@@ -620,6 +620,57 @@ export const supabase = createClient(supabaseUrl, supabaseKey)
 - `is_clinic_admin_for_clinic()`: Verifica se usuário é admin de clínica específica
 - `is_staff_of_clinic()`: Verifica se usuário é staff de clínica específica
 
+### 4. Função RPC para Criação de Usuários (PROBLEMAS CONHECIDOS)
+Implementada função `create_user_by_admin()` para permitir que admins globais criem usuários:
+
+```sql
+CREATE OR REPLACE FUNCTION public.create_user_by_admin(
+  p_email text,
+  p_password text,
+  p_first_name text,
+  p_last_name text,
+  p_phone text,
+  p_crm text,
+  p_role text,
+  p_title text,
+  p_bio text
+)
+RETURNS uuid
+```
+
+**⚠️ PROBLEMA ATUAL:** A função não consegue criar usuários completos porque:
+1. Não pode inserir na tabela `auth.users` (requer service role)
+2. A função `get_current_user_role()` retorna `null` no contexto RPC
+3. Tabela `profiles` tem foreign key constraint para `auth.users`
+
+**💡 SOLUÇÕES RECOMENDADAS:**
+1. **Configurar Service Role Key** no projeto Supabase
+2. **Criar Edge Function** para criação de usuários com auth completa
+3. **Usar supabase.auth.admin.createUser()** com service role key
+
+**🔄 WORKAROUND ATUAL:**
+O `ClinicRegistrationForm.tsx` volta a usar `supabase.auth.admin.createUser()` mas com validação prévia de permissão no frontend.
+
+## Configuração Necessária de Service Role
+
+Para resolver os problemas de criação de usuários, configure:
+
+1. **No Supabase Dashboard:**
+   - Vá para Settings > API
+   - Copie a `service_role` key
+   - Configure no ambiente de produção
+
+2. **Para desenvolvimento local:**
+   ```toml
+   # supabase/config.toml
+   [api]
+   service_role_key = "sua_service_role_key_aqui"
+   ```
+
+3. **Em produção (Lovable):**
+   - Use secrets do Supabase para armazenar a service role key
+   - Crie Edge Function para operações admin que requerem service role
+
 ## Notas Importantes
 
 1. **Segurança Multi-nível**: 
@@ -639,3 +690,17 @@ export const supabase = createClient(supabaseUrl, supabaseKey)
 
 7. **Hierarquia de Acesso**: O sistema implementa hierarquia de permissões:
    - Global Admin > Clinic Admin > Staff > Usuário comum
+
+8. **⚠️ Limitações Atuais de Criação de Usuários:**
+   - `admin.createUser()` requer service role key
+   - Funções RPC não conseguem acessar auth context
+   - Workarounds temporários estão em uso
+
+## Edge Functions Recomendadas
+
+Para resolver as limitações atuais, considere implementar Edge Functions para:
+
+1. **Criação de Usuários Completa**
+2. **Operações Admin que requerem Service Role**
+3. **Integração com APIs externas**
+4. **Processamento de dados sensíveis**
