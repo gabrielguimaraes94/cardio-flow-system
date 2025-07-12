@@ -984,6 +984,19 @@ export type Database = {
         }
         Returns: string
       }
+      create_user_by_admin_temp: {
+        Args: {
+          p_email: string
+          p_first_name: string
+          p_last_name: string
+          p_phone: string
+          p_crm: string
+          p_role: string
+          p_title: string
+          p_bio: string
+        }
+        Returns: string
+      }
       debug_get_auth_users: {
         Args: Record<PropertyKey, never>
         Returns: {
