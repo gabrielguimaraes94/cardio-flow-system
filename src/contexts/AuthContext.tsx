@@ -123,6 +123,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkFirstLogin = async (userId: string) => {
     try {
+      // ✅ Verificar se é admin global primeiro
+      const { data: isAdmin, error: adminError } = await supabase.rpc('is_global_admin', {
+        user_uuid: userId
+      });
+
+      if (adminError) {
+        console.error('Erro ao verificar admin global:', adminError);
+      } else if (isAdmin) {
+        // Se é admin global, não precisa fazer verificação de primeiro login
+        console.log('Usuário é admin global, pulando verificação de primeiro login');
+        return;
+      }
+
       const { data, error } = await supabase.rpc('is_user_first_login', {
         user_uuid: userId
       });

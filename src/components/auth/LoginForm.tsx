@@ -56,24 +56,36 @@ export const LoginForm: React.FC = () => {
         
         // ✅ NOVO: Verificar primeiro login antes de redirecionar
         try {
-          const { data: firstLoginData, error: firstLoginError } = await supabase.rpc('is_user_first_login', {
+          // Verificar se é admin global primeiro
+          const { data: isAdmin, error: adminError } = await supabase.rpc('is_global_admin', {
             user_uuid: authData.user!.id
           });
-          
-          if (firstLoginError) {
-            console.error('Erro ao verificar primeiro login:', firstLoginError);
+
+          if (adminError) {
+            console.error('Erro ao verificar admin global:', adminError);
+          } else if (isAdmin) {
+            console.log('Usuário é admin global, pulando verificação de primeiro login');
           } else {
-            console.log('É primeiro login?', firstLoginData);
+            // Só verificar primeiro login se não for admin global
+            const { data: firstLoginData, error: firstLoginError } = await supabase.rpc('is_user_first_login', {
+              user_uuid: authData.user!.id
+            });
             
-            if (firstLoginData) {
-              toast({
-                title: "Primeiro acesso detectado",
-                description: "Você será redirecionado para alterar sua senha.",
-              });
+            if (firstLoginError) {
+              console.error('Erro ao verificar primeiro login:', firstLoginError);
+            } else {
+              console.log('É primeiro login?', firstLoginData);
               
-              // Redirecionar para página de primeiro login
-              navigate('/first-login', { replace: true });
-              return;
+              if (firstLoginData) {
+                toast({
+                  title: "Primeiro acesso detectado",
+                  description: "Você será redirecionado para alterar sua senha.",
+                });
+                
+                // Redirecionar para página de primeiro login
+                navigate('/first-login', { replace: true });
+                return;
+              }
             }
           }
         } catch (firstLoginError) {
