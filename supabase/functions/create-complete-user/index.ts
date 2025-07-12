@@ -68,11 +68,14 @@ serve(async (req) => {
     );
 
     // Verificar se email já existe
+    console.log('=== VERIFICANDO EMAIL EXISTENTE ===');
     const { data: existingProfile, error: checkError } = await supabaseAdmin
       .from('profiles')
       .select('email')
       .eq('email', requestData.email)
       .maybeSingle();
+
+    console.log('Email check result:', { existingProfile, checkError });
 
     if (checkError) {
       console.error('Erro ao verificar email existente:', checkError);
@@ -83,87 +86,117 @@ serve(async (req) => {
     }
 
     if (existingProfile) {
+      console.log('Email já existe no profiles:', requestData.email);
       return new Response(
         JSON.stringify({ error: 'Email já existe no sistema' }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Criar usuário completo usando Admin API
-    console.log('=== INICIANDO CRIAÇÃO DE USUÁRIO AUTH ===');
-    console.log('Email:', requestData.email);
-    console.log('Role:', requestData.role);
+    // Verificar também se existe no auth.users
+    console.log('=== VERIFICANDO AUTH USERS ===');
+    const { data: authUsers, error: authCheckError } = await supabaseAdmin.auth.admin.listUsers();
     
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: requestData.email,
-      password: 'CardioFlow2024!', // Senha padrão mais segura
-      user_metadata: {
-        first_name: requestData.first_name,
-        last_name: requestData.last_name,
-        phone: requestData.phone || '',
-        crm: requestData.crm,
-        role: requestData.role,
-        title: requestData.title || '',
-        bio: requestData.bio || ''
-      },
-      email_confirm: true
-    });
-
-    console.log('=== RESULTADO DA CRIAÇÃO AUTH ===');
-    console.log('Auth Error:', authError);
-    console.log('Auth User Created:', !!authUser?.user);
-
-    if (authError) {
-      console.error('Erro detalhado ao criar usuário auth:', authError);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Erro ao criar usuário',
-          details: authError.message,
-          code: authError.code || 'unknown'
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!authUser.user) {
-      return new Response(
-        JSON.stringify({ error: 'Falha na criação do usuário' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Usuário auth criado com sucesso:', authUser.user.id);
-
-    // Se clinic_id foi fornecido, adicionar à clínica
-    if (requestData.clinic_id) {
-      const { error: staffError } = await supabaseAdmin
-        .from('clinic_staff')
-        .insert({
-          user_id: authUser.user.id,
-          clinic_id: requestData.clinic_id,
-          is_admin: requestData.is_admin || false,
-          role: requestData.role,
-          active: true
-        });
-
-      if (staffError) {
-        console.error('Erro ao adicionar usuário à clínica:', staffError);
-        // Não falha a operação, apenas loga o erro
-        console.log('Usuário criado mas não adicionado à clínica');
-      } else {
-        console.log('Usuário adicionado à clínica com sucesso');
+    if (authCheckError) {
+      console.error('Erro ao verificar auth users:', authCheckError);
+    } else {
+      const existingAuthUser = authUsers.users?.find(u => u.email === requestData.email);
+      if (existingAuthUser) {
+        console.log('Email já existe no auth.users:', requestData.email, existingAuthUser.id);
+        return new Response(
+          JSON.stringify({ error: 'Email já existe no sistema de autenticação' }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        user_id: authUser.user.id,
-        email: authUser.user.email,
-        message: 'Usuário criado com sucesso! Senha padrão: CardioFlow2024!'
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.log('=== INICIANDO CRIAÇÃO DE USUÁRIO AUTH ===');
+    console.log('Email:', requestData.email);
+    console.log('Role:', requestData.role);
+    console.log('SERVICE_ROLE_KEY configurada:', !!serviceRoleKey);
+    
+    try {
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: requestData.email,
+        password: 'CardioFlow2024!',
+        email_confirm: true,
+        user_metadata: {
+          first_name: requestData.first_name,
+          last_name: requestData.last_name,
+          phone: requestData.phone || '',
+          crm: requestData.crm,
+          role: requestData.role,
+          title: requestData.title || '',
+          bio: requestData.bio || ''
+        }
+      });
+
+      console.log('=== RESULTADO DA CRIAÇÃO AUTH ===');
+      console.log('Auth Error:', authError);
+      console.log('Auth User Created:', !!authUser?.user);
+
+      if (authError) {
+        console.error('Erro detalhado ao criar usuário auth:', authError);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Erro ao criar usuário',
+            details: authError.message,
+            code: authError.code || 'unknown'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!authUser.user) {
+        return new Response(
+          JSON.stringify({ error: 'Falha na criação do usuário' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Usuário auth criado com sucesso:', authUser.user.id);
+
+      // Se clinic_id foi fornecido, adicionar à clínica
+      if (requestData.clinic_id) {
+        const { error: staffError } = await supabaseAdmin
+          .from('clinic_staff')
+          .insert({
+            user_id: authUser.user.id,
+            clinic_id: requestData.clinic_id,
+            is_admin: requestData.is_admin || false,
+            role: requestData.role,
+            active: true
+          });
+
+        if (staffError) {
+          console.error('Erro ao adicionar usuário à clínica:', staffError);
+          // Não falha a operação, apenas loga o erro
+          console.log('Usuário criado mas não adicionado à clínica');
+        } else {
+          console.log('Usuário adicionado à clínica com sucesso');
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          user_id: authUser.user.id,
+          email: authUser.user.email,
+          message: 'Usuário criado com sucesso! Senha padrão: CardioFlow2024!'
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+
+    } catch (authCreationError) {
+      console.error('Exception durante criação do usuário:', authCreationError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Falha na criação do usuário',
+          details: authCreationError.message 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
   } catch (error) {
     console.error('Erro inesperado na função create-complete-user:', error);
