@@ -54,30 +54,26 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
     try {
       setIsSubmitting(true);
       
-      // ✅ CORRIGIDO: Usar admin.createUser em vez de signUp para não fazer login automático
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: values.adminEmail,
-        password: 'temp123456', // Senha padrão
-        email_confirm: true,
-        user_metadata: {
-          first_name: values.adminFirstName,
-          last_name: values.adminLastName,
-          phone: values.adminPhone,
-          crm: values.adminCrm,
-          role: 'clinic_admin'
-        }
+      // Criar usuário usando função RPC
+      const { data: newUserId, error: createError } = await supabase.rpc('create_user_by_admin', {
+        p_email: values.adminEmail,
+        p_password: 'temp123456', // Senha temporária (será ignorada na versão atual)
+        p_first_name: values.adminFirstName,
+        p_last_name: values.adminLastName,
+        p_phone: values.adminPhone || '',
+        p_crm: values.adminCrm || '',
+        p_role: 'clinic_admin',
+        p_title: '',
+        p_bio: ''
       });
 
-      if (authError) {
-        throw authError;
+      if (createError) {
+        throw createError;
       }
 
-      if (!authData.user) {
+      if (!newUserId) {
         throw new Error('Falha ao criar usuário');
       }
-
-      // ✅ Profile será criado automaticamente pela trigger handle_new_user
-      // com role e is_first_login corretos baseados no metadata
 
       const clinicData = {
         name: values.clinicName,
@@ -89,7 +85,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         cnpj: values.clinicCnpj,
       };
 
-      const result = await registerClinic(clinicData, authData.user.id);
+      const result = await registerClinic(clinicData, newUserId);
       
       let clinicId: string;
       if (typeof result === 'string') {
@@ -102,7 +98,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
       }
 
       const { error: staffError } = await supabase.rpc('add_clinic_staff', {
-        p_user_id: authData.user.id,
+        p_user_id: newUserId,
         p_clinic_id: clinicId,
         p_is_admin: true,
         p_role: 'clinic_admin'
