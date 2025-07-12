@@ -127,12 +127,15 @@ serve(async (req) => {
 
     // Se clinic_id foi fornecido, adicionar à clínica
     if (requestData.clinic_id) {
-      const { error: staffError } = await supabaseAdmin.rpc('add_clinic_staff', {
-        p_user_id: authUser.user.id,
-        p_clinic_id: requestData.clinic_id,
-        p_is_admin: requestData.is_admin || false,
-        p_role: requestData.role
-      });
+      const { error: staffError } = await supabaseAdmin
+        .from('clinic_staff')
+        .insert({
+          user_id: authUser.user.id,
+          clinic_id: requestData.clinic_id,
+          is_admin: requestData.is_admin || false,
+          role: requestData.role,
+          active: true
+        });
 
       if (staffError) {
         console.error('Erro ao adicionar usuário à clínica:', staffError);
