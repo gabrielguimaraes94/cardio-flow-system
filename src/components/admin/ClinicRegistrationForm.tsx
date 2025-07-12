@@ -56,17 +56,17 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
     try {
       setIsSubmitting(true);
       
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // ✅ CORRIGIDO: Usar admin.createUser em vez de signUp para não fazer login automático
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: values.adminEmail,
         password: values.adminPassword,
-        options: {
-          data: {
-            first_name: values.adminFirstName,
-            last_name: values.adminLastName,
-            phone: values.adminPhone,
-            crm: values.adminCrm,
-            role: 'clinic_admin'
-          }
+        email_confirm: true,
+        user_metadata: {
+          first_name: values.adminFirstName,
+          last_name: values.adminLastName,
+          phone: values.adminPhone,
+          crm: values.adminCrm,
+          role: 'clinic_admin'
         }
       });
 
@@ -87,11 +87,13 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
           email: values.adminEmail,
           phone: values.adminPhone || null,
           crm: values.adminCrm || '',
-          role: 'clinic_admin'
+          role: 'clinic_admin',
+          is_first_login: true // ✅ Marcar como primeiro login
         });
 
       if (profileError) {
         console.error('Error creating profile:', profileError);
+        throw profileError;
       }
 
       const clinicData = {
@@ -110,7 +112,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
       if (typeof result === 'string') {
         clinicId = result;
       } else if (result && typeof result === 'object' && 'id' in result) {
-        clinicId = (result as any).id;
+        clinicId = (result as { id: string }).id;
       } else {
         console.log('Clinic registration result:', JSON.stringify(result));
         throw new Error('Unable to determine clinic ID from result');
@@ -125,6 +127,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
 
       if (staffError) {
         console.error('Error adding staff:', staffError);
+        throw staffError;
       }
 
       toast({
@@ -137,11 +140,11 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
       if (onSuccess) {
         onSuccess();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error registering clinic:", error);
       toast({
         title: "Registration error",
-        description: error?.message || "Unable to register clinic. Please try again.",
+        description: error instanceof Error ? error.message : "Unable to register clinic. Please try again.",
         variant: "destructive",
       });
     } finally {

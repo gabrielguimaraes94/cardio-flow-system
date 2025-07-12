@@ -79,7 +79,7 @@ export const UserDialog: React.FC<UserDialogProps> = ({ isOpen, onClose, onSave,
 
   const onSubmit = (data: UserFormData) => {
     onSave({
-      id: user?.id || Date.now().toString(),
+      id: user?.id || '', // Deixar vazio para novos usuários
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,

@@ -220,6 +220,14 @@ export const UserManagement = () => {
   };
 
   const handleCreateNewUser = () => {
+    if (!currentUserIsAdmin) {
+      toast({
+        title: "Acesso negado",
+        description: "Apenas administradores podem criar usuários",
+        variant: "destructive"
+      });
+      return;
+    }
     setCurrentUser(null);
     setIsDialogOpen(true);
   };
@@ -431,44 +439,48 @@ export const UserManagement = () => {
               )}
             </CardDescription>
           </div>
-          <Button onClick={handleCreateNewUser}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Usuário
-          </Button>
+          {currentUserIsAdmin && (
+            <Button onClick={handleCreateNewUser}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Usuário
+            </Button>
+          )}
         </div>
       </CardHeader>
       
       <CardContent>
         {/* Buscar usuário existente */}
-        <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-          <h3 className="text-sm font-medium mb-3">Adicionar Usuário Existente</h3>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Digite o email do usuário..."
-              value={searchEmail}
-              onChange={(e) => setSearchEmail(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearchUser()}
-            />
-            <Button onClick={handleSearchUser} disabled={isSearching}>
-              <Search className="h-4 w-4 mr-2" />
-              {isSearching ? 'Buscando...' : 'Buscar'}
-            </Button>
-          </div>
-          
-          {foundUser && (
-            <div className="mt-3 p-3 bg-white border rounded flex justify-between items-center">
-              <div>
-                <p className="font-medium">{foundUser.firstName} {foundUser.lastName}</p>
-                <p className="text-sm text-gray-600">{foundUser.email}</p>
-                <p className="text-sm text-gray-600">CRM: {foundUser.crm}</p>
-              </div>
-              <Button onClick={handleAddFoundUser} size="sm">
-                <UserCheck className="h-4 w-4 mr-2" />
-                Adicionar
+        {currentUserIsAdmin && (
+          <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+            <h3 className="text-sm font-medium mb-3">Adicionar Usuário Existente</h3>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Digite o email do usuário..."
+                value={searchEmail}
+                onChange={(e) => setSearchEmail(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearchUser()}
+              />
+              <Button onClick={handleSearchUser} disabled={isSearching}>
+                <Search className="h-4 w-4 mr-2" />
+                {isSearching ? 'Buscando...' : 'Buscar'}
               </Button>
             </div>
-          )}
-        </div>
+            
+            {foundUser && (
+              <div className="mt-3 p-3 bg-white border rounded flex justify-between items-center">
+                <div>
+                  <p className="font-medium">{foundUser.firstName} {foundUser.lastName}</p>
+                  <p className="text-sm text-gray-600">{foundUser.email}</p>
+                  <p className="text-sm text-gray-600">CRM: {foundUser.crm}</p>
+                </div>
+                <Button onClick={handleAddFoundUser} size="sm">
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  Adicionar
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Filtro de funcionários */}
         <div className="mb-4">
@@ -523,9 +535,11 @@ export const UserManagement = () => {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleEditUser(staffMember)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                    {currentUserIsAdmin && (
+                      <Button variant="ghost" size="sm" onClick={() => handleEditUser(staffMember)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button 
                       variant="ghost" 
                       size="sm" 
