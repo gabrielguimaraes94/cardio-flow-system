@@ -70,6 +70,17 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         throw new Error('Apenas administradores globais podem registrar clínicas');
       }
 
+      console.log('=== REGISTERING NEW CLINIC ===');
+      console.log('Clinic data:', {
+        name: values.clinicName,
+        city: values.clinicCity,
+        address: values.clinicAddress,
+        phone: values.clinicPhone,
+        email: values.clinicEmail,
+        trading_name: values.clinicTradingName,
+        cnpj: values.clinicCnpj
+      });
+
       // 1. Registrar clínica primeiro
       const clinicData = {
         name: values.clinicName,
@@ -93,29 +104,71 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         throw new Error('Unable to determine clinic ID from result');
       }
 
-      // 2. Criar usuário admin usando abordagem simples (signup sem afetar sessão)
-      const { data: userData, error: userCreationError } = await supabase.functions.invoke('create-user-simple', {
-        body: {
-          email: values.adminEmail,
-          first_name: values.adminFirstName,
-          last_name: values.adminLastName,
-          phone: values.adminPhone || '',
-          crm: values.adminCrm || '',
-          role: 'clinic_admin',
-          title: '',
-          bio: '',
-          clinic_id: clinicId,
-          is_admin: true
+      console.log('✅ Clinic registered successfully:', { id: clinicId });
+
+      // 2. Criar cliente Supabase temporário
+      const tempSupabase = supabase.createClient(
+        supabase.supabaseUrl,
+        supabase.supabaseKey
+      );
+
+      console.log('=== CREATING ADMIN USER ===');
+      console.log('Admin data:', {
+        email: values.adminEmail,
+        first_name: values.adminFirstName,
+        last_name: values.adminLastName,
+        role: 'clinic_admin'
+      });
+
+      // 3. Fazer signup do admin
+      const { data: signUpData, error: signUpError } = await tempSupabase.auth.signUp({
+        email: values.adminEmail,
+        password: 'CardioFlow2024!',
+        options: {
+          data: {
+            first_name: values.adminFirstName,
+            last_name: values.adminLastName,
+            phone: values.adminPhone || '',
+            crm: values.adminCrm || '',
+            role: 'clinic_admin',
+            title: '',
+            bio: ''
+          }
         }
       });
 
-      if (userCreationError) {
-        console.error('Error creating user:', userCreationError);
-        throw new Error(`Erro ao criar usuário admin: ${userCreationError.message}`);
+      if (signUpError) {
+        console.error('Signup error:', signUpError);
+        throw new Error(`Erro ao criar usuário admin: ${signUpError.message}`);
       }
 
-      if (!userData?.success) {
-        throw new Error('Falha ao criar usuário admin');
+      if (!signUpData.user) {
+        throw new Error('Falha ao criar usuário admin - sem dados do usuário');
+      }
+
+      console.log('✅ Admin user created:', signUpData.user.id);
+
+      // 4. Aguardar um pouco para o trigger processar
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // 5. Associar o usuário à clínica
+      console.log('=== ASSOCIATING USER TO CLINIC ===');
+      const { error: staffError } = await supabase
+        .from('clinic_staff')
+        .insert({
+          user_id: signUpData.user.id,
+          clinic_id: clinicId,
+          is_admin: true,
+          role: 'clinic_admin',
+          active: true
+        });
+
+      if (staffError) {
+        console.error('Error associating user to clinic:', staffError);
+        // Não falhar o processo todo, apenas avisar
+        console.log('User created but not associated to clinic');
+      } else {
+        console.log('✅ User associated to clinic successfully');
       }
 
       toast({

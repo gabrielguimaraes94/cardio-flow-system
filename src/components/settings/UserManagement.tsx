@@ -84,13 +84,11 @@ export const UserManagement = () => {
     }
   }, [selectedClinic?.id, toast]);
 
-  // Carregar funcionários e verificar permissões quando a clínica mudar
   useEffect(() => {
     loadStaff();
     checkIfCurrentUserIsAdmin();
   }, [loadStaff, checkIfCurrentUserIsAdmin]);
 
-  // Filtrar funcionários por termo de busca
   useEffect(() => {
     if (searchTerm === '') {
       setFilteredStaff(staff);
@@ -247,7 +245,6 @@ export const UserManagement = () => {
       return;
     }
 
-    // Verificar se o usuário atual pode criar usuários
     if (!currentUser && !currentUserIsAdmin) {
       toast({
         title: "Acesso negado",
@@ -286,8 +283,8 @@ export const UserManagement = () => {
           description: "Informações do usuário atualizadas com sucesso!"
         });
       } else {
-        // ✅ NOVO: Criar usuário completo
-        console.log('Criando novo usuário completo');
+        // Criar novo usuário usando signup simples
+        console.log('Criando novo usuário');
         
         // 1. Verificar se email já existe
         const { data: existingUser } = await supabase
@@ -305,24 +302,43 @@ export const UserManagement = () => {
           return;
         }
 
-        // 2. Criar usuário usando abordagem simples (signup sem afetar sessão)
-        const { data: createResult, error: createError } = await supabase.functions.invoke('create-user-simple', {
-          body: {
-            email: userData.email,
-            first_name: userData.firstName,
-            last_name: userData.lastName,
-            phone: userData.phone || '',
-            crm: userData.crm,
-            role: userData.role,
-            title: userData.title || '',
-            bio: userData.bio || '',
-            clinic_id: selectedClinic.id,
-            is_admin: false
+        // 2. Fazer signup simples
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: userData.email,
+          password: 'CardioFlow2024!',
+          options: {
+            data: {
+              first_name: userData.firstName,
+              last_name: userData.lastName,
+              phone: userData.phone || '',
+              crm: userData.crm,
+              role: userData.role,
+              title: userData.title || '',
+              bio: userData.bio || ''
+            }
           }
         });
 
-        if (createError) throw createError;
-        if (!createResult?.success) throw new Error('Falha ao criar usuário');
+        if (signUpError) throw signUpError;
+        if (!signUpData.user) throw new Error('Falha ao criar usuário');
+
+        // 3. Aguardar processamento do trigger
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // 4. Associar à clínica
+        const { error: staffError } = await supabase
+          .from('clinic_staff')
+          .insert({
+            user_id: signUpData.user.id,
+            clinic_id: selectedClinic.id,
+            is_admin: false,
+            role: userData.role,
+            active: true
+          });
+
+        if (staffError) {
+          console.error('Erro ao associar à clínica:', staffError);
+        }
 
         toast({
           title: "Usuário criado",
@@ -354,7 +370,6 @@ export const UserManagement = () => {
       return;
     }
 
-    // Verificar se o usuário atual é admin
     if (!currentUserIsAdmin) {
       toast({
         title: "Acesso negado",
