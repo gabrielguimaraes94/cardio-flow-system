@@ -987,33 +987,6 @@ export type Database = {
         }
         Returns: Json
       }
-      create_user_by_admin: {
-        Args: {
-          p_email: string
-          p_password: string
-          p_first_name: string
-          p_last_name: string
-          p_phone: string
-          p_crm: string
-          p_role: string
-          p_title: string
-          p_bio: string
-        }
-        Returns: string
-      }
-      create_user_by_admin_temp: {
-        Args: {
-          p_email: string
-          p_first_name: string
-          p_last_name: string
-          p_phone: string
-          p_crm: string
-          p_role: string
-          p_title: string
-          p_bio: string
-        }
-        Returns: string
-      }
       create_user_profile_direct: {
         Args: {
           p_email: string
