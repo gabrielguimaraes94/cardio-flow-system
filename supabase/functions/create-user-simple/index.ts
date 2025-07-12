@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -77,30 +78,52 @@ serve(async (req) => {
 
     console.log('Usuário criado:', data.user.id);
 
-    // Se clinic_id foi fornecido, adicionar à clínica usando service role
+    // Se clinic_id foi fornecido, adicionar à clínica usando a função add_clinic_staff
     if (requestData.clinic_id) {
-      const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY');
+      console.log('Tentando adicionar usuário à clínica:', requestData.clinic_id);
+      
+      // Usar cliente admin para chamadas que precisam de privilégios elevados
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY');
+      
       if (serviceRoleKey) {
         const supabaseAdmin = createClient(
           Deno.env.get('SUPABASE_URL') ?? '',
           serviceRoleKey
         );
 
-        const { error: staffError } = await supabaseAdmin
-          .from('clinic_staff')
-          .insert({
-            user_id: data.user.id,
-            clinic_id: requestData.clinic_id,
-            is_admin: requestData.is_admin || false,
-            role: requestData.role,
-            active: true
+        // Usar a função add_clinic_staff que já existe
+        const { data: staffResult, error: staffError } = await supabaseAdmin
+          .rpc('add_clinic_staff', {
+            p_user_id: data.user.id,
+            p_clinic_id: requestData.clinic_id,
+            p_is_admin: requestData.is_admin || false,
+            p_role: requestData.role
           });
 
         if (staffError) {
-          console.error('Erro ao adicionar usuário à clínica:', staffError);
+          console.error('Erro ao adicionar usuário à clínica via RPC:', staffError);
+          
+          // Fallback: tentar inserção direta
+          const { error: directInsertError } = await supabaseAdmin
+            .from('clinic_staff')
+            .insert({
+              user_id: data.user.id,
+              clinic_id: requestData.clinic_id,
+              is_admin: requestData.is_admin || false,
+              role: requestData.role,
+              active: true
+            });
+
+          if (directInsertError) {
+            console.error('Erro na inserção direta também:', directInsertError);
+          } else {
+            console.log('Usuário adicionado à clínica via inserção direta');
+          }
         } else {
-          console.log('Usuário adicionado à clínica com sucesso');
+          console.log('Usuário adicionado à clínica via RPC com sucesso:', staffResult);
         }
+      } else {
+        console.error('SERVICE_ROLE_KEY não encontrada');
       }
     }
 
