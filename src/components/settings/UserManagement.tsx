@@ -242,9 +242,9 @@ export const UserManagement = () => {
     try {
       console.log('=== SALVANDO USUÁRIO ===');
       console.log('userData:', userData);
-      console.log('currentUser:', currentUser);
 
       if (currentUser) {
+        // Editar usuário existente
         console.log('Editando usuário existente');
         
         const { error } = await supabase
@@ -268,8 +268,10 @@ export const UserManagement = () => {
           description: "Informações do usuário atualizadas com sucesso!"
         });
       } else {
-        console.log('Criando novo usuário apenas no perfil');
+        // ✅ NOVO: Criar usuário completo
+        console.log('Criando novo usuário completo');
         
+        // 1. Verificar se email já existe
         const { data: existingUser } = await supabase
           .from('profiles')
           .select('*')
@@ -285,12 +287,26 @@ export const UserManagement = () => {
           return;
         }
 
-        const newUserId = crypto.randomUUID();
-        
+        // 2. Criar usuário no Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+          email: userData.email,
+          password: 'temp123456', // Senha temporária
+          email_confirm: true,
+          user_metadata: {
+            first_name: userData.firstName,
+            last_name: userData.lastName,
+            role: userData.role
+          }
+        });
+
+        if (authError) throw authError;
+        if (!authData.user) throw new Error('Falha ao criar usuário');
+
+        // 3. Criar profile
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
-            id: newUserId,
+            id: authData.user.id, // Usar ID do auth
             first_name: userData.firstName,
             last_name: userData.lastName,
             email: userData.email,
@@ -303,11 +319,12 @@ export const UserManagement = () => {
 
         if (profileError) throw profileError;
 
-        await addClinicStaff(selectedClinic.id, newUserId, userData.role, false);
+        // 4. Adicionar à clínica
+        await addClinicStaff(selectedClinic.id, authData.user.id, userData.role, false);
 
         toast({
           title: "Usuário criado",
-          description: "Usuário criado e adicionado como funcionário com sucesso!"
+          description: "Usuário criado com sucesso! Senha temporária: temp123456"
         });
       }
 
