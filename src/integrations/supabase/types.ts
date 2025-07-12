@@ -948,6 +948,10 @@ export type Database = {
         Args: { table_name: string; limit_count?: number }
         Returns: Json
       }
+      check_user_exists_by_email: {
+        Args: { p_email: string }
+        Returns: boolean
+      }
       create_clinic: {
         Args:
           | {
@@ -968,6 +972,19 @@ export type Database = {
               p_trading_name?: string
               p_cnpj?: string
             }
+        Returns: Json
+      }
+      create_complete_user: {
+        Args: {
+          p_email: string
+          p_first_name: string
+          p_last_name: string
+          p_phone: string
+          p_crm: string
+          p_role: string
+          p_title: string
+          p_bio: string
+        }
         Returns: Json
       }
       create_user_by_admin: {

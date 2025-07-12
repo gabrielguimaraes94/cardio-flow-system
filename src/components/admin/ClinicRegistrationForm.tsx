@@ -93,16 +93,20 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         throw new Error('Unable to determine clinic ID from result');
       }
 
-      // 2. Criar usuário admin usando nova função RPC sem foreign key constraint
-      const { data: newUserId, error: userCreationError } = await supabase.rpc('create_user_profile_direct', {
-        p_email: values.adminEmail,
-        p_first_name: values.adminFirstName,
-        p_last_name: values.adminLastName,
-        p_phone: values.adminPhone || '',
-        p_crm: values.adminCrm || '',
-        p_role: 'clinic_admin',
-        p_title: '',
-        p_bio: ''
+      // 2. Criar usuário admin usando Edge Function com autenticação completa
+      const { data: userData, error: userCreationError } = await supabase.functions.invoke('create-complete-user', {
+        body: {
+          email: values.adminEmail,
+          first_name: values.adminFirstName,
+          last_name: values.adminLastName,
+          phone: values.adminPhone || '',
+          crm: values.adminCrm || '',
+          role: 'clinic_admin',
+          title: '',
+          bio: '',
+          clinic_id: clinicId,
+          is_admin: true
+        }
       });
 
       if (userCreationError) {
@@ -110,21 +114,8 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         throw new Error(`Erro ao criar usuário admin: ${userCreationError.message}`);
       }
 
-      if (!newUserId) {
+      if (!userData?.success) {
         throw new Error('Falha ao criar usuário admin');
-      }
-
-      // 3. Adicionar admin como staff da clínica
-      const { error: staffError } = await supabase.rpc('add_clinic_staff', {
-        p_user_id: newUserId,
-        p_clinic_id: clinicId,
-        p_is_admin: true,
-        p_role: 'clinic_admin'
-      });
-
-      if (staffError) {
-        console.error('Error adding staff:', staffError);
-        throw new Error(`Erro ao configurar admin da clínica: ${staffError.message}`);
       }
 
       toast({
@@ -322,7 +313,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
 
         <div className="bg-blue-50 p-4 rounded-lg">
           <p className="text-sm text-blue-800">
-            <strong>Nota:</strong> O administrador da clínica será criado com a senha padrão <code className="bg-blue-100 px-1 rounded">temp123456</code>. 
+            <strong>Nota:</strong> O administrador da clínica será criado com a senha padrão <code className="bg-blue-100 px-1 rounded">CardioFlow2024!</code>. 
             Ele deverá alterar a senha no primeiro acesso.
           </p>
         </div>
