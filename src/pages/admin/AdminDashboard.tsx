@@ -106,8 +106,8 @@ export const AdminDashboard: React.FC = () => {
       } else {
         console.error('❌ Error loading users:', profilesData.reason);
         toast({
-          title: "Error loading users",
-          description: "Unable to load user data.",
+          title: "Erro ao carregar usuários",
+          description: "Não foi possível carregar os dados dos usuários.",
           variant: "destructive",
         });
       }
@@ -118,8 +118,8 @@ export const AdminDashboard: React.FC = () => {
       } else {
         console.error('❌ Error loading auth users:', authUsersData.reason);
         toast({
-          title: "Error loading users",
-          description: "Unable to load user data.",
+          title: "Erro ao carregar usuários",
+          description: "Não foi possível carregar os dados dos usuários.",
           variant: "destructive",
         });
       }
@@ -130,8 +130,8 @@ export const AdminDashboard: React.FC = () => {
       } else {
         console.error('❌ Error loading clinics:', clinicsData.reason);
         toast({
-          title: "Error loading clinics",
-          description: "Unable to load clinic data.",
+          title: "Erro ao carregar clínicas",
+          description: "Não foi possível carregar os dados das clínicas.",
           variant: "destructive",
         });
       }
@@ -142,8 +142,8 @@ export const AdminDashboard: React.FC = () => {
       } else {
         console.error('❌ Error loading clinic staff:', clinicStaffData.reason);
         toast({
-          title: "Error loading staff",
-          description: "Unable to load clinic staff data.",
+          title: "Erro ao carregar equipe",
+          description: "Não foi possível carregar os dados da equipe das clínicas.",
           variant: "destructive",
         });
       }
@@ -151,8 +151,8 @@ export const AdminDashboard: React.FC = () => {
     } catch (error) {
       console.error('❌ GENERAL ERROR LOADING DASHBOARD:', error);
       toast({
-        title: "Dashboard error",
-        description: "Unable to load dashboard data.",
+        title: "Erro no dashboard",
+        description: "Não foi possível carregar os dados do dashboard.",
         variant: "destructive",
       });
     } finally {
@@ -165,8 +165,8 @@ export const AdminDashboard: React.FC = () => {
     await loadData();
     setIsRefreshing(false);
     toast({
-      title: "Data updated",
-      description: "Dashboard updated successfully.",
+      title: "Dados atualizados",
+      description: "Dashboard atualizado com sucesso.",
     });
   };
 
@@ -176,14 +176,14 @@ export const AdminDashboard: React.FC = () => {
       await syncMissingProfiles();
       await loadData();
       toast({
-        title: "Sync completed",
-        description: "Missing profiles have been synchronized.",
+        title: "Sincronização concluída",
+        description: "Perfis ausentes foram sincronizados.",
       });
     } catch (error) {
       console.error('Sync error:', error);
       toast({
-        title: "Sync error",
-        description: "Unable to synchronize profiles.",
+        title: "Erro na sincronização",
+        description: "Não foi possível sincronizar os perfis.",
         variant: "destructive",
       });
     }
@@ -200,8 +200,8 @@ export const AdminDashboard: React.FC = () => {
         const hasAccess = await isGlobalAdmin(user.id);
         if (!hasAccess) {
           toast({
-            title: "Access denied",
-            description: "You don't have permission to access the admin dashboard.",
+            title: "Acesso negado",
+            description: "Você não tem permissão para acessar o dashboard administrativo.",
             variant: "destructive",
           });
           navigate('/no-access');
@@ -212,8 +212,8 @@ export const AdminDashboard: React.FC = () => {
       } catch (error) {
         console.error('Error checking access:', error);
         toast({
-          title: "Access error",
-          description: "Unable to verify your permissions.",
+          title: "Erro de acesso",
+          description: "Não foi possível verificar suas permissões.",
           variant: "destructive",
         });
         navigate('/no-access');
@@ -229,7 +229,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="flex items-center justify-center h-64">
           <div className="flex items-center space-x-2">
             <Loader2 className="h-6 w-6 animate-spin" />
-            <span>Loading dashboard...</span>
+            <span>Carregando dashboard...</span>
           </div>
         </div>
       </AdminLayout>
@@ -241,9 +241,9 @@ export const AdminDashboard: React.FC = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Administrative Dashboard</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard Administrativo</h1>
             <p className="text-muted-foreground">
-              Manage users, clinics and system settings
+              Gerencie usuários, clínicas e configurações do sistema
             </p>
           </div>
           <div className="flex items-center space-x-2">
@@ -253,7 +253,7 @@ export const AdminDashboard: React.FC = () => {
               size="sm"
             >
               <Users className="h-4 w-4 mr-2" />
-              Sync Profiles
+              Sincronizar Perfis
             </Button>
             <Button 
               onClick={handleRefresh}
@@ -262,7 +262,7 @@ export const AdminDashboard: React.FC = () => {
               disabled={isRefreshing}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
+              Atualizar
             </Button>
           </div>
         </div>
@@ -270,20 +270,20 @@ export const AdminDashboard: React.FC = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+              <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{authUsers.length}</div>
               <p className="text-xs text-muted-foreground">
-                {profiles.length} with complete profile
+                {profiles.length} com perfil completo
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Clinics</CardTitle>
+              <CardTitle className="text-sm font-medium">Clínicas Ativas</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -298,7 +298,7 @@ export const AdminDashboard: React.FC = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Staff Members</CardTitle>
+              <CardTitle className="text-sm font-medium">Membros da Equipe</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -313,7 +313,7 @@ export const AdminDashboard: React.FC = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Clinic Admins</CardTitle>
+              <CardTitle className="text-sm font-medium">Admins de Clínica</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -321,7 +321,7 @@ export const AdminDashboard: React.FC = () => {
                 {clinicStaff.filter(cs => cs.is_admin && cs.active).length}
               </div>
               <p className="text-xs text-muted-foreground">
-                active administrators
+                administradores ativos
               </p>
             </CardContent>
           </Card>
@@ -329,9 +329,9 @@ export const AdminDashboard: React.FC = () => {
 
         <Tabs defaultValue="users" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="clinics">Clinics</TabsTrigger>
-            <TabsTrigger value="register">Register</TabsTrigger>
+            <TabsTrigger value="users">Usuários</TabsTrigger>
+            <TabsTrigger value="clinics">Clínicas</TabsTrigger>
+            <TabsTrigger value="register">Registrar</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="space-y-4">

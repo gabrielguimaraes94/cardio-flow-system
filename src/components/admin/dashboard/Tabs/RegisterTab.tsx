@@ -10,9 +10,9 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({ onSuccess }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Register New Clinic</CardTitle>
+        <CardTitle>Registrar Nova Clínica</CardTitle>
         <CardDescription>
-          Register a new clinic and its administrator in the system
+          Registre uma nova clínica e seu administrador no sistema
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -45,9 +45,9 @@ export const ClinicsTab: React.FC<ClinicsTabProps> = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Manage Clinics</CardTitle>
+        <CardTitle>Gerenciar Clínicas</CardTitle>
         <CardDescription>
-          View and manage all clinics registered in the system
+          Visualizar e gerenciar todas as clínicas registradas no sistema
         </CardDescription>
       </CardHeader>
       <CardContent>

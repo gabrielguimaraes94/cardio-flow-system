@@ -17,7 +17,6 @@ const formSchema = z.object({
   adminFirstName: z.string().min(2, "Nome é obrigatório"),
   adminLastName: z.string().min(2, "Sobrenome é obrigatório"),
   adminEmail: z.string().email("Email inválido"),
-  adminPassword: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
   adminPhone: z.string().optional(),
   adminCrm: z.string().optional(),
   clinicName: z.string().min(2, "Nome da clínica é obrigatório"),
@@ -39,7 +38,6 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
       adminFirstName: "",
       adminLastName: "",
       adminEmail: "",
-      adminPassword: "",
       adminPhone: "",
       adminCrm: "",
       clinicName: "",
@@ -59,7 +57,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
       // ✅ CORRIGIDO: Usar admin.createUser em vez de signUp para não fazer login automático
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: values.adminEmail,
-        password: values.adminPassword,
+        password: 'temp123456', // Senha padrão
         email_confirm: true,
         user_metadata: {
           first_name: values.adminFirstName,
@@ -75,7 +73,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
       }
 
       if (!authData.user) {
-        throw new Error('Failed to create user');
+        throw new Error('Falha ao criar usuário');
       }
 
       const { error: profileError } = await supabase
@@ -131,8 +129,8 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
       }
 
       toast({
-        title: "Clinic registered successfully!",
-        description: "The clinic and administrator have been registered in the system.",
+        title: "Clínica registrada com sucesso!",
+        description: "A clínica e o administrador foram registrados no sistema.",
       });
 
       form.reset();
@@ -143,8 +141,8 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
     } catch (error: unknown) {
       console.error("Error registering clinic:", error);
       toast({
-        title: "Registration error",
-        description: error instanceof Error ? error.message : "Unable to register clinic. Please try again.",
+        title: "Erro no registro",
+        description: error instanceof Error ? error.message : "Não foi possível registrar a clínica. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -156,16 +154,16 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <div className="space-y-6">
-          <h3 className="text-lg font-medium">Administrator Data</h3>
+          <h3 className="text-lg font-medium">Dados do Administrador</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="adminFirstName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>First Name *</FormLabel>
+                  <FormLabel>Nome *</FormLabel>
                   <FormControl>
-                    <Input placeholder="First Name" {...field} />
+                    <Input placeholder="Nome" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -176,9 +174,9 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
               name="adminLastName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Last Name *</FormLabel>
+                  <FormLabel>Sobrenome *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Last Name" {...field} />
+                    <Input placeholder="Sobrenome" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -191,20 +189,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
                 <FormItem>
                   <FormLabel>Email *</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="email@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="adminPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password *</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="******" {...field} />
+                    <Input type="email" placeholder="email@exemplo.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -215,7 +200,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
               name="adminPhone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone</FormLabel>
+                  <FormLabel>Telefone</FormLabel>
                   <FormControl>
                     <Input placeholder="(xx) xxxxx-xxxx" {...field} />
                   </FormControl>
@@ -230,7 +215,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
                 <FormItem>
                   <FormLabel>CRM</FormLabel>
                   <FormControl>
-                    <Input placeholder="CRM (if applicable)" {...field} />
+                    <Input placeholder="CRM (se aplicável)" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -240,16 +225,16 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         </div>
 
         <div className="space-y-6">
-          <h3 className="text-lg font-medium">Clinic Data</h3>
+          <h3 className="text-lg font-medium">Dados da Clínica</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="clinicName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Clinic Name *</FormLabel>
+                  <FormLabel>Nome da Clínica *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Clinic name" {...field} />
+                    <Input placeholder="Nome da clínica" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -260,9 +245,9 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
               name="clinicTradingName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Trading Name</FormLabel>
+                  <FormLabel>Nome Fantasia</FormLabel>
                   <FormControl>
-                    <Input placeholder="Trading name" {...field} />
+                    <Input placeholder="Nome fantasia" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -286,9 +271,9 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
               name="clinicCity"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>City *</FormLabel>
+                  <FormLabel>Cidade *</FormLabel>
                   <FormControl>
-                    <Input placeholder="City" {...field} />
+                    <Input placeholder="Cidade" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -299,9 +284,9 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
               name="clinicAddress"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Address *</FormLabel>
+                  <FormLabel>Endereço *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Complete address" {...field} />
+                    <Input placeholder="Endereço completo" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -312,7 +297,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
               name="clinicPhone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone *</FormLabel>
+                  <FormLabel>Telefone *</FormLabel>
                   <FormControl>
                     <Input placeholder="(xx) xxxxx-xxxx" {...field} />
                   </FormControl>
@@ -327,7 +312,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
                 <FormItem>
                   <FormLabel>Email *</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="clinic@example.com" {...field} />
+                    <Input type="email" placeholder="clinic@exemplo.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -336,8 +321,15 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
           </div>
         </div>
 
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Nota:</strong> O administrador da clínica será criado com a senha padrão <code className="bg-blue-100 px-1 rounded">temp123456</code>. 
+            Ele deverá alterar a senha no primeiro acesso.
+          </p>
+        </div>
+
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Registering..." : "Register Clinic"}
+          {isSubmitting ? "Registrando..." : "Registrar Clínica"}
         </Button>
       </form>
     </Form>

@@ -46,9 +46,9 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Manage Users</CardTitle>
+        <CardTitle>Gerenciar Usuários</CardTitle>
         <CardDescription>
-          View and manage all system users
+          Visualizar e gerenciar todos os usuários do sistema
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -46,12 +46,12 @@ export const UsersList: React.FC<UsersListProps> = ({
   
   const getRoleName = (role: string): string => {
     const roleNames: Record<string, string> = {
-      admin: 'Global Administrator',
-      clinic_admin: 'Clinic Admin',
-      doctor: 'Doctor',
-      nurse: 'Nurse',
-      receptionist: 'Receptionist',
-      staff: 'Staff',
+      admin: 'Administrador Global',
+      clinic_admin: 'Admin. Clínica',
+      doctor: 'Médico',
+      nurse: 'Enfermeiro',
+      receptionist: 'Recepcionista',
+      staff: 'Equipe',
     };
     return roleNames[role] || role;
   };
@@ -69,7 +69,7 @@ export const UsersList: React.FC<UsersListProps> = ({
   };
 
   const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`Are you sure you want to delete user ${userName}? This action cannot be undone.`)) {
+    if (!confirm(`Tem certeza que deseja excluir o usuário ${userName}? Esta ação não pode ser desfeita.`)) {
       return;
     }
 
@@ -78,16 +78,16 @@ export const UsersList: React.FC<UsersListProps> = ({
       await deleteUser(userId);
       
       toast({
-        title: "User deleted",
-        description: `${userName} was deleted successfully.`,
+        title: "Usuário excluído",
+        description: `${userName} foi excluído com sucesso.`,
       });
       
       onRefetch();
     } catch (error) {
       console.error('Error deleting user:', error);
       toast({
-        title: "Error deleting user",
-        description: "An error occurred while trying to delete the user. Please try again.",
+        title: "Erro ao excluir usuário",
+        description: "Ocorreu um erro ao tentar excluir o usuário. Tente novamente.",
         variant: "destructive",
       });
     }
@@ -99,7 +99,7 @@ export const UsersList: React.FC<UsersListProps> = ({
         <div className="relative w-full sm:max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by user name..."
+            placeholder="Buscar por nome..."
             className="pl-8"
             value={filters.name}
             onChange={(e) => filters.setName(e.target.value)}
@@ -112,7 +112,7 @@ export const UsersList: React.FC<UsersListProps> = ({
           className="w-full sm:w-auto"
         >
           <Search className="h-4 w-4 mr-2" />
-          Filters
+          Filtros
         </Button>
       </div>
       
@@ -121,13 +121,13 @@ export const UsersList: React.FC<UsersListProps> = ({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[150px]">Name</TableHead>
+                <TableHead className="min-w-[150px]">Nome</TableHead>
                 <TableHead className="min-w-[200px]">Email</TableHead>
-                <TableHead className="min-w-[120px]">Role</TableHead>
+                <TableHead className="min-w-[120px]">Perfil</TableHead>
                 <TableHead className="min-w-[100px]">CRM</TableHead>
-                <TableHead className="min-w-[120px]">Phone</TableHead>
-                <TableHead className="min-w-[150px]">Created</TableHead>
-                <TableHead className="min-w-[80px]">Actions</TableHead>
+                <TableHead className="min-w-[120px]">Telefone</TableHead>
+                <TableHead className="min-w-[150px]">Criado em</TableHead>
+                <TableHead className="min-w-[80px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -136,7 +136,7 @@ export const UsersList: React.FC<UsersListProps> = ({
                   <TableCell colSpan={7} className="text-center py-10">
                     <div className="flex justify-center items-center">
                       <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                      <span>Loading users...</span>
+                      <span>Carregando usuários...</span>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -144,8 +144,8 @@ export const UsersList: React.FC<UsersListProps> = ({
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                     <div>
-                      <p>❌ No users found</p>
-                      <p className="text-sm mt-2">Check console for detailed logs</p>
+                      <p>❌ Nenhum usuário encontrado</p>
+                      <p className="text-sm mt-2">Verifique o console para logs detalhados</p>
                     </div>
                   </TableCell>
                 </TableRow>
