@@ -93,8 +93,8 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         throw new Error('Unable to determine clinic ID from result');
       }
 
-      // 2. Criar usuário admin usando Edge Function com autenticação completa
-      const { data: userData, error: userCreationError } = await supabase.functions.invoke('create-complete-user', {
+      // 2. Criar usuário admin usando abordagem simples (signup sem afetar sessão)
+      const { data: userData, error: userCreationError } = await supabase.functions.invoke('create-user-simple', {
         body: {
           email: values.adminEmail,
           first_name: values.adminFirstName,

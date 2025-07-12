@@ -305,8 +305,8 @@ export const UserManagement = () => {
           return;
         }
 
-        // 2. Criar usuário usando Edge Function com autenticação completa
-        const { data: createResult, error: createError } = await supabase.functions.invoke('create-complete-user', {
+        // 2. Criar usuário usando abordagem simples (signup sem afetar sessão)
+        const { data: createResult, error: createError } = await supabase.functions.invoke('create-user-simple', {
           body: {
             email: userData.email,
             first_name: userData.firstName,
