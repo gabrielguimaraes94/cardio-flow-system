@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -106,12 +107,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
 
       console.log('✅ Clinic registered successfully:', { id: clinicId });
 
-      // 2. Criar cliente Supabase temporário
-      const tempSupabase = supabase.createClient(
-        supabase.supabaseUrl,
-        supabase.supabaseKey
-      );
-
+      // 2. Criar admin da clínica
       console.log('=== CREATING ADMIN USER ===');
       console.log('Admin data:', {
         email: values.adminEmail,
@@ -120,8 +116,8 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         role: 'clinic_admin'
       });
 
-      // 3. Fazer signup do admin
-      const { data: signUpData, error: signUpError } = await tempSupabase.auth.signUp({
+      // Fazer signup do admin
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: values.adminEmail,
         password: 'CardioFlow2024!',
         options: {
@@ -148,10 +144,10 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
 
       console.log('✅ Admin user created:', signUpData.user.id);
 
-      // 4. Aguardar um pouco para o trigger processar
+      // 3. Aguardar um pouco para o trigger processar
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // 5. Associar o usuário à clínica
+      // 4. Associar o usuário à clínica
       console.log('=== ASSOCIATING USER TO CLINIC ===');
       const { error: staffError } = await supabase
         .from('clinic_staff')
