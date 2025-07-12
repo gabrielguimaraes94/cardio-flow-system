@@ -909,7 +909,7 @@ export type Database = {
           last_name: string
           notification_preferences?: Json | null
           phone?: string | null
-          role?: Database["public"]["Enums"]["user_role"]
+          role: Database["public"]["Enums"]["user_role"]
           title?: string | null
           updated_at?: string
         }
