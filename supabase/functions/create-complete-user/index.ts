@@ -90,6 +90,10 @@ serve(async (req) => {
     }
 
     // Criar usuário completo usando Admin API
+    console.log('=== INICIANDO CRIAÇÃO DE USUÁRIO AUTH ===');
+    console.log('Email:', requestData.email);
+    console.log('Role:', requestData.role);
+    
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: requestData.email,
       password: 'CardioFlow2024!', // Senha padrão mais segura
@@ -105,12 +109,17 @@ serve(async (req) => {
       email_confirm: true
     });
 
+    console.log('=== RESULTADO DA CRIAÇÃO AUTH ===');
+    console.log('Auth Error:', authError);
+    console.log('Auth User Created:', !!authUser?.user);
+
     if (authError) {
-      console.error('Erro ao criar usuário auth:', authError);
+      console.error('Erro detalhado ao criar usuário auth:', authError);
       return new Response(
         JSON.stringify({ 
           error: 'Erro ao criar usuário',
-          details: authError.message 
+          details: authError.message,
+          code: authError.code || 'unknown'
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
