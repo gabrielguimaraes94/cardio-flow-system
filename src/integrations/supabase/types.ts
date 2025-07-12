@@ -1004,8 +1004,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_any_clinic_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_clinic_admin: {
         Args: { user_uuid: string; clinic_uuid: string }
+        Returns: boolean
+      }
+      is_clinic_admin_for_clinic: {
+        Args: { clinic_uuid: string }
         Returns: boolean
       }
       is_clinic_member: {
@@ -1018,6 +1026,10 @@ export type Database = {
       }
       is_global_admin: {
         Args: { user_uuid: string }
+        Returns: boolean
+      }
+      is_staff_of_clinic: {
+        Args: { clinic_uuid: string }
         Returns: boolean
       }
       remove_clinic_staff: {
