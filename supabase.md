@@ -43,7 +43,8 @@ Tabela principal de usuários do sistema.
 - `role` (user_role, NOT NULL, default: 'doctor')
 - `title` (text, nullable, default: '')
 - `bio` (text, nullable, default: '')
-- `notification_preferences` (jsonb, nullable)
+- `notification_preferences` (jsonb, nullable, default: '{"systemUpdates": false, "smsNotifications": true, "emailNotifications": true, "appointmentReminders": true}')
+- `is_first_login` (boolean, nullable, default: true)
 - `created_at` (timestamptz, NOT NULL, default: now())
 - `updated_at` (timestamptz, NOT NULL, default: now())
 
@@ -264,7 +265,18 @@ Tabela de solicitações de angioplastia.
 
 ## Políticas RLS (Row Level Security)
 
-**Todas as tabelas têm a mesma política simplificada:**
+### Tabelas com Política Simples (Admin Only)
+As seguintes tabelas têm apenas uma política que permite acesso total aos administradores globais:
+
+- `anamnesis`
+- `angioplasty_requests`
+- `insurance_companies`
+- `insurance_contracts`
+- `insurance_form_configs`
+- `insurance_audit_rules`
+- `patient_addresses`
+- `patients`
+- `procedure_multiplication_factors`
 
 ```sql
 CREATE POLICY "admin_full_access" 
@@ -273,7 +285,114 @@ FOR ALL
 USING (public.get_current_user_role() = 'admin');
 ```
 
-Esta política garante que apenas usuários com role 'admin' tenham acesso completo (SELECT, INSERT, UPDATE, DELETE) a todas as tabelas.
+### Tabela profiles - Políticas Específicas
+
+**1. Admin Global - Acesso Total:**
+```sql
+CREATE POLICY "global_admin_full_access_profiles"
+ON public.profiles
+FOR ALL
+USING (public.get_current_user_role() = 'admin');
+```
+
+**2. Admin de Clínica - Inserir Usuários:**
+```sql
+CREATE POLICY "clinic_admin_can_insert_profiles"
+ON public.profiles
+FOR INSERT
+WITH CHECK (
+  public.get_current_user_role() = 'admin'
+  OR public.is_any_clinic_admin()
+);
+```
+
+**3. Admin de Clínica - Visualizar Usuários:**
+```sql
+CREATE POLICY "clinic_admin_can_select_profiles"
+ON public.profiles
+FOR SELECT
+USING (
+  public.get_current_user_role() = 'admin'
+  OR id = auth.uid() -- Próprio perfil
+  OR public.is_any_clinic_admin() -- Admin de clínica pode pesquisar
+);
+```
+
+**4. Usuários - Editar Próprio Perfil:**
+```sql
+CREATE POLICY "users_can_manage_own_profile"
+ON public.profiles
+FOR UPDATE
+USING (id = auth.uid());
+```
+
+### Tabela clinics - Políticas Específicas
+
+**1. Admin Global - Acesso Total:**
+```sql
+CREATE POLICY "global_admin_full_access_clinics"
+ON public.clinics
+FOR ALL
+USING (public.get_current_user_role() = 'admin');
+```
+
+**2. Admin de Clínica - Visualizar Própria Clínica:**
+```sql
+CREATE POLICY "clinic_admin_can_view_own_clinic"
+ON public.clinics
+FOR SELECT
+USING (is_clinic_admin_for_clinic(id));
+```
+
+**3. Admin de Clínica - Atualizar Própria Clínica:**
+```sql
+CREATE POLICY "clinic_admin_can_update_own_clinic"
+ON public.clinics
+FOR UPDATE
+USING (is_clinic_admin_for_clinic(id));
+```
+
+**4. Staff - Visualizar Clínicas Associadas:**
+```sql
+CREATE POLICY "staff_can_view_associated_clinics"
+ON public.clinics
+FOR SELECT
+USING (is_staff_of_clinic(id));
+```
+
+### Tabela clinic_staff - Políticas Específicas
+
+**1. Admin Global - Acesso Total:**
+```sql
+CREATE POLICY "global_admin_full_access_clinic_staff"
+ON public.clinic_staff
+FOR ALL
+USING (public.get_current_user_role() = 'admin');
+```
+
+**2. Admin de Clínica - Adicionar Staff:**
+```sql
+CREATE POLICY "clinic_admin_can_add_staff_to_own_clinic"
+ON public.clinic_staff
+FOR INSERT
+WITH CHECK (is_clinic_admin_for_clinic(clinic_id));
+```
+
+**3. Admin de Clínica - Visualizar Staff:**
+```sql
+CREATE POLICY "clinic_admin_can_view_own_clinic_staff"
+ON public.clinic_staff
+FOR SELECT
+USING (is_clinic_admin_for_clinic(clinic_id) OR user_id = auth.uid());
+```
+
+**4. Admin de Clínica - Atualizar Staff:**
+```sql
+CREATE POLICY "clinic_admin_can_update_own_clinic_staff"
+ON public.clinic_staff
+FOR UPDATE
+USING (is_clinic_admin_for_clinic(clinic_id));
+```
 
 ## Funções do Banco
 
@@ -352,16 +471,91 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 ```
 
-### 5. is_clinic_admin(user_uuid, clinic_uuid)
-### 6. is_clinic_member(user_uuid, clinic_uuid)
-### 7. is_clinic_staff_member(user_uuid)
-### 8. add_clinic_staff(p_user_id, p_clinic_id, p_is_admin, p_role)
-### 9. remove_clinic_staff(staff_id, admin_user_id)
-### 10. create_clinic() - Duas versões com parâmetros diferentes
-### 11. debug_get_auth_users()
-### 12. sync_missing_profiles()
-### 13. has_role(_user_id, _role)
-### 14. handle_new_user() - Trigger function
+### 5. is_any_clinic_admin()
+```sql
+CREATE OR REPLACE FUNCTION public.is_any_clinic_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.clinic_staff cs
+    WHERE cs.user_id = auth.uid()
+      AND cs.is_admin = true
+      AND cs.active = true
+  );
+$$;
+```
+
+### 6. is_clinic_admin_for_clinic(clinic_uuid)
+```sql
+CREATE OR REPLACE FUNCTION public.is_clinic_admin_for_clinic(clinic_uuid uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.clinic_staff cs
+    WHERE cs.clinic_id = clinic_uuid
+      AND cs.user_id = auth.uid()
+      AND cs.is_admin = true
+      AND cs.active = true
+  );
+$$;
+```
+
+### 7. is_staff_of_clinic(clinic_uuid)
+```sql
+CREATE OR REPLACE FUNCTION public.is_staff_of_clinic(clinic_uuid uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.clinic_staff cs
+    WHERE cs.clinic_id = clinic_uuid
+      AND cs.user_id = auth.uid()
+      AND cs.active = true
+  );
+$$;
+```
+
+### 8. is_user_first_login(user_uuid)
+```sql
+CREATE OR REPLACE FUNCTION public.is_user_first_login(user_uuid uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+AS $$
+  SELECT COALESCE(is_first_login, false) FROM public.profiles WHERE id = user_uuid;
+$$;
+```
+
+### 9. mark_first_login_complete(user_uuid)
+```sql
+CREATE OR REPLACE FUNCTION public.mark_first_login_complete(user_uuid uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE public.profiles 
+  SET is_first_login = false 
+  WHERE id = user_uuid;
+END;
+$$;
+```
+
+### 10. is_clinic_admin(user_uuid, clinic_uuid)
+### 11. is_clinic_member(user_uuid, clinic_uuid)
+### 12. is_clinic_staff_member(user_uuid)
+### 13. add_clinic_staff(p_user_id, p_clinic_id, p_is_admin, p_role)
+### 14. remove_clinic_staff(staff_id, admin_user_id)
+### 15. create_clinic() - Duas versões com parâmetros diferentes
+### 16. debug_get_auth_users()
+### 17. sync_missing_profiles()
+### 18. has_role(_user_id, _role)
+### 19. handle_new_user() - Trigger function
 
 ## Storage Buckets
 
@@ -408,11 +602,40 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 export const supabase = createClient(supabaseUrl, supabaseKey)
 ```
 
+## Últimas Atualizações (2025-07-12)
+
+### 1. Sistema de Primeiro Login
+- Adicionado campo `is_first_login` na tabela `profiles`
+- Criadas funções `is_user_first_login()` e `mark_first_login_complete()`
+- Permite controlar se é o primeiro acesso do usuário
+
+### 2. Políticas RLS Específicas para Administradores de Clínica
+- **profiles**: Admin de clínica pode inserir e pesquisar usuários
+- **clinics**: Admin de clínica pode visualizar/atualizar própria clínica
+- **clinic_staff**: Admin de clínica pode gerenciar staff da própria clínica
+- Mantém segurança: apenas admin global e admin de clínica têm acesso
+
+### 3. Novas Funções de Controle de Acesso
+- `is_any_clinic_admin()`: Verifica se usuário é admin de alguma clínica
+- `is_clinic_admin_for_clinic()`: Verifica se usuário é admin de clínica específica
+- `is_staff_of_clinic()`: Verifica se usuário é staff de clínica específica
+
 ## Notas Importantes
 
-1. **Segurança**: Apenas usuários com role 'admin' têm acesso total às tabelas
-2. **RLS**: Todas as tabelas têm Row Level Security habilitado
+1. **Segurança Multi-nível**: 
+   - Admin global: acesso total a tudo
+   - Admin de clínica: acesso restrito à própria clínica
+   - Usuários: acesso apenas ao próprio perfil
+
+2. **RLS**: Todas as tabelas têm Row Level Security habilitado com políticas específicas
+
 3. **Auditoria**: Todas as tabelas têm campos created_at, updated_at e created_by
+
 4. **Soft Delete**: A tabela clinic_staff usa soft delete através do campo 'active'
+
 5. **Tipos**: O sistema usa Enums TypeScript gerados automaticamente pelo Supabase
+
 6. **Integridade**: Foreign keys garantem integridade referencial entre tabelas relacionadas
+
+7. **Hierarquia de Acesso**: O sistema implementa hierarquia de permissões:
+   - Global Admin > Clinic Admin > Staff > Usuário comum
