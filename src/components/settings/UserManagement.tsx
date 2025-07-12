@@ -283,7 +283,7 @@ export const UserManagement = () => {
           description: "Informações do usuário atualizadas com sucesso!"
         });
       } else {
-        // Criar novo usuário usando signup simples
+        // Criar novo usuário usando signup direto
         console.log('Criando novo usuário');
         
         // 1. Verificar se email já existe
@@ -302,7 +302,7 @@ export const UserManagement = () => {
           return;
         }
 
-        // 2. Fazer signup simples
+        // 2. Fazer signup direto
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: userData.email,
           password: 'CardioFlow2024!',
