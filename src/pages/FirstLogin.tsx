@@ -158,7 +158,7 @@ export default function FirstLogin() {
             className="w-full mt-4"
             onClick={async () => {
               await supabase.auth.signOut();
-              navigate('/login');
+              navigate('/');
             }}
           >
             Sair
