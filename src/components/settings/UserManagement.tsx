@@ -305,41 +305,24 @@ export const UserManagement = () => {
           return;
         }
 
-        // 2. Criar usuário no Supabase Auth
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email: userData.email,
-          password: 'temp123456', // Senha temporária
-          email_confirm: true,
-          user_metadata: {
-            first_name: userData.firstName,
-            last_name: userData.lastName,
-            role: userData.role
-          }
+        // 2. Criar usuário usando função RPC
+        const { data: newUserId, error: createError } = await supabase.rpc('create_user_by_admin', {
+          p_email: userData.email,
+          p_password: 'temp123456', // Senha temporária (será ignorada na versão atual)
+          p_first_name: userData.firstName,
+          p_last_name: userData.lastName,
+          p_phone: userData.phone || '',
+          p_crm: userData.crm,
+          p_role: userData.role,
+          p_title: userData.title || '',
+          p_bio: userData.bio || ''
         });
 
-        if (authError) throw authError;
-        if (!authData.user) throw new Error('Falha ao criar usuário');
+        if (createError) throw createError;
+        if (!newUserId) throw new Error('Falha ao criar usuário');
 
-        // 3. Criar profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id, // Usar ID do auth
-            first_name: userData.firstName,
-            last_name: userData.lastName,
-            email: userData.email,
-            crm: userData.crm,
-            phone: userData.phone,
-            title: userData.title,
-            bio: userData.bio,
-            role: userData.role,
-            is_first_login: true // Marcar como primeiro login
-          });
-
-        if (profileError) throw profileError;
-
-        // 4. Adicionar à clínica
-        await addClinicStaff(selectedClinic.id, authData.user.id, userData.role, false);
+        // 3. Adicionar à clínica
+        await addClinicStaff(selectedClinic.id, newUserId, userData.role, false);
 
         toast({
           title: "Usuário criado",
