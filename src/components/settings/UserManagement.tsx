@@ -305,25 +305,23 @@ export const UserManagement = () => {
           return;
         }
 
-        // 2. Criar usuário usando Edge Function
-        const { data: createResult, error: createError } = await supabase.functions.invoke('create-user-admin', {
-          body: {
-            email: userData.email,
-            password: 'temp123456', // Senha temporária
-            first_name: userData.firstName,
-            last_name: userData.lastName,
-            phone: userData.phone || '',
-            crm: userData.crm,
-            role: userData.role,
-            title: userData.title || '',
-            bio: userData.bio || '',
-            clinic_id: selectedClinic.id,
-            is_admin: false
-          }
+        // 2. Criar usuário usando nova função RPC sem foreign key constraint
+        const { data: newUserId, error: createError } = await supabase.rpc('create_user_profile_direct', {
+          p_email: userData.email,
+          p_first_name: userData.firstName,
+          p_last_name: userData.lastName,
+          p_phone: userData.phone || '',
+          p_crm: userData.crm,
+          p_role: userData.role,
+          p_title: userData.title || '',
+          p_bio: userData.bio || ''
         });
 
         if (createError) throw createError;
-        if (!createResult?.success) throw new Error('Falha ao criar usuário');
+        if (!newUserId) throw new Error('Falha ao criar usuário');
+
+        // 3. Adicionar à clínica
+        await addClinicStaff(selectedClinic.id, newUserId, userData.role, false);
 
         toast({
           title: "Usuário criado",
