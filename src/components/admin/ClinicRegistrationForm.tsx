@@ -73,7 +73,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
 
       console.log('=== REGISTERING CLINIC ADMIN AND CLINIC ===');
 
-      // 1. Criar admin da clínica PRIMEIRO
+      // 1. Criar admin da clínica usando a estratégia padrão do Supabase
       console.log('=== STEP 1: CREATING ADMIN USER ===');
       console.log('Admin data:', {
         email: values.adminEmail,
@@ -109,20 +109,26 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
 
       console.log('✅ Admin user created:', signUpData.user.id);
 
-      // 2. Aguardar e verificar se o profile foi criado pelo trigger
+      // 2. Aguardar que o trigger crie o profile (estratégia mais robusta)
       console.log('=== STEP 2: WAITING FOR PROFILE CREATION ===');
       let profileCreated = false;
       let attempts = 0;
-      const maxAttempts = 10;
+      const maxAttempts = 15; // Aumentei para 15 tentativas
 
       while (!profileCreated && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Aguardar 500ms
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Aguardar 1 segundo
         
-        const { data: profileCheck } = await supabase
+        const { data: profileCheck, error: profileError } = await supabase
           .from('profiles')
-          .select('id, role')
+          .select('id, role, email')
           .eq('id', signUpData.user.id)
-          .single();
+          .maybeSingle(); // Usar maybeSingle em vez de single
+
+        if (profileError) {
+          console.error('Error checking profile:', profileError);
+          attempts++;
+          continue;
+        }
 
         if (profileCheck) {
           console.log('✅ Profile created by trigger:', profileCheck);
@@ -134,7 +140,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
       }
 
       if (!profileCreated) {
-        throw new Error('Profile não foi criado automaticamente pelo trigger');
+        throw new Error('Profile não foi criado automaticamente pelo trigger após 15 segundos');
       }
 
       // 3. Criar a clínica
@@ -184,25 +190,23 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
 
       console.log('✅ User associated to clinic successfully');
 
-      // 5. Verificar se tudo foi criado corretamente
+      // 5. Verificação final (opcional, apenas para debug)
       console.log('=== STEP 5: FINAL VERIFICATION ===');
       
-      // Verificar profile
       const { data: finalProfile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', signUpData.user.id)
-        .single();
+        .maybeSingle();
       
       console.log('Final profile:', finalProfile);
 
-      // Verificar clinic_staff
       const { data: finalStaff } = await supabase
         .from('clinic_staff')
         .select('*')
         .eq('user_id', signUpData.user.id)
         .eq('clinic_id', clinicId)
-        .single();
+        .maybeSingle();
       
       console.log('Final clinic_staff:', finalStaff);
 
