@@ -1,263 +1,153 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Edit, Trash2, UserCheck, UserX } from 'lucide-react';
+
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
 import { UserDialog } from './UserDialog';
-import { UserProfile } from '@/types/profile';
-import { fetchClinicStaff, addClinicStaff, removeClinicStaff, checkUserIsClinicAdmin } from '@/services/user/clinicStaffService';
-import { useClinic } from '@/contexts/ClinicContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-
-interface ClinicStaff {
-  id: string;
-  user: UserProfile;
-  role: string;
-  isAdmin: boolean;
-}
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { useClinic } from '@/contexts/ClinicContext';
+import { UserProfile } from '@/types/profile';
 
 export const UserManagement = () => {
-  const { selectedClinic } = useClinic();
   const { user } = useAuth();
+  const { selectedClinic, refetchClinics } = useClinic();
   const { toast } = useToast();
   
-  const [staff, setStaff] = useState<ClinicStaff[]>([]);
-  const [filteredStaff, setFilteredStaff] = useState<ClinicStaff[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [searchEmail, setSearchEmail] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [foundUser, setFoundUser] = useState<UserProfile | null>(null);
-  const [currentUserIsAdmin, setCurrentUserIsAdmin] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Verificar se o usuário atual é admin da clínica
-  const checkIfCurrentUserIsAdmin = useCallback(async () => {
-    if (!selectedClinic?.id || !user?.id) {
-      setCurrentUserIsAdmin(false);
-      return;
-    }
-
-    try {
-      const isAdmin = await checkUserIsClinicAdmin(user.id, selectedClinic.id);
-      setCurrentUserIsAdmin(isAdmin);
-      console.log('Usuário atual é admin?', isAdmin);
-    } catch (error) {
-      console.error('Erro ao verificar se usuário é admin:', error);
-      setCurrentUserIsAdmin(false);
-    }
-  }, [selectedClinic?.id, user?.id]);
-
-  // Função para carregar funcionários com useCallback para evitar re-renders
-  const loadStaff = useCallback(async () => {
-    if (!selectedClinic?.id) {
-      console.log('Nenhuma clínica selecionada');
-      return;
-    }
-
-    console.log('=== CARREGANDO FUNCIONÁRIOS DA CLÍNICA ===');
-    console.log('selectedClinic mudou:', selectedClinic.id);
-
+  const fetchUsers = async () => {
+    if (!user || !selectedClinic) return;
+    
     setIsLoading(true);
     try {
-      console.log('=== CARREGANDO STAFF ===');
-      console.log('Clínica selecionada:', selectedClinic.id);
-      
-      const staffData = await fetchClinicStaff(selectedClinic.id);
-      console.log('Staff carregado da API:', staffData);
-      console.log('Quantidade de funcionários encontrados:', staffData.length);
-      
-      setStaff(staffData);
-    } catch (error) {
-      console.error('Erro ao carregar funcionários:', error);
-      toast({
-        title: "Erro",
-        description: "Falha ao carregar funcionários",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedClinic?.id, toast]);
-
-  useEffect(() => {
-    loadStaff();
-    checkIfCurrentUserIsAdmin();
-  }, [loadStaff, checkIfCurrentUserIsAdmin]);
-
-  useEffect(() => {
-    if (searchTerm === '') {
-      setFilteredStaff(staff);
-      return;
-    }
-    
-    const filtered = staff.filter(staffMember => 
-      staffMember.user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      staffMember.user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      staffMember.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      staffMember.user.crm.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    
-    setFilteredStaff(filtered);
-  }, [searchTerm, staff]);
-
-  const handleSearchUser = async () => {
-    if (!searchEmail.trim()) {
-      toast({
-        title: "Erro",
-        description: "Digite um email para buscar",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      console.log('=== SEARCHING USER ===');
-      console.log('Email sendo buscado:', searchEmail);
-      
-      const { data, error } = await supabase
+      let query = supabase
         .from('profiles')
-        .select('*')
-        .eq('email', searchEmail.trim())
-        .single();
-      
-      console.log('Resultado da busca:', data);
-      console.log('Erro da busca:', error);
-      
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-      
-      if (data) {
-        const userProfile: UserProfile = {
-          id: data.id,
-          firstName: data.first_name,
-          lastName: data.last_name,
-          email: data.email,
-          phone: data.phone,
-          crm: data.crm,
-          title: data.title || '',
-          bio: data.bio || '',
-          role: data.role
-        };
-        
-        console.log('Usuário encontrado:', userProfile);
-        setFoundUser(userProfile);
-        
-        toast({
-          title: "Usuário encontrado",
-          description: `${userProfile.firstName} ${userProfile.lastName} encontrado!`
-        });
-      } else {
-        console.log('Nenhum usuário encontrado com o email:', searchEmail);
-        setFoundUser(null);
-        toast({
-          title: "Usuário não encontrado",
-          description: "Nenhum usuário encontrado com este email. Você pode criar um novo usuário.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao buscar usuário:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao buscar usuário",
-        variant: "destructive"
-      });
-      setFoundUser(null);
-    } finally {
-      setIsSearching(false);
-    }
-  };
+        .select(`
+          id,
+          first_name,
+          last_name,
+          email,
+          crm,
+          phone,
+          role,
+          title,
+          bio,
+          created_at
+        `);
 
-  const handleAddFoundUser = async () => {
-    if (!foundUser || !selectedClinic?.id || !user?.id) {
-      toast({
-        title: "Erro",
-        description: "Dados insuficientes para adicionar usuário",
-        variant: "destructive"
-      });
-      return;
-    }
+      if (searchTerm) {
+        query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+      }
 
-    try {
-      const isAlreadyStaff = staff.some(s => s.user.id === foundUser.id);
-      if (isAlreadyStaff) {
+      const { data, error } = await query.order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar usuários:', error);
         toast({
-          title: "Usuário já é funcionário",
-          description: "Este usuário já é funcionário desta clínica",
+          title: "Erro",
+          description: "Não foi possível carregar os usuários.",
           variant: "destructive"
         });
         return;
       }
 
-      await addClinicStaff(selectedClinic.id, foundUser.id, 'doctor', false);
-      
-      toast({
-        title: "Funcionário adicionado",
-        description: "Usuário adicionado como funcionário com sucesso!"
-      });
-      
-      await loadStaff();
-      setSearchEmail('');
-      setFoundUser(null);
-      
+      const formattedUsers: UserProfile[] = data?.map(user => ({
+        id: user.id,
+        firstName: user.first_name || '',
+        lastName: user.last_name || '',
+        email: user.email || '',
+        crm: user.crm || '',
+        phone: user.phone,
+        role: user.role as UserProfile['role'],
+        title: user.title || '',
+        bio: user.bio || ''
+      })) || [];
+
+      setUsers(formattedUsers);
     } catch (error) {
-      console.error('Erro ao adicionar funcionário:', error);
+      console.error('Erro ao buscar usuários:', error);
       toast({
         title: "Erro",
-        description: "Erro ao adicionar funcionário",
+        description: "Erro inesperado ao carregar usuários.",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleCreateNewUser = () => {
-    if (!currentUserIsAdmin) {
-      toast({
-        title: "Acesso negado",
-        description: "Apenas administradores podem criar usuários",
-        variant: "destructive"
-      });
-      return;
-    }
+  useEffect(() => {
+    fetchUsers();
+  }, [user, selectedClinic, searchTerm]);
+
+  const handleAddUser = () => {
     setCurrentUser(null);
     setIsDialogOpen(true);
   };
 
-  const handleEditUser = (staffMember: ClinicStaff) => {
-    setCurrentUser(staffMember.user);
+  const handleEditUser = (user: UserProfile) => {
+    setCurrentUser(user);
     setIsDialogOpen(true);
   };
 
-  const handleSaveUser = async (userData: UserProfile) => {
-    if (!selectedClinic?.id || !user?.id) {
-      toast({
-        title: "Erro", 
-        description: "Clínica não selecionada ou usuário não autenticado",
-        variant: "destructive"
-      });
+  const handleDeleteUser = async (userToDelete: UserProfile) => {
+    if (!window.confirm(`Tem certeza que deseja excluir o usuário ${userToDelete.firstName} ${userToDelete.lastName}?`)) {
       return;
     }
 
-    if (!currentUser && !currentUserIsAdmin) {
+    try {
+      console.log('Iniciando exclusão do usuário:', userToDelete.id);
+      
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userToDelete.id);
+
+      if (error) {
+        console.error('Erro ao excluir usuário:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível excluir o usuário.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       toast({
-        title: "Acesso negado",
-        description: "Apenas administradores podem criar usuários",
+        title: "Usuário excluído",
+        description: `${userToDelete.firstName} ${userToDelete.lastName} foi excluído com sucesso.`
+      });
+
+      fetchUsers();
+    } catch (error) {
+      console.error('Erro ao excluir usuário:', error);
+      toast({
+        title: "Erro",
+        description: "Erro inesperado ao excluir usuário.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSaveUser = async (userData: UserProfile) => {
+    if (!user || !selectedClinic) {
+      toast({
+        title: "Erro",
+        description: "Usuário ou clínica não identificados.",
         variant: "destructive"
       });
       return;
     }
 
     try {
-      console.log('=== SALVANDO USUÁRIO ===');
-      console.log('userData:', userData);
-
       if (currentUser) {
         // Editar usuário existente
         console.log('Editando usuário existente');
@@ -270,13 +160,17 @@ export const UserManagement = () => {
             email: userData.email,
             crm: userData.crm,
             phone: userData.phone,
+            role: userData.role,
             title: userData.title,
             bio: userData.bio,
-            role: userData.role
+            updated_at: new Date().toISOString()
           })
-          .eq('id', userData.id);
+          .eq('id', currentUser.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Erro ao atualizar usuário:', error);
+          throw error;
+        }
 
         toast({
           title: "Usuário atualizado",
@@ -289,138 +183,173 @@ export const UserManagement = () => {
         // 1. Verificar se email já existe
         const { data: existingUser } = await supabase
           .from('profiles')
-          .select('*')
+          .select('id')
           .eq('email', userData.email)
           .single();
 
         if (existingUser) {
           toast({
-            title: "Email já existe",
-            description: "Já existe um usuário com este email",
+            title: "Erro",
+            description: "Já existe um usuário com este email.",
             variant: "destructive"
           });
           return;
         }
 
-        // 2. Fazer signup direto
+        // 2. Fazer signup direto - isso criará o usuário no auth.users e o trigger criará o profile
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: userData.email,
           password: 'CardioFlow2024!',
-          options: {
-            data: {
-              first_name: userData.firstName,
-              last_name: userData.lastName,
-              phone: userData.phone || '',
-              crm: userData.crm,
-              role: userData.role,
-              title: userData.title || '',
-              bio: userData.bio || ''
-            }
+          data: {
+            first_name: userData.firstName,
+            last_name: userData.lastName,
+            phone: userData.phone || '',
+            crm: userData.crm,
+            role: userData.role,
+            title: userData.title || '',
+            bio: userData.bio || ''
           }
         });
 
-        if (signUpError) throw signUpError;
-        if (!signUpData.user) throw new Error('Falha ao criar usuário');
-
-        // 3. Aguardar processamento do trigger
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // 4. Associar à clínica
-        const { error: staffError } = await supabase
-          .from('clinic_staff')
-          .insert({
-            user_id: signUpData.user.id,
-            clinic_id: selectedClinic.id,
-            is_admin: false,
-            role: userData.role,
-            active: true
+        if (signUpError) {
+          console.error('Erro no signup:', signUpError);
+          toast({
+            title: "Erro ao criar usuário",
+            description: signUpError.message || "Não foi possível criar o usuário.",
+            variant: "destructive"
           });
+          return;
+        }
 
-        if (staffError) {
-          console.error('Erro ao associar à clínica:', staffError);
+        if (!signUpData.user) {
+          toast({
+            title: "Erro",
+            description: "Usuário não foi criado corretamente.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        console.log('Usuário criado com sucesso:', signUpData.user.id);
+
+        // 3. Se for clinic_admin, criar uma nova clínica para ele
+        if (userData.role === 'clinic_admin') {
+          console.log('Criando clínica para clinic_admin');
+          
+          // Criar nova clínica
+          const { data: clinicData, error: clinicError } = await supabase
+            .from('clinics')
+            .insert({
+              name: `Clínica de ${userData.firstName} ${userData.lastName}`,
+              address: 'Endereço a ser atualizado',
+              city: 'Cidade a ser atualizada',
+              phone: userData.phone || '',
+              email: userData.email,
+              created_by: user.id,
+              active: true
+            })
+            .select()
+            .single();
+
+          if (clinicError) {
+            console.error('Erro ao criar clínica:', clinicError);
+            toast({
+              title: "Aviso",
+              description: "Usuário criado, mas houve erro ao criar a clínica. Você pode criar manualmente.",
+              variant: "destructive"
+            });
+          } else {
+            console.log('Clínica criada:', clinicData.id);
+            
+            // 4. Associar o usuário à clínica como admin
+            const { error: staffError } = await supabase
+              .from('clinic_staff')
+              .insert({
+                user_id: signUpData.user.id,
+                clinic_id: clinicData.id,
+                is_admin: true,
+                role: 'clinic_admin',
+                active: true
+              });
+
+            if (staffError) {
+              console.error('Erro ao associar usuário à clínica:', staffError);
+              toast({
+                title: "Aviso",
+                description: "Usuário e clínica criados, mas houve erro na associação.",
+                variant: "destructive"
+              });
+            } else {
+              console.log('Usuário associado à clínica com sucesso');
+              // Atualizar lista de clínicas
+              await refetchClinics();
+            }
+          }
+        } else {
+          // 4. Para outros roles, associar à clínica atual
+          console.log('Associando usuário à clínica atual');
+          const { error: staffError } = await supabase
+            .from('clinic_staff')
+            .insert({
+              user_id: signUpData.user.id,
+              clinic_id: selectedClinic.id,
+              is_admin: false,
+              role: userData.role,
+              active: true
+            });
+
+          if (staffError) {
+            console.error('Erro ao associar usuário à clínica:', staffError);
+            toast({
+              title: "Aviso",
+              description: "Usuário criado, mas não foi possível associá-lo à clínica.",
+              variant: "destructive"
+            });
+          }
         }
 
         toast({
           title: "Usuário criado",
-          description: "Usuário criado com sucesso! Senha padrão: CardioFlow2024!"
+          description: `${userData.firstName} ${userData.lastName} foi criado com sucesso!`
         });
       }
 
-      await loadStaff();
       setIsDialogOpen(false);
       setCurrentUser(null);
-
+      fetchUsers();
     } catch (error) {
       console.error('Erro ao salvar usuário:', error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao salvar usuário",
+        description: error instanceof Error ? error.message : "Não foi possível salvar o usuário.",
         variant: "destructive"
       });
     }
   };
 
-  const handleRemoveUser = async (staffMember: ClinicStaff) => {
-    if (!user?.id) {
-      toast({
-        title: "Erro",
-        description: "Usuário não autenticado",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!currentUserIsAdmin) {
-      toast({
-        title: "Acesso negado",
-        description: "Apenas administradores podem remover funcionários",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      console.log('=== INICIANDO REMOÇÃO DE FUNCIONÁRIO ===');
-      console.log('Staff a ser removido:', staffMember);
-      console.log('Usuário que está removendo:', user.id);
-
-      const result = await removeClinicStaff(staffMember.id, user.id);
-      
-      if (result.success) {
-        toast({
-          title: "Funcionário removido",
-          description: result.message
-        });
-        
-        await loadStaff();
-      } else {
-        toast({
-          title: "Erro",
-          description: result.message,
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao remover funcionário:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao remover funcionário",
-        variant: "destructive"
-      });
-    }
+  const getRoleColor = (role: string): string => {
+    const roleColors: Record<string, string> = {
+      admin: 'bg-red-100 text-red-800',
+      clinic_admin: 'bg-purple-100 text-purple-800',
+      doctor: 'bg-blue-100 text-blue-800',
+      nurse: 'bg-green-100 text-green-800',
+      receptionist: 'bg-yellow-100 text-yellow-800',
+      staff: 'bg-gray-100 text-gray-800'
+    };
+    return roleColors[role] || 'bg-gray-100 text-gray-800';
   };
 
-  if (!selectedClinic) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <p className="text-center text-muted-foreground">
-            Selecione uma clínica para gerenciar usuários.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const getRoleName = (role: string): string => {
+    const roleNames: Record<string, string> = {
+      admin: 'Administrador Global',
+      clinic_admin: 'Admin. Clínica',
+      doctor: 'Médico',
+      nurse: 'Enfermeiro',
+      receptionist: 'Recepcionista',
+      staff: 'Equipe',
+    };
+    return roleNames[role] || role;
+  };
 
   return (
     <Card>
@@ -429,63 +358,21 @@ export const UserManagement = () => {
           <div>
             <CardTitle>Gestão de Usuários</CardTitle>
             <CardDescription>
-              Gerencie os funcionários da clínica {selectedClinic.name}.
-              {currentUserIsAdmin && (
-                <span className="block text-sm text-green-600 mt-1">
-                  ✓ Você tem permissões de administrador nesta clínica
-                </span>
-              )}
+              Gerencie os usuários cadastrados no sistema
             </CardDescription>
           </div>
-          {currentUserIsAdmin && (
-            <Button onClick={handleCreateNewUser}>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Usuário
-            </Button>
-          )}
+          <Button onClick={handleAddUser}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Usuário
+          </Button>
         </div>
       </CardHeader>
-      
       <CardContent>
-        {/* Buscar usuário existente */}
-        {currentUserIsAdmin && (
-          <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-            <h3 className="text-sm font-medium mb-3">Adicionar Usuário Existente</h3>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Digite o email do usuário..."
-                value={searchEmail}
-                onChange={(e) => setSearchEmail(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearchUser()}
-              />
-              <Button onClick={handleSearchUser} disabled={isSearching}>
-                <Search className="h-4 w-4 mr-2" />
-                {isSearching ? 'Buscando...' : 'Buscar'}
-              </Button>
-            </div>
-            
-            {foundUser && (
-              <div className="mt-3 p-3 bg-white border rounded flex justify-between items-center">
-                <div>
-                  <p className="font-medium">{foundUser.firstName} {foundUser.lastName}</p>
-                  <p className="text-sm text-gray-600">{foundUser.email}</p>
-                  <p className="text-sm text-gray-600">CRM: {foundUser.crm}</p>
-                </div>
-                <Button onClick={handleAddFoundUser} size="sm">
-                  <UserCheck className="h-4 w-4 mr-2" />
-                  Adicionar
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Filtro de funcionários */}
         <div className="mb-4">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Filtrar funcionários..."
+              placeholder="Buscar usuários..."
               className="pl-8"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -493,83 +380,62 @@ export const UserManagement = () => {
           </div>
         </div>
 
-        {/* Lista de funcionários */}
         {isLoading ? (
-          <div className="text-center py-8">
-            <p>Carregando funcionários...</p>
-          </div>
-        ) : filteredStaff.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">
-              {staff.length === 0 ? 'Nenhum funcionário cadastrado' : 'Nenhum funcionário encontrado'}
-            </p>
+          <div className="flex justify-center p-8">
+            <p>Carregando usuários...</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {filteredStaff.map((staffMember) => {
-              const isCurrentUser = staffMember.user.id === user?.id;
-              const canRemove = currentUserIsAdmin && !isCurrentUser;
-              
-              return (
-                <div key={staffMember.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {users.length > 0 ? (
+              users.map((user: UserProfile) => (
+                <Card key={user.id} className="overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
                       <div>
-                        <h3 className="font-medium">
-                          {staffMember.user.firstName} {staffMember.user.lastName}
-                          {isCurrentUser && (
-                            <span className="text-sm text-blue-600 ml-2">(Você)</span>
-                          )}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">{staffMember.user.email}</p>
-                        {staffMember.user.crm && (
-                          <p className="text-sm text-muted-foreground">CRM: {staffMember.user.crm}</p>
-                        )}
+                        <CardTitle className="text-lg">{user.firstName} {user.lastName}</CardTitle>
+                        <CardDescription>{user.email}</CardDescription>
                       </div>
-                      <div className="flex gap-2">
-                        <Badge variant="outline">{staffMember.role}</Badge>
-                        {staffMember.isAdmin && <Badge variant="default">Admin</Badge>}
-                      </div>
+                      <Badge variant="outline" className={getRoleColor(user.role)}>
+                        {getRoleName(user.role)}
+                      </Badge>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    {currentUserIsAdmin && (
-                      <Button variant="ghost" size="sm" onClick={() => handleEditUser(staffMember)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleRemoveUser(staffMember)}
-                      className={canRemove ? "text-red-600 hover:text-red-700" : "text-gray-400 cursor-not-allowed"}
-                      disabled={!canRemove}
-                      title={
-                        !currentUserIsAdmin 
-                          ? "Apenas administradores podem remover funcionários"
-                          : isCurrentUser 
-                          ? "Você não pode remover a si mesmo"
-                          : "Remover funcionário"
-                      }
-                    >
-                      <UserX className="h-4 w-4" />
+                  </CardHeader>
+                  <CardContent className="pb-2">
+                    <div className="space-y-1 text-sm">
+                      <p><strong>CRM:</strong> {user.crm}</p>
+                      {user.phone && <p><strong>Telefone:</strong> {user.phone}</p>}
+                      {user.title && <p><strong>Título:</strong> {user.title}</p>}
+                    </div>
+                  </CardContent>
+                  <div className="px-6 py-3 bg-gray-50 flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => handleEditUser(user)}>
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Editar
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(user)} className="text-red-600 hover:text-red-700">
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Excluir
                     </Button>
                   </div>
-                </div>
-              );
-            })}
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-full flex items-center justify-center p-8 border rounded-md bg-gray-50">
+                <p className="text-muted-foreground">Nenhum usuário encontrado</p>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
-
-      <UserDialog
-        isOpen={isDialogOpen}
+      
+      <UserDialog 
+        isOpen={isDialogOpen} 
         onClose={() => {
           setIsDialogOpen(false);
           setCurrentUser(null);
-        }}
-        onSave={handleSaveUser}
-        user={currentUser}
+        }} 
+        onSave={handleSaveUser} 
+        user={currentUser} 
       />
     </Card>
   );
