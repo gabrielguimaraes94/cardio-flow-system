@@ -37,13 +37,15 @@ serve(async (req) => {
     
     // Verificar variáveis de ambiente
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
     
     console.log('Environment Variables Check:');
     console.log('- SUPABASE_URL:', supabaseUrl ? '✅ Set' : '❌ Missing');
-    console.log('- SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? '✅ Set' : '❌ Missing');
+    console.log('- SUPABASE_SERVICE_ROLE_KEY:', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ? '✅ Set' : '❌ Missing');
+    console.log('- SERVICE_ROLE_KEY:', Deno.env.get('SERVICE_ROLE_KEY') ? '✅ Set' : '❌ Missing');
     console.log('- SUPABASE_ANON_KEY:', supabaseAnonKey ? '✅ Set' : '❌ Missing');
+    console.log('- Using SERVICE_ROLE_KEY:', supabaseServiceKey ? '✅ Available' : '❌ None Found');
     
     if (!supabaseUrl) {
       console.error('❌ SUPABASE_URL não configurada');
@@ -54,9 +56,9 @@ serve(async (req) => {
     }
     
     if (!supabaseServiceKey) {
-      console.error('❌ SUPABASE_SERVICE_ROLE_KEY não configurada');
+      console.error('❌ Nenhuma SERVICE_ROLE_KEY encontrada');
       return new Response(
-        JSON.stringify({ error: 'Configuração do servidor incompleta: SUPABASE_SERVICE_ROLE_KEY' }),
+        JSON.stringify({ error: 'Configuração do servidor incompleta: SERVICE_ROLE_KEY' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
