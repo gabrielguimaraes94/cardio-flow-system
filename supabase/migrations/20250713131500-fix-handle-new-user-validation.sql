@@ -1,4 +1,5 @@
 
+
 -- Corrigir a função handle_new_user para validar campos obrigatórios
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
@@ -57,3 +58,4 @@ BEGIN
   RETURN new;
 END;
 $$;
+
