@@ -71,44 +71,10 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         throw new Error('Apenas administradores globais podem registrar clínicas');
       }
 
-      console.log('=== REGISTERING NEW CLINIC ===');
-      console.log('Clinic data:', {
-        name: values.clinicName,
-        city: values.clinicCity,
-        address: values.clinicAddress,
-        phone: values.clinicPhone,
-        email: values.clinicEmail,
-        trading_name: values.clinicTradingName,
-        cnpj: values.clinicCnpj
-      });
+      console.log('=== REGISTERING CLINIC ADMIN AND CLINIC ===');
 
-      // 1. Registrar clínica primeiro
-      const clinicData = {
-        name: values.clinicName,
-        city: values.clinicCity,
-        address: values.clinicAddress,
-        phone: values.clinicPhone,
-        email: values.clinicEmail,
-        trading_name: values.clinicTradingName,
-        cnpj: values.clinicCnpj,
-      };
-
-      const result = await registerClinic(clinicData, user.id);
-      
-      let clinicId: string;
-      if (typeof result === 'string') {
-        clinicId = result;
-      } else if (result && typeof result === 'object' && 'id' in result) {
-        clinicId = (result as { id: string }).id;
-      } else {
-        console.log('Clinic registration result:', JSON.stringify(result));
-        throw new Error('Unable to determine clinic ID from result');
-      }
-
-      console.log('✅ Clinic registered successfully:', { id: clinicId });
-
-      // 2. Criar admin da clínica
-      console.log('=== CREATING ADMIN USER ===');
+      // 1. Criar admin da clínica PRIMEIRO
+      console.log('=== STEP 1: CREATING ADMIN USER ===');
       console.log('Admin data:', {
         email: values.adminEmail,
         first_name: values.adminFirstName,
@@ -116,7 +82,6 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         role: 'clinic_admin'
       });
 
-      // Fazer signup do admin
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: values.adminEmail,
         password: 'CardioFlow2024!',
@@ -134,7 +99,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
       });
 
       if (signUpError) {
-        console.error('Signup error:', signUpError);
+        console.error('❌ Signup error:', signUpError);
         throw new Error(`Erro ao criar usuário admin: ${signUpError.message}`);
       }
 
@@ -144,11 +109,39 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
 
       console.log('✅ Admin user created:', signUpData.user.id);
 
-      // 3. Aguardar um pouco para o trigger processar
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 2. Aguardar um pouco para o trigger processar o profile
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // 4. Associar o usuário à clínica
-      console.log('=== ASSOCIATING USER TO CLINIC ===');
+      // 3. Criar a clínica
+      console.log('=== STEP 2: CREATING CLINIC ===');
+      const clinicData = {
+        name: values.clinicName,
+        city: values.clinicCity,
+        address: values.clinicAddress,
+        phone: values.clinicPhone,
+        email: values.clinicEmail,
+        trading_name: values.clinicTradingName,
+        cnpj: values.clinicCnpj,
+      };
+
+      console.log('Clinic data:', clinicData);
+
+      const result = await registerClinic(clinicData, user.id);
+      
+      let clinicId: string;
+      if (typeof result === 'string') {
+        clinicId = result;
+      } else if (result && typeof result === 'object' && 'id' in result) {
+        clinicId = (result as { id: string }).id;
+      } else {
+        console.log('Clinic registration result:', JSON.stringify(result));
+        throw new Error('Unable to determine clinic ID from result');
+      }
+
+      console.log('✅ Clinic created successfully:', { id: clinicId });
+
+      // 4. Associar o usuário à clínica como admin
+      console.log('=== STEP 3: ASSOCIATING USER TO CLINIC ===');
       const { error: staffError } = await supabase
         .from('clinic_staff')
         .insert({
@@ -160,16 +153,20 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         });
 
       if (staffError) {
-        console.error('Error associating user to clinic:', staffError);
+        console.error('❌ Error associating user to clinic:', staffError);
         // Não falhar o processo todo, apenas avisar
-        console.log('User created but not associated to clinic');
+        toast({
+          title: "Aviso",
+          description: "Usuário e clínica criados, mas houve erro na associação. Você pode associar manualmente.",
+          variant: "destructive"
+        });
       } else {
         console.log('✅ User associated to clinic successfully');
       }
 
       toast({
-        title: "Clínica registrada com sucesso!",
-        description: "A clínica e o administrador foram registrados no sistema.",
+        title: "Sucesso!",
+        description: "Clínica e administrador registrados com sucesso no sistema.",
       });
 
       form.reset();
@@ -178,7 +175,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
         onSuccess();
       }
     } catch (error: unknown) {
-      console.error("Error registering clinic:", error);
+      console.error("❌ Error in registration process:", error);
       toast({
         title: "Erro no registro",
         description: error instanceof Error ? error.message : "Não foi possível registrar a clínica. Tente novamente.",
