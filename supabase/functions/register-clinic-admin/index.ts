@@ -40,6 +40,7 @@ serve(async (req) => {
 
     // Validar payload
     if (!payload.adminData?.email || !payload.adminData?.firstName || !payload.adminData?.lastName) {
+      console.error('❌ Missing admin data');
       return new Response(
         JSON.stringify({ error: 'Dados do administrador são obrigatórios' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -47,6 +48,7 @@ serve(async (req) => {
     }
 
     if (!payload.clinicData?.name || !payload.clinicData?.city || !payload.clinicData?.address) {
+      console.error('❌ Missing clinic data');
       return new Response(
         JSON.stringify({ error: 'Dados da clínica são obrigatórios' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -65,9 +67,12 @@ serve(async (req) => {
       }
     );
 
+    console.log('✅ Supabase admin client created');
+
     // Verificar se o usuário atual é admin global
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('❌ No authorization header');
       return new Response(
         JSON.stringify({ error: 'Autorização necessária' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -89,11 +94,14 @@ serve(async (req) => {
 
     const { data: { user: currentUser } } = await supabaseNormal.auth.getUser();
     if (!currentUser) {
+      console.error('❌ No authenticated user');
       return new Response(
         JSON.stringify({ error: 'Usuário não autenticado' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('✅ Current user:', currentUser.id);
 
     const { data: currentProfile } = await supabaseNormal
       .from('profiles')
@@ -102,6 +110,7 @@ serve(async (req) => {
       .single();
 
     if (!currentProfile || currentProfile.role !== 'admin') {
+      console.error('❌ User is not admin:', currentProfile);
       return new Response(
         JSON.stringify({ error: 'Apenas administradores globais podem registrar clínicas' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -110,10 +119,28 @@ serve(async (req) => {
 
     console.log('✅ Permission check passed');
 
-    // PASSO 1: Criar o usuário admin da clínica usando service role
-    console.log('=== STEP 1: CREATING ADMIN USER ===');
+    // PASSO 1: Verificar se email já existe
+    console.log('=== STEP 1: CHECKING EXISTING EMAIL ===');
+    const { data: existingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email')
+      .eq('email', payload.adminData.email)
+      .maybeSingle();
+
+    if (existingProfile) {
+      console.error('❌ Email already exists:', payload.adminData.email);
+      return new Response(
+        JSON.stringify({ error: 'Já existe um usuário com este email' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('✅ Email is available');
+
+    // PASSO 2: Criar o usuário admin da clínica usando service role
+    console.log('=== STEP 2: CREATING ADMIN USER ===');
     
-    const { data: newUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
+    const createUserPayload = {
       email: payload.adminData.email,
       password: 'CardioFlow2024!', // Senha padrão
       email_confirm: true, // Confirmar email automaticamente
@@ -126,20 +153,36 @@ serve(async (req) => {
         title: '',
         bio: ''
       }
-    });
+    };
 
-    if (createUserError || !newUser.user) {
+    console.log('Creating user with payload:', JSON.stringify(createUserPayload, null, 2));
+    
+    const { data: newUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser(createUserPayload);
+
+    if (createUserError) {
       console.error('❌ Error creating user:', createUserError);
+      console.error('Error details:', JSON.stringify(createUserError, null, 2));
       return new Response(
-        JSON.stringify({ error: `Erro ao criar usuário: ${createUserError?.message}` }),
+        JSON.stringify({ 
+          error: `Erro ao criar usuário: ${createUserError.message}`,
+          details: createUserError
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!newUser.user) {
+      console.error('❌ No user returned from createUser');
+      return new Response(
+        JSON.stringify({ error: 'Erro ao criar usuário: nenhum usuário retornado' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     console.log('✅ User created:', newUser.user.id);
 
-    // PASSO 2: Aguardar profile ser criado pelo trigger
-    console.log('=== STEP 2: WAITING FOR PROFILE CREATION ===');
+    // PASSO 3: Aguardar profile ser criado pelo trigger
+    console.log('=== STEP 3: WAITING FOR PROFILE CREATION ===');
     let profileCreated = false;
     let attempts = 0;
     const maxAttempts = 10;
@@ -147,11 +190,15 @@ serve(async (req) => {
     while (!profileCreated && attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const { data: profileCheck } = await supabaseAdmin
+      const { data: profileCheck, error: profileError } = await supabaseAdmin
         .from('profiles')
         .select('id, role, email')
         .eq('id', newUser.user.id)
         .maybeSingle();
+
+      if (profileError) {
+        console.error('❌ Error checking profile:', profileError);
+      }
 
       if (profileCheck) {
         console.log('✅ Profile created:', profileCheck);
@@ -163,6 +210,7 @@ serve(async (req) => {
     }
 
     if (!profileCreated) {
+      console.error('❌ Profile creation failed after', maxAttempts, 'attempts');
       // Limpar usuário criado se profile falhou
       await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
       return new Response(
@@ -171,8 +219,8 @@ serve(async (req) => {
       );
     }
 
-    // PASSO 3: Criar a clínica
-    console.log('=== STEP 3: CREATING CLINIC ===');
+    // PASSO 4: Criar a clínica
+    console.log('=== STEP 4: CREATING CLINIC ===');
     
     const { data: clinicResult, error: clinicError } = await supabaseAdmin.rpc('create_clinic', {
       p_name: payload.clinicData.name,
@@ -181,16 +229,28 @@ serve(async (req) => {
       p_phone: payload.clinicData.phone,
       p_email: payload.clinicData.email,
       p_created_by: currentUser.id,
-      p_trading_name: payload.clinicData.tradingName,
-      p_cnpj: payload.clinicData.cnpj
+      p_trading_name: payload.clinicData.tradingName || null,
+      p_cnpj: payload.clinicData.cnpj || null
     });
 
-    if (clinicError || !clinicResult?.id) {
+    if (clinicError) {
       console.error('❌ Error creating clinic:', clinicError);
       // Limpar usuário criado se clínica falhou
       await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
       return new Response(
-        JSON.stringify({ error: `Erro ao criar clínica: ${clinicError?.message}` }),
+        JSON.stringify({ 
+          error: `Erro ao criar clínica: ${clinicError.message}`,
+          details: clinicError
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!clinicResult?.id) {
+      console.error('❌ No clinic ID returned');
+      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+      return new Response(
+        JSON.stringify({ error: 'Erro ao criar clínica: ID não retornado' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -198,8 +258,8 @@ serve(async (req) => {
     const clinicId = clinicResult.id;
     console.log('✅ Clinic created:', clinicId);
 
-    // PASSO 4: Associar usuário à clínica
-    console.log('=== STEP 4: LINKING USER TO CLINIC ===');
+    // PASSO 5: Associar usuário à clínica
+    console.log('=== STEP 5: LINKING USER TO CLINIC ===');
     
     const { error: staffError } = await supabaseAdmin
       .from('clinic_staff')
@@ -218,7 +278,10 @@ serve(async (req) => {
       await supabaseAdmin.from('clinics').delete().eq('id', clinicId);
       
       return new Response(
-        JSON.stringify({ error: `Erro ao associar usuário à clínica: ${staffError.message}` }),
+        JSON.stringify({ 
+          error: `Erro ao associar usuário à clínica: ${staffError.message}`,
+          details: staffError
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -241,8 +304,12 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Unexpected error:', error);
+    console.error('Error stack:', error.stack);
     return new Response(
-      JSON.stringify({ error: 'Erro interno do servidor' }),
+      JSON.stringify({ 
+        error: 'Erro interno do servidor',
+        details: error.message
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
