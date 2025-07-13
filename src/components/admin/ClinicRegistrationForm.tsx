@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { registerClinic } from '@/services/admin';
 
 interface ClinicRegistrationFormProps {
   onSuccess?: () => void;
@@ -55,160 +54,46 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
     try {
       setIsSubmitting(true);
       
-      // Verificar se o usuário atual é admin global
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('Usuário não autenticado');
-      }
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile || profile.role !== 'admin') {
-        throw new Error('Apenas administradores globais podem registrar clínicas');
-      }
-
-      console.log('=== REGISTERING CLINIC ADMIN AND CLINIC ===');
-
-      // 1. Criar admin da clínica usando a estratégia padrão do Supabase
-      console.log('=== STEP 1: CREATING ADMIN USER ===');
-      console.log('Admin data:', {
-        email: values.adminEmail,
-        first_name: values.adminFirstName,
-        last_name: values.adminLastName,
-        role: 'clinic_admin'
-      });
-
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: values.adminEmail,
-        password: 'CardioFlow2024!',
-        options: {
-          data: {
-            first_name: values.adminFirstName,
-            last_name: values.adminLastName,
-            phone: values.adminPhone || '',
-            crm: values.adminCrm || '',
-            role: 'clinic_admin',
-            title: '',
-            bio: ''
-          }
+      console.log('=== STARTING CLINIC REGISTRATION ===');
+      
+      // Preparar payload para a edge function
+      const payload = {
+        adminData: {
+          firstName: values.adminFirstName,
+          lastName: values.adminLastName,
+          email: values.adminEmail,
+          phone: values.adminPhone,
+          crm: values.adminCrm,
+        },
+        clinicData: {
+          name: values.clinicName,
+          city: values.clinicCity,
+          address: values.clinicAddress,
+          phone: values.clinicPhone,
+          email: values.clinicEmail,
+          tradingName: values.clinicTradingName,
+          cnpj: values.clinicCnpj,
         }
-      });
-
-      if (signUpError) {
-        console.error('❌ Signup error:', signUpError);
-        throw new Error(`Erro ao criar usuário admin: ${signUpError.message}`);
-      }
-
-      if (!signUpData.user) {
-        throw new Error('Falha ao criar usuário admin - sem dados do usuário');
-      }
-
-      console.log('✅ Admin user created:', signUpData.user.id);
-
-      // 2. Aguardar que o trigger crie o profile (estratégia mais robusta)
-      console.log('=== STEP 2: WAITING FOR PROFILE CREATION ===');
-      let profileCreated = false;
-      let attempts = 0;
-      const maxAttempts = 15; // Aumentei para 15 tentativas
-
-      while (!profileCreated && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Aguardar 1 segundo
-        
-        const { data: profileCheck, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, role, email')
-          .eq('id', signUpData.user.id)
-          .maybeSingle(); // Usar maybeSingle em vez de single
-
-        if (profileError) {
-          console.error('Error checking profile:', profileError);
-          attempts++;
-          continue;
-        }
-
-        if (profileCheck) {
-          console.log('✅ Profile created by trigger:', profileCheck);
-          profileCreated = true;
-        } else {
-          attempts++;
-          console.log(`⏳ Waiting for profile creation... attempt ${attempts}/${maxAttempts}`);
-        }
-      }
-
-      if (!profileCreated) {
-        throw new Error('Profile não foi criado automaticamente pelo trigger após 15 segundos');
-      }
-
-      // 3. Criar a clínica
-      console.log('=== STEP 3: CREATING CLINIC ===');
-      const clinicData = {
-        name: values.clinicName,
-        city: values.clinicCity,
-        address: values.clinicAddress,
-        phone: values.clinicPhone,
-        email: values.clinicEmail,
-        trading_name: values.clinicTradingName,
-        cnpj: values.clinicCnpj,
       };
 
-      console.log('Clinic data:', clinicData);
+      console.log('Payload:', payload);
 
-      const result = await registerClinic(clinicData, user.id);
-      
-      let clinicId: string;
-      if (typeof result === 'string') {
-        clinicId = result;
-      } else if (result && typeof result === 'object' && 'id' in result) {
-        clinicId = (result as { id: string }).id;
-      } else {
-        console.log('Clinic registration result:', JSON.stringify(result));
-        throw new Error('Unable to determine clinic ID from result');
+      // Chamar a edge function
+      const { data, error } = await supabase.functions.invoke('register-clinic-admin', {
+        body: payload
+      });
+
+      if (error) {
+        console.error('❌ Edge function error:', error);
+        throw new Error(error.message || 'Erro ao registrar clínica');
       }
 
-      console.log('✅ Clinic created successfully:', { id: clinicId });
-
-      // 4. Associar o usuário à clínica como admin
-      console.log('=== STEP 4: ASSOCIATING USER TO CLINIC ===');
-      const { error: staffError } = await supabase
-        .from('clinic_staff')
-        .insert({
-          user_id: signUpData.user.id,
-          clinic_id: clinicId,
-          is_admin: true,
-          role: 'clinic_admin',
-          active: true
-        });
-
-      if (staffError) {
-        console.error('❌ Error associating user to clinic:', staffError);
-        throw new Error(`Erro ao associar usuário à clínica: ${staffError.message}`);
+      if (!data?.success) {
+        console.error('❌ Registration failed:', data);
+        throw new Error(data?.error || 'Falha no registro da clínica');
       }
 
-      console.log('✅ User associated to clinic successfully');
-
-      // 5. Verificação final (opcional, apenas para debug)
-      console.log('=== STEP 5: FINAL VERIFICATION ===');
-      
-      const { data: finalProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', signUpData.user.id)
-        .maybeSingle();
-      
-      console.log('Final profile:', finalProfile);
-
-      const { data: finalStaff } = await supabase
-        .from('clinic_staff')
-        .select('*')
-        .eq('user_id', signUpData.user.id)
-        .eq('clinic_id', clinicId)
-        .maybeSingle();
-      
-      console.log('Final clinic_staff:', finalStaff);
+      console.log('✅ Registration successful:', data);
 
       toast({
         title: "Sucesso!",
@@ -220,11 +105,17 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
       if (onSuccess) {
         onSuccess();
       }
+
     } catch (error: unknown) {
-      console.error("❌ Error in registration process:", error);
+      console.error("❌ Registration error:", error);
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Não foi possível registrar a clínica. Tente novamente.";
+      
       toast({
         title: "Erro no registro",
-        description: error instanceof Error ? error.message : "Não foi possível registrar a clínica. Tente novamente.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
