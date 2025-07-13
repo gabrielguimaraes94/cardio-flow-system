@@ -109,11 +109,36 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
 
       console.log('✅ Admin user created:', signUpData.user.id);
 
-      // 2. Aguardar um pouco para o trigger processar o profile
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // 2. Aguardar e verificar se o profile foi criado pelo trigger
+      console.log('=== STEP 2: WAITING FOR PROFILE CREATION ===');
+      let profileCreated = false;
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      while (!profileCreated && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 500)); // Aguardar 500ms
+        
+        const { data: profileCheck } = await supabase
+          .from('profiles')
+          .select('id, role')
+          .eq('id', signUpData.user.id)
+          .single();
+
+        if (profileCheck) {
+          console.log('✅ Profile created by trigger:', profileCheck);
+          profileCreated = true;
+        } else {
+          attempts++;
+          console.log(`⏳ Waiting for profile creation... attempt ${attempts}/${maxAttempts}`);
+        }
+      }
+
+      if (!profileCreated) {
+        throw new Error('Profile não foi criado automaticamente pelo trigger');
+      }
 
       // 3. Criar a clínica
-      console.log('=== STEP 2: CREATING CLINIC ===');
+      console.log('=== STEP 3: CREATING CLINIC ===');
       const clinicData = {
         name: values.clinicName,
         city: values.clinicCity,
@@ -141,7 +166,7 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
       console.log('✅ Clinic created successfully:', { id: clinicId });
 
       // 4. Associar o usuário à clínica como admin
-      console.log('=== STEP 3: ASSOCIATING USER TO CLINIC ===');
+      console.log('=== STEP 4: ASSOCIATING USER TO CLINIC ===');
       const { error: staffError } = await supabase
         .from('clinic_staff')
         .insert({
@@ -154,15 +179,32 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
 
       if (staffError) {
         console.error('❌ Error associating user to clinic:', staffError);
-        // Não falhar o processo todo, apenas avisar
-        toast({
-          title: "Aviso",
-          description: "Usuário e clínica criados, mas houve erro na associação. Você pode associar manualmente.",
-          variant: "destructive"
-        });
-      } else {
-        console.log('✅ User associated to clinic successfully');
+        throw new Error(`Erro ao associar usuário à clínica: ${staffError.message}`);
       }
+
+      console.log('✅ User associated to clinic successfully');
+
+      // 5. Verificar se tudo foi criado corretamente
+      console.log('=== STEP 5: FINAL VERIFICATION ===');
+      
+      // Verificar profile
+      const { data: finalProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', signUpData.user.id)
+        .single();
+      
+      console.log('Final profile:', finalProfile);
+
+      // Verificar clinic_staff
+      const { data: finalStaff } = await supabase
+        .from('clinic_staff')
+        .select('*')
+        .eq('user_id', signUpData.user.id)
+        .eq('clinic_id', clinicId)
+        .single();
+      
+      console.log('Final clinic_staff:', finalStaff);
 
       toast({
         title: "Sucesso!",
