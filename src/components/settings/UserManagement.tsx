@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -200,14 +199,16 @@ export const UserManagement = () => {
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: userData.email,
           password: 'CardioFlow2024!',
-          data: {
-            first_name: userData.firstName,
-            last_name: userData.lastName,
-            phone: userData.phone || '',
-            crm: userData.crm,
-            role: userData.role,
-            title: userData.title || '',
-            bio: userData.bio || ''
+          options: {
+            data: {
+              first_name: userData.firstName,
+              last_name: userData.lastName,
+              phone: userData.phone || '',
+              crm: userData.crm,
+              role: userData.role,
+              title: userData.title || '',
+              bio: userData.bio || ''
+            }
           }
         });
 
