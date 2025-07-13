@@ -33,9 +33,43 @@ serve(async (req) => {
   }
 
   try {
-    const payload: RegisterClinicAdminPayload = await req.json();
-    
     console.log('=== REGISTER CLINIC ADMIN REQUEST ===');
+    
+    // Verificar variáveis de ambiente
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    
+    console.log('Environment Variables Check:');
+    console.log('- SUPABASE_URL:', supabaseUrl ? '✅ Set' : '❌ Missing');
+    console.log('- SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? '✅ Set' : '❌ Missing');
+    console.log('- SUPABASE_ANON_KEY:', supabaseAnonKey ? '✅ Set' : '❌ Missing');
+    
+    if (!supabaseUrl) {
+      console.error('❌ SUPABASE_URL não configurada');
+      return new Response(
+        JSON.stringify({ error: 'Configuração do servidor incompleta: SUPABASE_URL' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (!supabaseServiceKey) {
+      console.error('❌ SUPABASE_SERVICE_ROLE_KEY não configurada');
+      return new Response(
+        JSON.stringify({ error: 'Configuração do servidor incompleta: SUPABASE_SERVICE_ROLE_KEY' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (!supabaseAnonKey) {
+      console.error('❌ SUPABASE_ANON_KEY não configurada');
+      return new Response(
+        JSON.stringify({ error: 'Configuração do servidor incompleta: SUPABASE_ANON_KEY' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const payload: RegisterClinicAdminPayload = await req.json();
     console.log('Payload received:', JSON.stringify(payload, null, 2));
 
     // Validar payload
@@ -56,9 +90,10 @@ serve(async (req) => {
     }
 
     // Create Supabase admin client with service role
+    console.log('Creating Supabase admin client...');
     const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      supabaseUrl,
+      supabaseServiceKey,
       {
         auth: {
           autoRefreshToken: false,
@@ -81,8 +116,8 @@ serve(async (req) => {
 
     // Criar cliente normal para verificar permissões
     const supabaseNormal = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      supabaseUrl,
+      supabaseAnonKey,
       {
         global: {
           headers: {
