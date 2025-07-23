@@ -37,7 +37,7 @@ serve(async (req) => {
     // Test simple query first
     const { data: testData, error: testError } = await supabaseAdmin
       .from('profiles')
-      .select('count(*)')
+      .select('id')
       .limit(1);
     
     console.log('Test query result:', testData, testError);
