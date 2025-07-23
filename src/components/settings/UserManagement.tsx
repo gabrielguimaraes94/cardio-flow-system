@@ -176,142 +176,78 @@ export const UserManagement = () => {
           description: "Informações do usuário atualizadas com sucesso!"
         });
       } else {
-        // Criar novo usuário usando signup direto
-        console.log('Criando novo usuário');
+        // Criar novo usuário usando edge function apropriada
+        console.log('Criando novo usuário via edge function');
         
-        // 1. Verificar se email já existe
-        const { data: existingUser } = await supabase
+        // Verificar se é admin global ou admin da clínica atual
+        const { data: currentUserProfile } = await supabase
           .from('profiles')
-          .select('id')
-          .eq('email', userData.email)
+          .select('role')
+          .eq('id', user.id)
           .single();
 
-        if (existingUser) {
+        const isGlobalAdmin = currentUserProfile?.role === 'admin';
+        
+        // Se não é admin global, verificar se é admin da clínica
+        let isClinicAdmin = false;
+        if (!isGlobalAdmin && selectedClinic) {
+          const { data: staffRecord } = await supabase
+            .from('clinic_staff')
+            .select('is_admin')
+            .eq('user_id', user.id)
+            .eq('clinic_id', selectedClinic.id)
+            .eq('active', true)
+            .eq('is_admin', true)
+            .single();
+          
+          isClinicAdmin = !!staffRecord;
+        }
+
+        if (!isGlobalAdmin && !isClinicAdmin) {
           toast({
             title: "Erro",
-            description: "Já existe um usuário com este email.",
+            description: "Você não tem permissão para criar usuários.",
             variant: "destructive"
           });
           return;
         }
 
-        // 2. Fazer signup direto - isso criará o usuário no auth.users e o trigger criará o profile
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        // Preparar payload para edge function
+        const payload = {
           email: userData.email,
-          password: 'CardioFlow2024!',
-          options: {
-            data: {
-              first_name: userData.firstName,
-              last_name: userData.lastName,
-              phone: userData.phone || '',
-              crm: userData.crm,
-              role: userData.role,
-              title: userData.title || '',
-              bio: userData.bio || ''
-            }
-          }
+          first_name: userData.firstName,
+          last_name: userData.lastName,
+          phone: userData.phone || '',
+          crm: userData.crm,
+          role: userData.role,
+          title: userData.title || '',
+          bio: userData.bio || '',
+          clinic_id: selectedClinic?.id,
+          is_admin: userData.role === 'clinic_admin'
+        };
+
+        console.log('Calling create-clinic-staff with payload:', payload);
+
+        // Chamar edge function
+        const { data: createResult, error: createError } = await supabase.functions.invoke('create-clinic-staff', {
+          body: payload
         });
 
-        if (signUpError) {
-          console.error('Erro no signup:', signUpError);
-          toast({
-            title: "Erro ao criar usuário",
-            description: signUpError.message || "Não foi possível criar o usuário.",
-            variant: "destructive"
-          });
-          return;
+        if (createError) {
+          console.error('Erro na edge function:', createError);
+          throw new Error(createError.message || 'Erro ao criar usuário');
         }
 
-        if (!signUpData.user) {
-          toast({
-            title: "Erro",
-            description: "Usuário não foi criado corretamente.",
-            variant: "destructive"
-          });
-          return;
+        if (!createResult?.success) {
+          console.error('Falha na criação:', createResult);
+          throw new Error(createResult?.error || 'Falha na criação do usuário');
         }
 
-        console.log('Usuário criado com sucesso:', signUpData.user.id);
-
-        // 3. Se for clinic_admin, criar uma nova clínica para ele
-        if (userData.role === 'clinic_admin') {
-          console.log('Criando clínica para clinic_admin');
-          
-          // Criar nova clínica
-          const { data: clinicData, error: clinicError } = await supabase
-            .from('clinics')
-            .insert({
-              name: `Clínica de ${userData.firstName} ${userData.lastName}`,
-              address: 'Endereço a ser atualizado',
-              city: 'Cidade a ser atualizada',
-              phone: userData.phone || '',
-              email: userData.email,
-              created_by: user.id,
-              active: true
-            })
-            .select()
-            .single();
-
-          if (clinicError) {
-            console.error('Erro ao criar clínica:', clinicError);
-            toast({
-              title: "Aviso",
-              description: "Usuário criado, mas houve erro ao criar a clínica. Você pode criar manualmente.",
-              variant: "destructive"
-            });
-          } else {
-            console.log('Clínica criada:', clinicData.id);
-            
-            // 4. Associar o usuário à clínica como admin
-            const { error: staffError } = await supabase
-              .from('clinic_staff')
-              .insert({
-                user_id: signUpData.user.id,
-                clinic_id: clinicData.id,
-                is_admin: true,
-                role: 'clinic_admin',
-                active: true
-              });
-
-            if (staffError) {
-              console.error('Erro ao associar usuário à clínica:', staffError);
-              toast({
-                title: "Aviso",
-                description: "Usuário e clínica criados, mas houve erro na associação.",
-                variant: "destructive"
-              });
-            } else {
-              console.log('Usuário associado à clínica com sucesso');
-              // Atualizar lista de clínicas
-              await refetchClinics();
-            }
-          }
-        } else {
-          // 4. Para outros roles, associar à clínica atual
-          console.log('Associando usuário à clínica atual');
-          const { error: staffError } = await supabase
-            .from('clinic_staff')
-            .insert({
-              user_id: signUpData.user.id,
-              clinic_id: selectedClinic.id,
-              is_admin: false,
-              role: userData.role,
-              active: true
-            });
-
-          if (staffError) {
-            console.error('Erro ao associar usuário à clínica:', staffError);
-            toast({
-              title: "Aviso",
-              description: "Usuário criado, mas não foi possível associá-lo à clínica.",
-              variant: "destructive"
-            });
-          }
-        }
+        console.log('Usuário criado com sucesso:', createResult);
 
         toast({
           title: "Usuário criado",
-          description: `${userData.firstName} ${userData.lastName} foi criado com sucesso!`
+          description: `${userData.firstName} ${userData.lastName} foi criado com sucesso! Senha padrão: CardioFlow2024!`
         });
       }
 
