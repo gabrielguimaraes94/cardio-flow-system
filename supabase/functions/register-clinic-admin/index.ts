@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -81,6 +80,7 @@ serve(async (req) => {
       );
     }
 
+    // Verificar se o usuário atual é admin global
     const { data: currentProfile } = await supabaseNormal.from('profiles').select('role').eq('id', currentUser.id).single();
 
     if (!currentProfile || currentProfile.role !== 'admin') {
@@ -90,136 +90,215 @@ serve(async (req) => {
       );
     }
 
-    // Verificar se email já existe
-    const { data: existingProfile } = await supabaseAdmin.from('profiles').select('id, email').eq('email', payload.adminData.email).maybeSingle();
+    // =================
+    // OPERAÇÃO TRANSACIONAL: Clínica + Admin
+    // Se qualquer parte falhar, tudo é revertido
+    // =================
 
-    if (existingProfile) {
-      return new Response(
-        JSON.stringify({ error: 'Já existe um usuário com este email' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    let createdUserId: string | null = null;
+    let createdClinicId: string | null = null;
 
-    // Criar usuário com dados válidos para evitar campos vazios
-    const createUserPayload = {
-      email: payload.adminData.email,
-      password: 'CardioFlow2024!',
-      email_confirm: true,
-      user_metadata: {
-        first_name: payload.adminData.firstName || 'Nome',
-        last_name: payload.adminData.lastName || 'Sobrenome',
-        phone: payload.adminData.phone || '',
-        crm: payload.adminData.crm || 'N/A',
-        role: 'clinic_admin',
-        title: '',
-        bio: ''
-      }
-    };
-    
-    const { data: newUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser(createUserPayload);
+    try {
+      console.log('=== INICIANDO TRANSAÇÃO: CLÍNICA + ADMIN ===');
 
-    if (createUserError || !newUser.user) {
-      return new Response(
-        JSON.stringify({ 
-          error: `Erro ao criar usuário: ${createUserError?.message}`,
-          details: createUserError
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Aguardar profile ser criado pelo trigger com retry
-    let profileCreated = false;
-    let attempts = 0;
-    const maxAttempts = 15;
-
-    while (!profileCreated && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const { data: profileCheck } = await supabaseAdmin
+      // STEP 1: Verificar se email já existe (fail fast)
+      console.log('Verificando email existente...');
+      const { data: existingProfile } = await supabaseAdmin
         .from('profiles')
-        .select('id, role, email')
-        .eq('id', newUser.user.id)
+        .select('id, email')
+        .eq('email', payload.adminData.email)
         .maybeSingle();
 
-      if (profileCheck) {
-        profileCreated = true;
-      } else {
-        attempts++;
+      if (existingProfile) {
+        return new Response(
+          JSON.stringify({ error: 'Já existe um usuário com este email' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-    }
 
-    if (!profileCreated) {
-      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
-      return new Response(
-        JSON.stringify({ error: 'Falha ao criar perfil do usuário' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+      // Verificar também em auth.users
+      const { data: authUsers, error: authCheckError } = await supabaseAdmin.auth.admin.listUsers();
+      
+      if (!authCheckError) {
+        const existingAuthUser = authUsers.users?.find(u => u.email === payload.adminData.email);
+        if (existingAuthUser) {
+          return new Response(
+            JSON.stringify({ error: 'Email já existe no sistema de autenticação' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
 
-    // Criar clínica
-    const { data: clinicResult, error: clinicError } = await supabaseAdmin.rpc('create_clinic', {
-      p_name: payload.clinicData.name,
-      p_city: payload.clinicData.city,
-      p_address: payload.clinicData.address,
-      p_phone: payload.clinicData.phone,
-      p_email: payload.clinicData.email,
-      p_created_by: currentUser.id,
-      p_trading_name: payload.clinicData.tradingName || null,
-      p_cnpj: payload.clinicData.cnpj || null
-    });
+      // STEP 2: Criar usuário no auth.users
+      console.log('Criando usuário auth...');
+      const createUserPayload = {
+        email: payload.adminData.email,
+        password: 'CardioFlow2024!',
+        email_confirm: true,
+        user_metadata: {
+          first_name: payload.adminData.firstName || 'Nome',
+          last_name: payload.adminData.lastName || 'Sobrenome',
+          phone: payload.adminData.phone || '',
+          crm: payload.adminData.crm || 'N/A',
+          role: 'clinic_admin',
+          title: '',
+          bio: ''
+        }
+      };
+      
+      const { data: newUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser(createUserPayload);
 
-    if (clinicError || !clinicResult?.id) {
-      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
-      return new Response(
-        JSON.stringify({ 
-          error: `Erro ao criar clínica: ${clinicError?.message}`,
-          details: clinicError
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+      if (createUserError || !newUser.user) {
+        console.error('Erro ao criar usuário:', createUserError);
+        return new Response(
+          JSON.stringify({ 
+            error: `Erro ao criar usuário: ${createUserError?.message}`,
+            details: createUserError
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    const clinicId = clinicResult.id;
+      createdUserId = newUser.user.id;
+      console.log('✅ Usuário auth criado:', createdUserId);
 
-    // Associar usuário à clínica
-    const { error: staffError } = await supabaseAdmin
-      .from('clinic_staff')
-      .insert({
-        user_id: newUser.user.id,
-        clinic_id: clinicId,
-        is_admin: true,
-        role: 'clinic_admin',
-        active: true
+      // STEP 3: Aguardar profile ser criado pelo trigger
+      console.log('Aguardando profile ser criado...');
+      let profileCreated = false;
+      let attempts = 0;
+      const maxAttempts = 15;
+
+      while (!profileCreated && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const { data: profileCheck } = await supabaseAdmin
+          .from('profiles')
+          .select('id, role, email')
+          .eq('id', createdUserId)
+          .maybeSingle();
+
+        if (profileCheck) {
+          profileCreated = true;
+          console.log('✅ Profile criado automaticamente pelo trigger');
+        } else {
+          attempts++;
+          console.log(`Tentativa ${attempts}/${maxAttempts} para profile`);
+        }
+      }
+
+      if (!profileCreated) {
+        console.error('❌ Profile não foi criado pelo trigger');
+        // ROLLBACK: Deletar usuário auth
+        await supabaseAdmin.auth.admin.deleteUser(createdUserId);
+        return new Response(
+          JSON.stringify({ error: 'Falha ao criar perfil do usuário' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // STEP 4: Criar clínica
+      console.log('Criando clínica...');
+      const { data: clinicResult, error: clinicError } = await supabaseAdmin.rpc('create_clinic', {
+        p_name: payload.clinicData.name,
+        p_city: payload.clinicData.city,
+        p_address: payload.clinicData.address,
+        p_phone: payload.clinicData.phone,
+        p_email: payload.clinicData.email,
+        p_created_by: currentUser.id,
+        p_trading_name: payload.clinicData.tradingName || null,
+        p_cnpj: payload.clinicData.cnpj || null
       });
 
-    if (staffError) {
-      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
-      await supabaseAdmin.from('clinics').delete().eq('id', clinicId);
+      if (clinicError || !clinicResult?.id) {
+        console.error('❌ Erro ao criar clínica:', clinicError);
+        // ROLLBACK: Deletar usuário auth
+        await supabaseAdmin.auth.admin.deleteUser(createdUserId);
+        return new Response(
+          JSON.stringify({ 
+            error: `Erro ao criar clínica: ${clinicError?.message}`,
+            details: clinicError
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      createdClinicId = clinicResult.id;
+      console.log('✅ Clínica criada:', createdClinicId);
+
+      // STEP 5: Associar usuário à clínica (transação final)
+      console.log('Associando admin à clínica...');
+      const { error: staffError } = await supabaseAdmin
+        .from('clinic_staff')
+        .insert({
+          user_id: createdUserId,
+          clinic_id: createdClinicId,
+          is_admin: true,
+          role: 'clinic_admin',
+          active: true
+        });
+
+      if (staffError) {
+        console.error('❌ Erro ao associar usuário à clínica:', staffError);
+        // ROLLBACK COMPLETO: Deletar usuário E clínica
+        await Promise.all([
+          supabaseAdmin.auth.admin.deleteUser(createdUserId),
+          supabaseAdmin.from('clinics').delete().eq('id', createdClinicId)
+        ]);
+        
+        return new Response(
+          JSON.stringify({ 
+            error: `Erro ao associar usuário à clínica: ${staffError.message}`,
+            details: staffError
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('✅ TRANSAÇÃO COMPLETA COM SUCESSO');
+
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: 'Clínica e administrador criados com sucesso!',
+          data: {
+            userId: createdUserId,
+            clinicId: createdClinicId,
+            adminEmail: payload.adminData.email,
+            clinicName: payload.clinicData.name
+          }
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+
+    } catch (transactionError) {
+      console.error('❌ ERRO NA TRANSAÇÃO:', transactionError);
+      
+      // ROLLBACK COMPLETO EM CASO DE EXCEÇÃO
+      const rollbackPromises = [];
+      
+      if (createdUserId) {
+        console.log('🔄 ROLLBACK: Deletando usuário auth');
+        rollbackPromises.push(supabaseAdmin.auth.admin.deleteUser(createdUserId));
+      }
+      
+      if (createdClinicId) {
+        console.log('🔄 ROLLBACK: Deletando clínica');
+        rollbackPromises.push(supabaseAdmin.from('clinics').delete().eq('id', createdClinicId));
+      }
+      
+      await Promise.allSettled(rollbackPromises);
       
       return new Response(
         JSON.stringify({ 
-          error: `Erro ao associar usuário à clínica: ${staffError.message}`,
-          details: staffError
+          error: 'Erro na transação - todas as operações foram revertidas',
+          details: transactionError.message
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        message: 'Clínica e administrador criados com sucesso!',
-        data: {
-          userId: newUser.user.id,
-          clinicId: clinicId,
-          adminEmail: payload.adminData.email
-        }
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
   } catch (error) {
+    console.error('❌ ERRO GERAL:', error);
     return new Response(
       JSON.stringify({ 
         error: 'Erro interno do servidor',
