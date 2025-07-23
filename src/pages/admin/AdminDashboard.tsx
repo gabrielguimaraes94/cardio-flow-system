@@ -8,7 +8,7 @@ import { UsersTab } from '@/components/admin/dashboard/Tabs/UsersTab';
 import { ClinicsTab } from '@/components/admin/dashboard/Tabs/ClinicsTab';
 import { RegisterTab } from '@/components/admin/dashboard/Tabs/RegisterTab';
 import { useToast } from '@/hooks/use-toast';
-import { getAllUsers, getAllClinics, getAllAuthUsers, getClinicStaffData } from '@/services/admin';
+import { getAllUsers, getAllClinics, getAllClinicStaff } from '@/services/admin';
 import { runFullDiagnostic, cleanOrphanData } from '@/services/admin/diagnosticService';
 
 const AdminDashboard = () => {
@@ -19,25 +19,38 @@ const AdminDashboard = () => {
   
   const [users, setUsers] = useState([]);
   const [clinics, setClinics] = useState([]);
-  const [authUsers, setAuthUsers] = useState([]);
   const [clinicStaff, setClinicStaff] = useState([]);
+  
+  // Filter states
+  const [userFilters, setUserFilters] = useState({
+    name: '',
+    role: '' as any,
+    createdAfter: undefined,
+    createdBefore: undefined
+  });
+  
+  const [clinicFilters, setClinicFilters] = useState({
+    name: '',
+    city: '',
+    active: undefined,
+    createdAfter: undefined,
+    createdBefore: undefined
+  });
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
       console.log('=== LOADING ADMIN DASHBOARD DATA ===');
       
-      const [usersData, authUsersData, clinicsData, staffData] = await Promise.all([
+      const [usersData, clinicsData, staffData] = await Promise.all([
         getAllUsers(),
-        getAllAuthUsers(),
         getAllClinics(),
-        getClinicStaffData()
+        getAllClinicStaff()
       ]);
       
       setUsers(usersData);
-      setAuthUsers(authUsersData.authUsers || []);
       setClinics(clinicsData);
-      setClinicStaff(staffData.clinicStaff || []);
+      setClinicStaff(staffData);
       
       console.log('✅ Users loaded:', usersData?.length || 0);
       
@@ -51,6 +64,14 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUserFilterChange = (key: string, value: any) => {
+    setUserFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleClinicFilterChange = (key: string, value: any) => {
+    setClinicFilters(prev => ({ ...prev, [key]: value }));
   };
 
   const handleRunDiagnostic = async () => {
@@ -162,7 +183,7 @@ const AdminDashboard = () => {
           <CardContent>
             <div className="text-2xl font-bold">{users.length}</div>
             <p className="text-xs text-muted-foreground">
-              {authUsers.length} em auth.users
+              perfis ativos
             </p>
           </CardContent>
         </Card>
@@ -199,11 +220,9 @@ const AdminDashboard = () => {
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {authUsers.length === users.length ? '✅' : '⚠️'}
-            </div>
+            <div className="text-2xl font-bold">✅</div>
             <p className="text-xs text-muted-foreground">
-              {authUsers.length === users.length ? 'Consistente' : 'Inconsistente'}
+              Sistema operacional
             </p>
           </CardContent>
         </Card>
@@ -222,9 +241,10 @@ const AdminDashboard = () => {
         <TabsContent value="users">
           <UsersTab 
             users={users} 
-            authUsers={authUsers}
             loading={loading} 
-            onRefetch={loadDashboardData} 
+            onRefetch={loadDashboardData}
+            filters={userFilters}
+            onFilterChange={handleUserFilterChange}
           />
         </TabsContent>
 
@@ -232,12 +252,14 @@ const AdminDashboard = () => {
           <ClinicsTab 
             clinics={clinics} 
             loading={loading} 
-            onRefetch={loadDashboardData} 
+            onRefetch={loadDashboardData}
+            filters={clinicFilters}
+            onFilterChange={handleClinicFilterChange}
           />
         </TabsContent>
 
         <TabsContent value="register">
-          <RegisterTab onRefetch={loadDashboardData} />
+          <RegisterTab onSuccess={loadDashboardData} />
         </TabsContent>
       </Tabs>
     </div>

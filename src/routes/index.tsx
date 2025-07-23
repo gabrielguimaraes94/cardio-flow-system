@@ -36,7 +36,7 @@ import { InsuranceList } from '@/pages/insurance/InsuranceList';
 import { InsuranceForm } from '@/pages/insurance/InsuranceForm';
 
 // Admin Routes
-import { AdminDashboard } from '@/pages/admin/AdminDashboard';
+import AdminDashboard from '@/pages/admin/AdminDashboard';
 import { AdminLogin } from '@/pages/admin/AdminLogin';
 
 // Special Routes
