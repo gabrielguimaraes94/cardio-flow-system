@@ -1,1 +1,13 @@
 project_id = "kzfvvhdyohlgdkvbpvmx"
+
+[functions.test-env]
+verify_jwt = false
+
+[functions.register-clinic-admin]
+verify_jwt = true
+
+[functions.create-clinic-staff]
+verify_jwt = true
+
+[functions.create-complete-user]
+verify_jwt = true
