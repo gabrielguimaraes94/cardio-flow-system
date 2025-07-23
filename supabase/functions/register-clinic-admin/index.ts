@@ -35,9 +35,22 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SERVICE_ROLE_KEY');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
     
+    console.log('=== ENVIRONMENT CHECK ===');
+    console.log('SUPABASE_URL:', !!supabaseUrl);
+    console.log('SERVICE_ROLE_KEY:', !!supabaseServiceKey);
+    console.log('SUPABASE_ANON_KEY:', !!supabaseAnonKey);
+    
     if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
+      console.error('❌ Missing environment variables');
       return new Response(
-        JSON.stringify({ error: 'SERVICE_ROLE_KEY não configurada. Verifique as secrets do projeto.' }),
+        JSON.stringify({ 
+          error: 'SERVICE_ROLE_KEY não configurada. Verifique as secrets do projeto.',
+          missing: {
+            supabaseUrl: !supabaseUrl,
+            serviceRoleKey: !supabaseServiceKey,
+            anonKey: !supabaseAnonKey
+          }
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -131,6 +144,9 @@ serve(async (req) => {
 
       // STEP 2: Criar usuário no auth.users
       console.log('Criando usuário auth...');
+      console.log('Email:', payload.adminData.email);
+      console.log('Role:', 'clinic_admin');
+      
       const createUserPayload = {
         email: payload.adminData.email,
         password: 'CardioFlow2024!',
@@ -146,14 +162,24 @@ serve(async (req) => {
         }
       };
       
+      console.log('Payload para createUser:', JSON.stringify(createUserPayload, null, 2));
+      
       const { data: newUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser(createUserPayload);
 
       if (createUserError || !newUser.user) {
-        console.error('Erro ao criar usuário:', createUserError);
+        console.error('❌ Erro detalhado ao criar usuário:', createUserError);
+        console.error('❌ Error code:', createUserError?.code);
+        console.error('❌ Error message:', createUserError?.message);
+        console.error('❌ Error status:', createUserError?.status);
         return new Response(
           JSON.stringify({ 
             error: `Erro ao criar usuário: ${createUserError?.message}`,
-            details: createUserError
+            details: {
+              code: createUserError?.code,
+              message: createUserError?.message,
+              status: createUserError?.status,
+              errorType: createUserError?.name || 'unknown'
+            }
           }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
