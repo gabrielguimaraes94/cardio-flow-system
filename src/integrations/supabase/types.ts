@@ -979,7 +979,13 @@ export type Database = {
     }
     Enums: {
       angioplasty_status: "active" | "cancelled" | "completed"
-      user_role: "admin" | "clinic_admin" | "doctor" | "nurse" | "receptionist"
+      user_role:
+        | "admin"
+        | "clinic_admin"
+        | "doctor"
+        | "nurse"
+        | "receptionist"
+        | "staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1108,7 +1114,14 @@ export const Constants = {
   public: {
     Enums: {
       angioplasty_status: ["active", "cancelled", "completed"],
-      user_role: ["admin", "clinic_admin", "doctor", "nurse", "receptionist"],
+      user_role: [
+        "admin",
+        "clinic_admin",
+        "doctor",
+        "nurse",
+        "receptionist",
+        "staff",
+      ],
     },
   },
 } as const
