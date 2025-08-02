@@ -366,27 +366,6 @@ export type Database = {
             referencedRelation: "patients"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "fk_clinic_id"
-            columns: ["clinic_id"]
-            isOneToOne: false
-            referencedRelation: "clinics"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_insurance_id"
-            columns: ["insurance_id"]
-            isOneToOne: false
-            referencedRelation: "insurance_companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_patient_id"
-            columns: ["patient_id"]
-            isOneToOne: false
-            referencedRelation: "patients"
-            referencedColumns: ["id"]
-          },
         ]
       }
       clinic_staff: {
@@ -928,166 +907,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      add_clinic_staff: {
-        Args: {
-          p_user_id: string
-          p_clinic_id: string
-          p_is_admin: boolean
-          p_role: string
-        }
-        Returns: boolean
-      }
-      admin_get_table_data: {
-        Args: { table_name: string; limit_count?: number }
-        Returns: Json
-      }
-      check_user_exists_by_email: {
-        Args: { p_email: string }
-        Returns: boolean
-      }
-      create_clinic: {
-        Args:
-          | {
-              p_name: string
-              p_city: string
-              p_address: string
-              p_phone: string
-              p_email: string
-              p_created_by: string
-            }
-          | {
-              p_name: string
-              p_city: string
-              p_address: string
-              p_phone: string
-              p_email: string
-              p_created_by: string
-              p_trading_name?: string
-              p_cnpj?: string
-            }
-        Returns: Json
-      }
-      create_complete_user: {
-        Args: {
-          p_email: string
-          p_first_name: string
-          p_last_name: string
-          p_phone: string
-          p_crm: string
-          p_role: string
-          p_title: string
-          p_bio: string
-        }
-        Returns: Json
-      }
-      create_user_profile_direct: {
-        Args: {
-          p_email: string
-          p_first_name: string
-          p_last_name: string
-          p_phone: string
-          p_crm: string
-          p_role: string
-          p_title: string
-          p_bio: string
-        }
-        Returns: string
-      }
-      debug_get_auth_users: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          auth_user_id: string
-          auth_email: string
-          auth_created_at: string
-          has_profile: boolean
-        }[]
-      }
-      get_current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_user_clinics: {
-        Args: { user_uuid: string }
-        Returns: {
-          clinic_id: string
-          clinic_name: string
-          clinic_city: string
-          clinic_address: string
-          clinic_phone: string
-          clinic_email: string
-          clinic_logo_url: string
-          clinic_active: boolean
-          is_admin: boolean
-          staff_id: string
-          staff_role: string
-          staff_active: boolean
-        }[]
-      }
-      has_role: {
-        Args: {
-          _user_id: string
-          _role: Database["public"]["Enums"]["user_role"]
-        }
-        Returns: boolean
-      }
-      is_any_clinic_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_clinic_admin: {
-        Args: { user_uuid: string; clinic_uuid: string }
-        Returns: boolean
-      }
-      is_clinic_admin_for_clinic: {
-        Args: { clinic_uuid: string }
-        Returns: boolean
-      }
-      is_clinic_member: {
-        Args: { user_uuid: string; clinic_uuid: string }
-        Returns: boolean
-      }
-      is_clinic_staff_member: {
-        Args: { user_uuid: string }
-        Returns: boolean
-      }
       is_global_admin: {
         Args: { user_uuid: string }
         Returns: boolean
       }
-      is_staff_of_clinic: {
-        Args: { clinic_uuid: string }
-        Returns: boolean
-      }
-      is_user_first_login: {
-        Args: { user_uuid: string }
-        Returns: boolean
-      }
-      mark_first_login_complete: {
-        Args: { user_uuid: string }
-        Returns: undefined
-      }
-      remove_clinic_staff: {
-        Args: { staff_id: string; admin_user_id: string }
-        Returns: boolean
-      }
-      sync_missing_profiles: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          synced_user_id: string
-          synced_email: string
-          action_taken: string
-        }[]
-      }
     }
     Enums: {
-      angioplasty_status: "active" | "cancelled"
-      user_role:
-        | "admin"
-        | "doctor"
-        | "nurse"
-        | "receptionist"
-        | "clinic_admin"
-        | "staff"
+      angioplasty_status: "active" | "cancelled" | "completed"
+      user_role: "admin" | "clinic_admin" | "doctor" | "nurse" | "receptionist"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1215,15 +1042,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      angioplasty_status: ["active", "cancelled"],
-      user_role: [
-        "admin",
-        "doctor",
-        "nurse",
-        "receptionist",
-        "clinic_admin",
-        "staff",
-      ],
+      angioplasty_status: ["active", "cancelled", "completed"],
+      user_role: ["admin", "clinic_admin", "doctor", "nurse", "receptionist"],
     },
   },
 } as const
