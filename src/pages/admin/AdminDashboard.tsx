@@ -1,18 +1,22 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { RefreshCw, Users, Building2, UserCheck, AlertTriangle, Wrench } from 'lucide-react';
+import { RefreshCw, Users, Building2, UserCheck, AlertTriangle, Wrench, LogOut } from 'lucide-react';
 import { UsersTab } from '@/components/admin/dashboard/Tabs/UsersTab';
 import { ClinicsTab } from '@/components/admin/dashboard/Tabs/ClinicsTab';
 import { RegisterTab } from '@/components/admin/dashboard/Tabs/RegisterTab';
 import { useToast } from '@/hooks/use-toast';
 import { getAllUsers, getAllClinics, getAllClinicStaff } from '@/services/admin';
 import { runFullDiagnostic, cleanOrphanData } from '@/services/admin/diagnosticService';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AdminDashboard = () => {
   const { toast } = useToast();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [diagnosticLoading, setDiagnosticLoading] = useState(false);
   const [cleanLoading, setCleanLoading] = useState(false);
@@ -138,6 +142,20 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/admin/login');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao fazer logout.",
+        variant: "destructive"
+      });
+    }
+  };
+
   useEffect(() => {
     loadDashboardData();
   }, []);
@@ -169,6 +187,13 @@ const AdminDashboard = () => {
           <Button onClick={loadDashboardData} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Atualizar
+          </Button>
+          <Button 
+            variant="destructive" 
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Sair
           </Button>
         </div>
       </div>
