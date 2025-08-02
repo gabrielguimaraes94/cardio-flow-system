@@ -98,6 +98,16 @@ export const UserManagement = () => {
   };
 
   const handleDeleteUser = async (userToDelete: UserProfile) => {
+    // Verificar se o usuário está tentando se remover
+    if (user && userToDelete.id === user.id) {
+      toast({
+        title: "Ação não permitida",
+        description: "Você não pode remover a si mesmo do sistema.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!window.confirm(`Tem certeza que deseja excluir o usuário ${userToDelete.firstName} ${userToDelete.lastName}?`)) {
       return;
     }
@@ -324,35 +334,38 @@ export const UserManagement = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {users.length > 0 ? (
-              users.map((user: UserProfile) => (
-                <Card key={user.id} className="overflow-hidden">
+              users.map((userItem: UserProfile) => (
+                <Card key={userItem.id} className="overflow-hidden">
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className="text-lg">{user.firstName} {user.lastName}</CardTitle>
-                        <CardDescription>{user.email}</CardDescription>
+                        <CardTitle className="text-lg">{userItem.firstName} {userItem.lastName}</CardTitle>
+                        <CardDescription>{userItem.email}</CardDescription>
                       </div>
-                      <Badge variant="outline" className={getRoleColor(user.role)}>
-                        {getRoleName(user.role)}
+                      <Badge variant="outline" className={getRoleColor(userItem.role)}>
+                        {getRoleName(userItem.role)}
                       </Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="pb-2">
                     <div className="space-y-1 text-sm">
-                      <p><strong>CRM:</strong> {user.crm}</p>
-                      {user.phone && <p><strong>Telefone:</strong> {user.phone}</p>}
-                      {user.title && <p><strong>Título:</strong> {user.title}</p>}
+                      <p><strong>CRM:</strong> {userItem.crm}</p>
+                      {userItem.phone && <p><strong>Telefone:</strong> {userItem.phone}</p>}
+                      {userItem.title && <p><strong>Título:</strong> {userItem.title}</p>}
                     </div>
                   </CardContent>
                   <div className="px-6 py-3 bg-gray-50 flex justify-end gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleEditUser(user)}>
+                    <Button variant="ghost" size="sm" onClick={() => handleEditUser(userItem)}>
                       <Pencil className="h-4 w-4 mr-1" />
                       Editar
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(user)} className="text-red-600 hover:text-red-700">
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Excluir
-                    </Button>
+                    {/* Não mostrar botão de excluir para o próprio usuário */}
+                    {user && user.id !== userItem.id && (
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(userItem)} className="text-red-600 hover:text-red-700">
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Excluir
+                      </Button>
+                    )}
                   </div>
                 </Card>
               ))

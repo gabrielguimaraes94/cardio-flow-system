@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { deleteUser } from '@/services/admin';
 
 interface UsersListProps {
@@ -28,6 +29,7 @@ export const UsersList: React.FC<UsersListProps> = ({
   onRefetch 
 }) => {
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   
   console.log('=== USERLIST COMPONENT ===');
   console.log('Props received:');
@@ -69,6 +71,16 @@ export const UsersList: React.FC<UsersListProps> = ({
   };
 
   const handleDeleteUser = async (userId: string, userName: string) => {
+    // Verificar se o usuário está tentando se remover
+    if (currentUser && userId === currentUser.id) {
+      toast({
+        title: "Ação não permitida",
+        description: "Você não pode remover a si mesmo do sistema.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!confirm(`Tem certeza que deseja excluir o usuário ${userName}? Esta ação não pode ser desfeita.`)) {
       return;
     }
@@ -180,16 +192,23 @@ export const UsersList: React.FC<UsersListProps> = ({
                       <TableCell>
                         <div className="truncate">{formatDate(user.created_at)}</div>
                       </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteUser(user.id, `${user.first_name} ${user.last_name}`)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
+                       <TableCell>
+                         {/* Não mostrar botão de excluir para o próprio usuário */}
+                         {currentUser && currentUser.id !== user.id ? (
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => handleDeleteUser(user.id, `${user.first_name} ${user.last_name}`)}
+                             className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                           >
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
+                         ) : (
+                           <div className="h-8 w-8 flex items-center justify-center text-gray-400">
+                             <span className="text-xs">Você</span>
+                           </div>
+                         )}
+                       </TableCell>
                     </TableRow>
                   );
                 })
