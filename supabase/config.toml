@@ -3,6 +3,21 @@ project_id = "kzfvvhdyohlgdkvbpvmx"
 [functions.test-env]
 verify_jwt = false
 
+[functions.create-admin-user]
+verify_jwt = false
+
+[functions.create-admin-profile]
+verify_jwt = false
+
+[functions.reset-admin-password]
+verify_jwt = false
+
+[functions.emergency-create-admin]
+verify_jwt = false
+
+[functions.fix-admin-profile]
+verify_jwt = false
+
 [functions.create-clinic-admin-working]
 verify_jwt = true
 
