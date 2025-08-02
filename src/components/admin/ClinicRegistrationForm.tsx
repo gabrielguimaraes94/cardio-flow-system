@@ -78,8 +78,8 @@ export const ClinicRegistrationForm: React.FC<ClinicRegistrationFormProps> = ({ 
 
       console.log('Payload:', payload);
 
-      // Chamar a edge function
-      const { data, error } = await supabase.functions.invoke('register-clinic-admin', {
+      // Chamar a edge function que funciona
+      const { data, error } = await supabase.functions.invoke('create-clinic-admin-working', {
         body: payload
       });
 
