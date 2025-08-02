@@ -95,7 +95,7 @@ export default function FirstLogin() {
                 name="currentPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Senha Atual (temp123456)</FormLabel>
+                    <FormLabel>Senha Atual (CardioFlow2024!)</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
