@@ -38,7 +38,7 @@ serve(async (req) => {
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
       .select('id')
-      .eq('id', 'b4542ae6-91f6-43b2-856b-3093ddb9df81')
+      .eq('id', 'c2fff7fc-a1d5-4811-b78c-a4734ae3d7b6')
       .maybeSingle();
 
     if (existingProfile) {
@@ -60,7 +60,7 @@ serve(async (req) => {
     const { data: profileData, error: profileError } = await supabaseAdmin
       .from('profiles')
       .insert({
-        id: 'b4542ae6-91f6-43b2-856b-3093ddb9df81',
+        id: 'c2fff7fc-a1d5-4811-b78c-a4734ae3d7b6',
         first_name: 'Admin',
         last_name: 'Sistema',
         email: 'admin@cardioflow.com',
@@ -116,4 +116,4 @@ serve(async (req) => {
       }
     });
   }
-}); 
+});
