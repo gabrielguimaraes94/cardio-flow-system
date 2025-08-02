@@ -952,6 +952,10 @@ export type Database = {
           is_admin: boolean
         }[]
       }
+      is_clinic_admin: {
+        Args: { clinic_uuid: string; user_uuid?: string }
+        Returns: boolean
+      }
       is_global_admin: {
         Args: { user_uuid: string }
         Returns: boolean

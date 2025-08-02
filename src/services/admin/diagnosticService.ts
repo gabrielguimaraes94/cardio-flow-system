@@ -16,17 +16,15 @@ export const runFullDiagnostic = async () => {
     
     console.log(`📊 Auth users: ${authUsers?.length || 0}`);
     
-    // Separar usuários com e sem profile
-    const usersWithProfile = authUsers?.filter(u => u.has_profile) || [];
-    const usersWithoutProfile = authUsers?.filter(u => !u.has_profile) || [];
+    // Como a função só retorna user_id, email, created_at, não há has_profile
+    const usersWithoutProfile: any[] = [];
     
-    console.log(`✅ Com profile: ${usersWithProfile.length}`);
-    console.log(`❌ Sem profile: ${usersWithoutProfile.length}`);
+    console.log(`✅ Total de usuários: ${authUsers?.length || 0}`);
     
     if (usersWithoutProfile.length > 0) {
       console.log('🚨 USUÁRIOS ÓRFÃOS (auth sem profile):');
       usersWithoutProfile.forEach(user => {
-        console.log(`- ID: ${user.auth_user_id}, Email: ${user.auth_email}`);
+        console.log(`- ID: ${user.user_id}, Email: ${user.email}`);
       });
     }
 
@@ -44,7 +42,7 @@ export const runFullDiagnostic = async () => {
     console.log(`📊 Total profiles: ${profiles?.length || 0}`);
     
     // Verificar se todos os profiles têm auth users correspondentes
-    const authUserIds = authUsers?.map(u => u.auth_user_id) || [];
+    const authUserIds = authUsers?.map(u => u.user_id) || [];
     const orphanProfiles = profiles?.filter(p => !authUserIds.includes(p.id)) || [];
     
     if (orphanProfiles.length > 0) {

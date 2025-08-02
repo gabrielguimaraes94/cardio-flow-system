@@ -93,10 +93,9 @@ export const debugAuthUsers = async () => {
     
     data?.forEach((user, index) => {
       console.log(`Auth User ${index + 1}:`, {
-        id: user.auth_user_id,
-        email: user.auth_email,
-        created_at: user.auth_created_at,
-        has_profile: user.has_profile
+        id: user.user_id,
+        email: user.email,
+        created_at: user.created_at
       });
     });
     
@@ -124,9 +123,9 @@ export const syncMissingProfiles = async () => {
     
     data?.forEach((syncedUser, index) => {
       console.log(`Synced profile ${index + 1}:`, {
-        user_id: syncedUser.synced_user_id,
-        email: syncedUser.synced_email,
-        action: syncedUser.action_taken
+        user_id: syncedUser.user_id,
+        email: syncedUser.email,
+        action: syncedUser.action
       });
     });
     

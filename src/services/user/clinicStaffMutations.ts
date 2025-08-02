@@ -19,10 +19,10 @@ export const addClinicStaff = async (
     // Use the RPC function which handles permissions properly
     const { data, error } = await supabase
       .rpc('add_clinic_staff', {
-        p_user_id: userId,
-        p_clinic_id: clinicId,
-        p_is_admin: isAdmin,
-        p_role: role
+        clinic_uuid: clinicId,
+        user_uuid: userId,
+        staff_role: role,
+        staff_is_admin: isAdmin
       });
     
     if (error) {
@@ -75,8 +75,7 @@ export const removeClinicStaff = async (staffId: string, adminUserId: string): P
     // Usar a função RPC para remover o funcionário
     const { data, error } = await supabase
       .rpc('remove_clinic_staff', {
-        staff_id: staffId,
-        admin_user_id: adminUserId
+        staff_uuid: staffId
       });
     
     if (error) {

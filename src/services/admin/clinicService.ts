@@ -6,15 +6,15 @@ export const registerClinic = async (clinicData: RegisterClinicRequest, createdB
     console.log('=== REGISTERING NEW CLINIC ===');
     console.log('Clinic data:', clinicData);
     
-    const params: CreateClinicParams = {
-      p_name: clinicData.name,
-      p_city: clinicData.city,
-      p_address: clinicData.address,
-      p_phone: clinicData.phone,
-      p_email: clinicData.email,
-      p_created_by: createdBy,
-      p_trading_name: clinicData.trading_name,
-      p_cnpj: clinicData.cnpj
+    const params = {
+      clinic_name: clinicData.name,
+      clinic_city: clinicData.city,
+      clinic_address: clinicData.address,
+      clinic_phone: clinicData.phone,
+      clinic_email: clinicData.email,
+      clinic_cnpj: clinicData.cnpj,
+      clinic_trading_name: clinicData.trading_name,
+      clinic_logo_url: null
     };
     
     const { data, error } = await supabase.rpc('create_clinic', params);
