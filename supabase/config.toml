@@ -3,7 +3,7 @@ project_id = "kzfvvhdyohlgdkvbpvmx"
 [functions.test-env]
 verify_jwt = false
 
-[functions.register-clinic-admin]
+[functions.create-clinic-admin-working]
 verify_jwt = true
 
 [functions.create-clinic-staff]
