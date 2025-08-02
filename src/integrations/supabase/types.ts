@@ -907,9 +907,74 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_clinic_staff: {
+        Args: {
+          clinic_uuid: string
+          user_uuid: string
+          staff_role: string
+          staff_is_admin?: boolean
+        }
+        Returns: string
+      }
+      create_clinic: {
+        Args: {
+          clinic_name: string
+          clinic_address: string
+          clinic_city: string
+          clinic_phone: string
+          clinic_email: string
+          clinic_cnpj?: string
+          clinic_trading_name?: string
+          clinic_logo_url?: string
+        }
+        Returns: string
+      }
+      debug_get_auth_users: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          email: string
+          created_at: string
+        }[]
+      }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_user_clinics: {
+        Args: { user_uuid?: string }
+        Returns: {
+          clinic_id: string
+          clinic_name: string
+          clinic_city: string
+          clinic_logo_url: string
+          staff_id: string
+          is_admin: boolean
+        }[]
+      }
       is_global_admin: {
         Args: { user_uuid: string }
         Returns: boolean
+      }
+      is_user_first_login: {
+        Args: { user_uuid: string }
+        Returns: boolean
+      }
+      mark_first_login_complete: {
+        Args: { user_uuid: string }
+        Returns: boolean
+      }
+      remove_clinic_staff: {
+        Args: { staff_uuid: string }
+        Returns: boolean
+      }
+      sync_missing_profiles: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          email: string
+          action: string
+        }[]
       }
     }
     Enums: {
