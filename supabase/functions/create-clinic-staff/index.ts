@@ -112,90 +112,138 @@ serve(async (req) => {
     // Verificar se email já existe
     const { data: existingProfile } = await supabaseAdmin.from('profiles').select('id, email').eq('email', requestData.email).maybeSingle();
 
-    if (existingProfile) {
-      return new Response(
-        JSON.stringify({ error: 'Já existe um usuário com este email' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    let newUserId: string;
 
-    // Verificar se existe no auth.users também
-    const { data: authUsers, error: authCheckError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (!authCheckError) {
-      const existingAuthUser = authUsers.users?.find(u => u.email === requestData.email);
-      if (existingAuthUser) {
+    if (existingProfile) {
+      console.log('User already exists, checking if already assigned to clinic');
+      
+      // Verificar se já é staff da clínica
+      const { data: existingStaff } = await supabaseAdmin
+        .from('clinic_staff')
+        .select('id, active')
+        .eq('user_id', existingProfile.id)
+        .eq('clinic_id', requestData.clinic_id)
+        .single();
+
+      if (existingStaff && existingStaff.active) {
         return new Response(
-          JSON.stringify({ error: 'Email já existe no sistema de autenticação' }),
-          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: 'Usuário já é funcionário desta clínica' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-    }
 
-    // Criar usuário no auth.users
-    const { data: newUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
-      email: requestData.email,
-      password: 'CardioFlow2024!',
-      email_confirm: true,
-      user_metadata: {
-        first_name: requestData.first_name,
-        last_name: requestData.last_name,
-        phone: requestData.phone || '',
-        crm: requestData.crm,
-        role: requestData.role,
-        title: requestData.title || '',
-        bio: requestData.bio || ''
+      if (existingStaff && !existingStaff.active) {
+        // Reativar usuário
+        const { error: reactivateError } = await supabaseAdmin
+          .from('clinic_staff')
+          .update({ active: true, role: requestData.role, is_admin: requestData.is_admin || false })
+          .eq('id', existingStaff.id);
+
+        if (reactivateError) {
+          return new Response(
+            JSON.stringify({ error: `Erro ao reativar funcionário: ${reactivateError.message}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            message: 'Funcionário reativado com sucesso!',
+            data: {
+              userId: existingProfile.id,
+              email: requestData.email,
+              clinicId: requestData.clinic_id
+            }
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-    });
 
-    if (createUserError || !newUser.user) {
-      return new Response(
-        JSON.stringify({ 
-          error: `Erro ao criar usuário: ${createUserError?.message}`,
-          details: createUserError
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Auth user created:', newUser.user.id);
-
-    // Aguardar profile ser criado pelo trigger
-    let profileCreated = false;
-    let attempts = 0;
-    const maxAttempts = 15;
-
-    while (!profileCreated && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Usuário existe mas não é staff desta clínica, apenas associar
+      newUserId = existingProfile.id;
+      console.log('Associating existing user to clinic:', newUserId);
+    } else {
+      // Verificar se existe no auth.users também
+      const { data: authUsers, error: authCheckError } = await supabaseAdmin.auth.admin.listUsers();
       
-      const { data: profileCheck } = await supabaseAdmin
-        .from('profiles')
-        .select('id, role, email')
-        .eq('id', newUser.user.id)
-        .maybeSingle();
-
-      if (profileCheck) {
-        profileCreated = true;
-        console.log('Profile created successfully');
-      } else {
-        attempts++;
-        console.log(`Profile creation attempt ${attempts}/${maxAttempts}`);
+      if (!authCheckError) {
+        const existingAuthUser = authUsers.users?.find(u => u.email === requestData.email);
+        if (existingAuthUser) {
+          return new Response(
+            JSON.stringify({ error: 'Email já existe no sistema de autenticação mas sem perfil' }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
-    }
 
-    if (!profileCreated) {
-      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
-      return new Response(
-        JSON.stringify({ error: 'Falha ao criar perfil do usuário' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Criar usuário no auth.users
+      const { data: newUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
+        email: requestData.email,
+        password: 'CardioFlow2024!',
+        email_confirm: true,
+        user_metadata: {
+          first_name: requestData.first_name,
+          last_name: requestData.last_name,
+          phone: requestData.phone || '',
+          crm: requestData.crm,
+          role: requestData.role,
+          title: requestData.title || '',
+          bio: requestData.bio || ''
+        }
+      });
+
+      if (createUserError || !newUser.user) {
+        return new Response(
+          JSON.stringify({ 
+            error: `Erro ao criar usuário: ${createUserError?.message}`,
+            details: createUserError
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Auth user created:', newUser.user.id);
+
+      // Aguardar profile ser criado pelo trigger
+      let profileCreated = false;
+      let attempts = 0;
+      const maxAttempts = 15;
+
+      while (!profileCreated && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const { data: profileCheck } = await supabaseAdmin
+          .from('profiles')
+          .select('id, role, email')
+          .eq('id', newUser.user.id)
+          .maybeSingle();
+
+        if (profileCheck) {
+          profileCreated = true;
+          console.log('Profile created successfully');
+        } else {
+          attempts++;
+          console.log(`Profile creation attempt ${attempts}/${maxAttempts}`);
+        }
+      }
+
+      if (!profileCreated) {
+        await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+        return new Response(
+          JSON.stringify({ error: 'Falha ao criar perfil do usuário' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      newUserId = newUser.user.id;
     }
 
     // Adicionar usuário à clínica como staff
     const { error: staffError } = await supabaseAdmin
       .from('clinic_staff')
       .insert({
-        user_id: newUser.user.id,
+        user_id: newUserId,
         clinic_id: requestData.clinic_id,
         is_admin: requestData.is_admin || false,
         role: requestData.role,
@@ -204,7 +252,6 @@ serve(async (req) => {
 
     if (staffError) {
       console.error('Erro ao adicionar à clínica:', staffError);
-      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
       
       return new Response(
         JSON.stringify({ 
@@ -220,9 +267,9 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: 'Funcionário criado com sucesso!',
+        message: existingProfile ? 'Funcionário associado com sucesso!' : 'Funcionário criado com sucesso!',
         data: {
-          userId: newUser.user.id,
+          userId: newUserId,
           email: requestData.email,
           clinicId: requestData.clinic_id
         }
